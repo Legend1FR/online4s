@@ -1,16 +1,22 @@
-
-
-
-
-
-<!-- node-project\views\signUp.ejs file -->
 <%- include('header', { title: 'تسجيل' }) %>
     <div class="content" style="width: 500px; height: 500px; background-color: rgb(211, 205, 204); border-radius:14px;margin: auto; color: white; box-shadow: 2px 3px 4px navajowhite;">
         <form action="/signUp" method="post" onsubmit="return validateForm()">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <input type="text" placeholder="اسم المريض" name="name" style="border: none; background-color: rgb(17, 197, 234); width: inherit; display: block; color: white;">
+            <!-- تغيير "اسم المريض" إلى "اسم المستخدم" -->
+            <input type="text" placeholder="اسم المستخدم" name="name" style="border: none; background-color: rgb(17, 197, 234); width: inherit; display: block; color: white;">
             <input type="email" placeholder="الايميل" name="email" style="border: none; background-color:  rgb(17, 197, 234); width: inherit;display: block; color: white;">
             <input type="password" placeholder="كلمة المرور" name="password" style="border: none; background-color: rgb(17, 197, 234); width: inherit;display: block;color: white;">
+            <!-- إضافة نص توضيحي لمتطلبات كلمة المرور -->
+            <div style="text-align: right; margin-top: 5px; font-size: 12px; color: #333;">
+                كلمة المرور يجب أن تحتوي على:
+                <ul style="margin: 5px 0; padding-left: 20px;">
+                    <li>8 أحرف على الأقل</li>
+                    <li>حرف كبير واحد على الأقل (A-Z)</li>
+                    <li>حرف صغير واحد على الأقل (a-z)</li>
+                    <li>رقم واحد على الأقل (0-9)</li>
+                    <li>حرف خاص واحد على الأقل (!@#$%^&*)</li>
+                </ul>
+            </div>
             <button type="submit" id="submitButton" style="border: none; background-color: navy;  background-color:  rgb(17, 197, 234); display: block; color: white; cursor: pointer; width:70%; margin: auto; height: 20px;">تسجيل</button>
             <div id="loadingSpinner" style="display: none; text-align: center; margin-top: 10px;">جاري التحميل...</div>
         </form>
@@ -31,11 +37,9 @@
             const email = document.querySelector('input[name="email"]').value;
             const password = document.querySelector('input[name="password"]').value;
 
-            if (!name || !email | !password) {
+            if (!name || !email || !password) {
                 alert("جميع الحقول مطلوبة");
                 return false;
-
-                
             }
 
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
