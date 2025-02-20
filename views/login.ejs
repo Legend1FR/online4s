@@ -2,7 +2,7 @@
     <div class="content" style="width: 500px; height: 500px; background-color: rgb(211, 205, 204); border-radius:14px;margin: auto; color: white; box-shadow: 2px 3px 4px navajowhite;">
         <form action="/login" method="post" onsubmit="return validateLoginForm()">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <!-- تغيير "اسم المريض" إلى "اسم المستخدم" -->
+            
             <input type="text" placeholder="اسم المستخدم" name="name" style="border: none; background-color: rgb(17, 197, 234); width: inherit; display: block; color: white;">
             <input type="password" placeholder="كلمة المرور" name="password" style="border: none; background-color: rgb(17, 197, 234); width: inherit;display: block;color: white;">
             <button type="submit" id="submitButton" style="border: none; background-color: navy;  background-color:  rgb(17, 197, 234); display: block; color: white; cursor: pointer; width:70%; margin: auto; height: 20px;">تسجيل الدخول</button>
