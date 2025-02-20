@@ -1,11 +1,9 @@
-
-<!-- node-project\views\login.ejs file -->
-
 <%- include('header', { title: 'تسجيل الدخول' }) %>
     <div class="content" style="width: 500px; height: 500px; background-color: rgb(211, 205, 204); border-radius:14px;margin: auto; color: white; box-shadow: 2px 3px 4px navajowhite;">
         <form action="/login" method="post" onsubmit="return validateLoginForm()">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <input type="text" placeholder="اسم المريض" name="name" style="border: none; background-color: rgb(17, 197, 234); width: inherit; display: block; color: white;">
+            <!-- تغيير "اسم المريض" إلى "اسم المستخدم" -->
+            <input type="text" placeholder="اسم المستخدم" name="name" style="border: none; background-color: rgb(17, 197, 234); width: inherit; display: block; color: white;">
             <input type="password" placeholder="كلمة المرور" name="password" style="border: none; background-color: rgb(17, 197, 234); width: inherit;display: block;color: white;">
             <button type="submit" id="submitButton" style="border: none; background-color: navy;  background-color:  rgb(17, 197, 234); display: block; color: white; cursor: pointer; width:70%; margin: auto; height: 20px;">تسجيل الدخول</button>
             <div id="loadingSpinner" style="display: none; text-align: center; margin-top: 10px;">جاري التحميل...</div>
@@ -21,6 +19,8 @@
             </div>
         <% } %>
         <a href="/reset-password" style="text-align: center; display: block; margin-top: 10px;">نسيت كلمة المرور؟</a>
+        <!-- رابط الاشتراك -->
+        <a href="/signUp" style="text-align: center; display: block; margin-top: 10px;">إنشاء حساب جديد</a>
     </div>
     <script>
         function validateLoginForm() {
@@ -28,7 +28,7 @@
             const password = document.querySelector('input[name="password"]').value;
 
             if (!name || !password) {
-                alert("اسم المريض وكلمة المرور مطلوبان");
+                alert("اسم المستخدم وكلمة المرور مطلوبان");
                 return false;
             }
 
