@@ -1,0 +1,182 @@
+
+
+<!-- views/headerpatient.ejs -->
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap" rel="stylesheet">
+    <title>Document</title>
+    <style>
+        * {
+            font-family: sans-serif;
+        }
+
+        .wer {
+            color: rgb(254, 254, 254);
+            font-size: 18px;
+            font-family: Verdana;
+            direction: rtl;
+        }
+
+        .wer span {
+            padding: 0 12px 0 12px;
+            cursor: pointer;
+        }
+
+        span:hover {
+            color: #222;
+        }
+
+        .gui {
+            background-color: antiquewhite;
+            width: 100%;
+            margin: 40px auto 30px auto;
+            height: 400px;
+            position: relative;
+        }
+
+        img {
+            width: 100%;
+            height: 100%;
+        }
+
+        .information {
+            width: 130px;
+            height: 70px;
+            font-size: 24px;
+            display: flex;
+            flex-flow: row wrap;
+            justify-content: center;
+            align-items: center;
+            border: none;
+            border-radius: 10px;
+        }
+
+        .information:hover {
+            cursor: pointer;
+            color: rgb(148, 156, 156);
+        }
+
+        section {
+            margin: 70px auto 30px;
+            background-color: aliceblue;
+            margin-bottom: 100px;
+            box-shadow: 5px 5px 25px rgb(179, 172, 172);
+            width: 70%;
+            height: 390px;
+            border-radius: 13px;
+            position: relative;
+        }
+
+        section img {
+            width: 20%;
+            height: 50%;
+            border-radius: 50%;
+            position: absolute;
+            padding: 20px;
+        }
+
+        .arrow {
+            height: 30px;
+            width: 30px;
+            background-color: #222;
+            border-radius: 20px;
+            padding: 6px;
+            color: aliceblue;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .bigarrow {
+            width: 100%;
+        }
+
+        section .bigarrow {
+            position: absolute;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            top: 170px;
+            right: -2px;
+        }
+
+        #click {
+            margin: auto;
+            width: 90px;
+            height: 90px;
+        }
+
+        section p {
+            padding: 28px 20px 0px 28px;
+        }
+
+        #jlst {
+            width: 120px;
+            height: 35px;
+            color: aliceblue;
+            box-shadow: 1px 1px 1px 1px rgb(179, 172, 172);
+            border-radius: 6px;
+            padding: 6px;
+            display: flex;
+            flex-flow: row wrap;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        section #bigJlst {
+            padding: 60px;
+            position: absolute;
+            bottom: 0px;
+            right: 0px;
+        }
+
+        .bigaccount {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            right: 0;
+            left: 0;
+            display: none;
+            opacity: 0.6;
+            z-index: 10;
+            background-color: #222;
+        }
+
+        .account {
+            margin: auto auto;
+            width: 35%;
+            height: 570px;
+            background-color: antiquewhite;
+            box-shadow: 2px 2px 2px 2px goldenrod;
+            border-radius: 6px;
+            border: none;
+            display: none;
+        }
+    </style>
+</head>
+<body style="background-color: royalblue">
+    <div style="width: 96%; margin: auto;">
+        <div style="display: flex; position: relative;">
+            <div id="logo" style="position: absolute; right: 0;"> 9</div>
+            <div style="position:absolute; right: 0; margin-right:60px;" class="wer">
+                <span>الرئيسية</span>
+                <span> الحساب </span>
+                <span>الخصوصية</span>
+                <% if (patient) { %>
+                    <div style="position: relative; display: inline-block;">
+                        <span id="patientname" style="cursor: pointer;"><%= patient.name %></span>
+                        <div id="logoutMenu" style="display: none; position: absolute; background-color: #f9f9f9; min-width: 160px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 1;">
+                            <a href="/logout" style="color: black; padding: 12px 16px; text-decoration: none; display: block;">تسجيل الخروج</a>
+                        </div>
+                    </div>
+                <% } else { %>
+                    <a href="/login"><span>تسجيل الدخول</span></a>
+                <% } %>
+            </div>
+        </div>

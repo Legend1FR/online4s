@@ -1,0 +1,16 @@
+
+<!-- node-project\views\admin-login.ejs file -->
+<%- include('header', { title: 'تسجيل دخول الأدمن' }) %>
+<div class="content" style="width: 500px; margin: auto; background-color: #f4f4f4; padding: 20px; border-radius: 8px; text-align: center;">
+    <h2>تسجيل دخول الأدمن</h2>
+    <form action="/admin/login" method="post">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="text" name="username" placeholder="اسم المستخدم" required>
+        <input type="password" name="password" placeholder="كلمة المرور" required>
+        <button type="submit">تسجيل الدخول</button>
+    </form>
+    <% if (error) { %>
+        <p style="color: red;"><%= error %></p>
+    <% } %>
+</div>
+<%- include('footer') %>

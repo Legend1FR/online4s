@@ -1,0 +1,231 @@
+
+<!-- node-project\views\headeradmin.ejs file -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+       * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            position: fixed;
+            left: -250px;
+            top: 0;
+            width: 250px;
+            height: 100%;
+            background-color: white;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            transition: left 0.3s ease;
+            z-index: 1000;
+        }
+
+        .sidebar.active {
+            left: 0;
+        }
+
+        .sidebar-header {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .profile-img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #eee;
+        }
+
+        .profile-info h3 {
+            font-size: 1rem;
+            color: #333;
+        }
+
+        .profile-info p {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .sidebar-menu {
+            padding: 1rem 0;
+        }
+
+        .menu-item {
+            padding: 0.8rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            color: #333;
+            text-decoration: none;
+            transition: background-color 0.3s;
+        }
+
+        .menu-item:hover {
+            background-color: #f0f7ff;
+        }
+
+        .menu-item.active {
+            background-color: #e6f0ff;
+            color: #2176FF;
+        }
+
+        .menu-item i {
+            font-size: 1.2rem;
+            width: 20px;
+        }
+
+        .header {
+            background-color: #2176FF;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .menu-icon {
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .search-bar {
+            flex: 1;
+            max-width: 600px;
+            margin: 0 2rem;
+        }
+
+        .search-bar input {
+            width: 100%;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            border: none;
+            outline: none;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header-icon {
+            color: white;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #FF4B4B;
+            color: white;
+            border-radius: 50%;
+            width: 15px;
+            height: 15px;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+    </style>
+</head>
+<body>
+    <!-- Overlay -->
+    <div class="overlay" id="overlay"></div>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="profile-img">
+                <!-- Profile image placeholder -->
+            </div>
+            <div class="profile-info">
+                <% if (typeof admin !== 'undefined' && admin) { %>
+                    <h3><%= admin.username %></h3>
+                    <p>Dept Admin</p>
+                <% } else { %>
+                    <h3>غير مسجل الدخول</h3>
+                <% } %>
+            </div>
+        </div>
+        <nav class="sidebar-menu">
+            
+            <a href="/admin/dashboard" class="menu-item active">
+                <i>🏫</i>
+                لوحة التحكم
+            </a>
+            <a href="/admin/patients-management" class="menu-item">
+                <i>🏥</i>
+              ادارة المرضى
+            </a>
+            <a href="/admin/doctors-management" class="menu-item" style="margin-top: auto;">
+                <i>👥</i>
+                ادارة  الاطباء
+            </a>
+            <a href="/admin/receptionists-management" class="menu-item" style="margin-top: auto;">
+                <i>👥</i>
+                ادارة الموظفين 
+            </a>
+            <!-- رابط تسجيل الخروج -->
+            <a href="/admin/logout" class="menu-item" style="margin-top: auto;">
+                <i>🚪</i>
+                logout
+            </a>
+           
+
+            
+        </nav>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <div class="menu-icon" id="menuToggle">☰</div>
+            <div class="logo">
+                <span>شفاء</span>
+            </div>
+        </div>
+        
+        <div class="search-bar">
+            <input type="text" placeholder="Search">
+        </div>
+        
+        <div class="header-right">
+            <div class="header-icon">
+                🔔
+                <span class="notification-badge">2</span>
+            </div>
+            <div class="header-icon">
+                📧
+                <span class="notification-badge">3</span>
+            </div>
+            <div class="header-icon">JB</div>
+        </div>
+    </header>

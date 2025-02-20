@@ -1,0 +1,131 @@
+
+<!-- index.ejs -->
+
+<%- include('headerpatient.ejs') %>
+
+<div id="bigimg">
+    <div class="gui"><img src="1/55.jpg"></div>
+</div>
+<div style="display: flex; flex-wrap: row wrap; justify-content: right;"></div>
+<br>
+<nav style="width: 100%; background-color: rgb(255, 245, 245); height:80px; padding: 10px 10px; box-shadow: 2px 2px 2px 2px rgb(94, 90, 81); border: none;">
+    <div style="display: flex; flex-flow: row wrap; justify-content: space-around;">
+        <div class="information">الاقسام الطبية</div>
+        <div class="information">الاقسام النفسية</div>
+        <div class="information">علاج طبيعي</div>
+        <div class="information"> ارشادات</div>
+        <div class="information" onclick="window.location.href='/community'">المجتمع</div>
+    </div>
+</nav>
+
+<div id="tbody">
+    <section id="3453">
+        <img src="1/11.jpg" alt="">
+        <p style="font-size: 40px; text-align: end;margin: 0;"> لوفي </p>
+        <div class="bigarrow" style="display: flex;">
+            <div onclick="arr2()" id="prev" class="arrow" style="font-size: 25px;">&#10094</div>
+            <div id="next" onclick="arr1()" class="arrow" style="font-size:25px;">&#10095</div>
+        </div>
+        <div id="bigJlst">
+            <a href="<%= patient ? '/request-session' : '/signUp' %>">
+                <div id="jlst" style="background-color: green;" onclick="index2()"> طلب جلسة </div>
+            </a>
+            <div class="bigaccount" id="bigaccount">
+                <div class="account" id="account"></div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<%- include('footer.ejs') %>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const socket = io();
+        
+        const token = document.cookie.split('; ').find(row => row.startsWith('token='));
+        if (token) {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                const patientId = payload._id;
+                
+                socket.emit('patientLogin', patientId);
+                
+                window.addEventListener('beforeunload', () => {
+                    socket.emit('patientLogout', patientId);
+                });
+                
+                socket.on('disconnect', () => {
+                    socket.emit('patientLogout', patientId);
+                });
+            } catch (error) {
+                console.error('Error processing token:', error);
+            }
+        }
+    });
+
+    let arrimgb = ["1/55.jpg", "1/66.jpg", "1/77.jpg"];
+    let i = 0;
+    let arr = ["سونيك", "سوبر ماريو", "رزدنت", "محمد علي", "محمد العجيلي"];
+    let arr3 = ["1/22.jpg", "1/33.jpg", "1/44.jpg"];
+    let section1 = document.getElementById("tbody");
+
+    function arr1() {
+        i = (i + 1) % arr.length;
+        updateSection();
+    }
+
+    function arr2() {
+        i = (i - 1 + arr.length) % arr.length;
+        updateSection();
+    }
+
+    function updateSection() {
+        section1.innerHTML = 
+            <section id="3453">
+                <img src="${arr3[i]}" alt="">
+                <p style="font-size: 40px; text-align: end;margin: 0;"> ${arr[i]}</p>
+                <div class="bigarrow" style="display: flex;">
+                    <div onclick="arr2()" id="prev" class="arrow" style="font-size: 25px;">&#10094</div>
+                    <div id="next" onclick="arr1()" class="arrow" style="font-size:25px;">&#10095</div>
+                </div>
+                <div id="bigJlst">
+                    <div id="jlst" style="background-color: green;" onclick="index2()"> طلب جلسة </div>
+                    <div class="bigaccount" id="bigaccount">
+                        <div class="account" id="account">
+                            <p> هل ترغب في المتابعة مع </p>
+                            <h1> ${arr[i]} </h1>
+                        </div>
+                    </div>
+                </div>
+            </section>;
+    }
+
+    function index2() {
+        let account = document.getElementById("account");
+        let bigaccount = document.getElementById("bigaccount");
+        bigaccount.style.display = "flex";
+        setTimeout(() => {
+            account.style.display = "flex";
+        }, 500);
+    }
+
+    let n = 0;
+    let bigbody = document.getElementById("bigimg");
+    setInterval(() => {
+        n = (n + 1) % arrimgb.length;
+        bigbody.innerHTML = <div class="gui"> <img src="${arrimgb[n]}"> </div>;
+    }, 2500);
+
+    document.getElementById('patientname')?.addEventListener('click', function () {
+        var logoutMenu = document.getElementById('logoutMenu');
+        if (logoutMenu.style.display === 'none') {
+            logoutMenu.style.display = 'block';
+        } else {
+            logoutMenu.style.display = 'none';
+        }
+    });
+</script>
+<%- include('footerpatient') %>
+
+

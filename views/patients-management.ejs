@@ -1,0 +1,471 @@
+
+<!-- node-project\views\patients-management.ejs file -->
+<%- include('headeradmin', { title: 'إدارة المرضى' }) %>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة المرضى</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+    <style>
+        .search-container {
+            margin: 20px 0;
+        }
+        .table-responsive {
+            margin-top: 20px;
+        }
+        .pagination {
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .form-control {
+            max-width: 300px;
+        }
+        .modal-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .modal-footer {
+            background-color: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+        }
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1060;
+        }
+        .btn-sm {
+            margin: 0 2px;
+        }
+        .form-control:focus {
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+        .edit-btn {
+            margin-right: 5px;
+        }
+        .status-badge {
+            font-size: 0.9em;
+            padding: 5px 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="my-4">المرضى</h1>
+                <p class="text-muted">هنا يمكنك رؤية قائمة جميع المرضى</p>
+                
+                <!-- أداة الفرز -->
+                <div class="search-container">
+                    <div class="input-group">
+                        <select class="form-select" id="sortSelect">
+                            <option value="default" <%= sort === 'default' ? 'selected' : '' %>>الترتيب الافتراضي</option>
+                            <option value="newest" <%= sort === 'newest' ? 'selected' : '' %>>الأحدث أولاً</option>
+                            <option value="verified" <%= sort === 'verified' ? 'selected' : '' %>>تم التحقق منها</option>
+                            <option value="unverified" <%= sort === 'unverified' ? 'selected' : '' %>>لم يتم التحقق منها</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Patients Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>الاسم</th>
+                                <th>البريد الإلكتروني</th>
+                                <th>حالة التحقق</th>
+                                <th>حالة التجميد</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (locals.patients && patients.length > 0) { %>
+                                <% patients.forEach(patient => { %>
+                                    <tr data-patient-id="<%= patient._id %>">
+                                        <td><%= patient._id %></td>
+                                        <td><%= patient.name %></td>
+                                        <td><%= patient.email %></td>
+                                        <td>
+                                            <span class="badge <%= patient.isVerified ? 'bg-success' : 'bg-danger' %>">
+                                                <%= patient.isVerified ? 'تم التحقق' : 'غير مؤكد' %>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge <%= patient.isFrozen ? 'bg-warning' : 'bg-success' %>">
+                                                <%= patient.isFrozen ? 'مجمد' : 'نشط' %>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-primary btn-sm edit-btn" 
+                                                    onclick="openEditModal('<%= patient._id %>', '<%= patient.name %>', '<%= patient.email %>', '<%= patient.isVerified %>')">
+                                                تعديل
+                                            </button>
+                                            <a href="/admin/delete-patient/<%= patient._id %>" 
+                                               class="btn btn-danger btn-sm" 
+                                               onclick="return confirm('هل أنت متأكد من حذف هذا المريض؟')">
+                                                حذف
+                                            </a>
+                                            <button class="btn btn-info btn-sm" 
+                                                    onclick="openSendMessageModal('<%= patient._id %>', '<%= patient.email %>')">
+                                                إرسال رسالة
+                                            </button>
+                                            <% if (patient.isFrozen) { %>
+                                                <button class="btn btn-success btn-sm" onclick="unfreezePatient('<%= patient._id %>')">
+                                                    إلغاء التجميد
+                                                </button>
+                                            <% } else { %>
+                                                <button class="btn btn-warning btn-sm" onclick="freezePatient('<%= patient._id %>')">
+                                                    تجميد
+                                                </button>
+                                            <% } %>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="6" class="text-center">ليس هناك مرضى</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-3">
+                    <button class="btn btn-success" onclick="exportToExcel()">تصدير إلى Excel</button>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPatientModal">إضافة مريض</button>
+                </div>
+
+                <!-- Pagination -->
+                <nav>
+                    <ul class="pagination">
+                        <li class="page-item <%= currentPage <= 1 ? 'disabled' : '' %>">
+                            <a class="page-link" href="?page=<%= currentPage - 1 %>">السابق</a>
+                        </li>
+                        <li class="page-item active">
+                            <span class="page-link"><%= currentPage %></span>
+                        </li>
+                        <li class="page-item <%= !hasNextPage ? 'disabled' : '' %>">
+                            <a class="page-link" href="?page=<%= currentPage + 1 %>">التالي</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal لإضافة مريض -->
+    <div class="modal fade" id="addPatientModal" tabindex="-1" aria-labelledby="addPatientModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addPatientModalLabel">إضافة مريض جديد</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addPatientForm">
+                        <input type="hidden" id="csrf" value="<%= csrfToken %>">
+                        <div class="mb-3">
+                            <label for="addName" class="form-label">الاسم</label>
+                            <input type="text" class="form-control" id="addName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="addEmail" class="form-label">البريد الإلكتروني</label>
+                            <input type="email" class="form-control" id="addEmail" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="addPassword" class="form-label">كلمة المرور</label>
+                            <input type="password" class="form-control" id="addPassword" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-primary" onclick="addPatient()">إضافة</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal لإرسال رسالة -->
+    <div class="modal fade" id="sendMessageModal" tabindex="-1" aria-labelledby="sendMessageModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="sendMessageModalLabel">إرسال رسالة إلى المريض</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="sendMessageForm">
+                        <input type="hidden" id="patientId" name="patientId">
+                        <input type="hidden" id="patientEmail" name="patientEmail">
+                        <input type="hidden" id="csrf" value="<%= csrfToken %>">
+                        <div class="mb-3">
+                            <label for="messageContent" class="form-label">محتوى الرسالة</label>
+                            <textarea class="form-control" id="messageContent" rows="5" required></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-primary" onclick="sendMessage()">إرسال</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal لتعديل المريض -->
+    <div class="modal fade" id="editPatientModal" tabindex="-1" aria-labelledby="editPatientModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editPatientModalLabel">تعديل معلومات المريض</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editPatientForm">
+                        <input type="hidden" id="editPatientId">
+                        <input type="hidden" id="csrf" value="<%= csrfToken %>">
+                        <div class="mb-3">
+                            <label for="editName" class="form-label">الاسم</label>
+                            <input type="text" class="form-control" id="editName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editEmail" class="form-label">البريد الإلكتروني</label>
+                            <input type="email" class="form-control" id="editEmail" required>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="editIsVerified">
+                                <label class="form-check-label" for="editIsVerified">
+                                    حساب موثق
+                                </label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-primary" onclick="updatePatient()">حفظ التغييرات</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function openSendMessageModal(patientId, patientEmail) {
+            document.getElementById('patientId').value = patientId;
+            document.getElementById('patientEmail').value = patientEmail;
+            
+            const sendMessageModal = new bootstrap.Modal(document.getElementById('sendMessageModal'));
+            sendMessageModal.show();
+        }
+
+        async function sendMessage() {
+            const patientId = document.getElementById('patientId').value;
+            const patientEmail = document.getElementById('patientEmail').value;
+            const messageContent = document.getElementById('messageContent').value;
+            const csrfToken = document.getElementById('csrf').value;
+
+            if (!patientId || !patientEmail || !messageContent) {
+                showToast('جميع الحقول مطلوبة', 'danger');
+                return;
+            }
+
+            try {
+                const response = await fetch('/admin/send-message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify({ patientId, patientEmail, messageContent })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast('تم إرسال الرسالة بنجاح', 'success');
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('sendMessageModal'));
+                    modal.hide();
+                } else {
+                    showToast(data.message || 'حدث خطأ أثناء إرسال الرسالة', 'danger');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('حدث خطأ أثناء إرسال الرسالة', 'danger');
+            }
+        }
+
+        async function addPatient() {
+            const name = document.getElementById('addName').value;
+            const email = document.getElementById('addEmail').value;
+            const password = document.getElementById('addPassword').value;
+            const csrfToken = document.getElementById('csrf').value;
+
+            if (!name || !email || !password) {
+                showToast('جميع الحقول مطلوبة', 'danger');
+                return;
+            }
+
+            try {
+                const response = await fetch('/admin/add-patient', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify({ name, email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast('تم إضافة المريض بنجاح', 'success');
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addPatientModal'));
+                    modal.hide();
+                    location.reload();
+                } else {
+                    showToast(data.message || 'حدث خطأ أثناء إضافة المريض', 'danger');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('حدث خطأ أثناء إضافة المريض', 'danger');
+            }
+        }
+
+        function openEditModal(patientId, name, email, isVerified) {
+            document.getElementById('editPatientId').value = patientId;
+            document.getElementById('editName').value = name;
+            document.getElementById('editEmail').value = email;
+            document.getElementById('editIsVerified').checked = isVerified;
+            
+            const editModal = new bootstrap.Modal(document.getElementById('editPatientModal'));
+            editModal.show();
+        }
+
+        async function updatePatient() {
+            const patientId = document.getElementById('editPatientId').value;
+            const name = document.getElementById('editName').value;
+            const email = document.getElementById('editEmail').value;
+            const isVerified = document.getElementById('editIsVerified').checked;
+            const csrfToken = document.getElementById('csrf').value;
+
+            if (!name || !email) {
+                showToast('جميع الحقول مطلوبة', 'danger');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/update-patient/${patientId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify({ name, email, isVerified })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast('تم تحديث معلومات المريض بنجاح', 'success');
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('editPatientModal'));
+                    modal.hide();
+                    location.reload();
+                } else {
+                    showToast(data.message || 'حدث خطأ أثناء تحديث معلومات المريض', 'danger');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('حدث خطأ أثناء تحديث معلومات المريض', 'danger');
+            }
+        }
+
+        async function freezePatient(patientId) {
+            try {
+                const response = await fetch(`/admin/freeze-patient/${patientId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': document.getElementById('csrf').value
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast('تم تجميد حساب المريض بنجاح', 'success');
+                    location.reload();
+                } else {
+                    showToast(data.message || 'حدث خطأ أثناء تجميد حساب المريض', 'danger');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('حدث خطأ أثناء تجميد حساب المريض', 'danger');
+            }
+        }
+
+        async function unfreezePatient(patientId) {
+            try {
+                const response = await fetch(`/admin/unfreeze-patient/${patientId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': document.getElementById('csrf').value
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast('تم إلغاء تجميد حساب المريض بنجاح', 'success');
+                    location.reload();
+                } else {
+                    showToast(data.message || 'حدث خطأ أثناء إلغاء تجميد حساب المريض', 'danger');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('حدث خطأ أثناء إلغاء تجميد حساب المريض', 'danger');
+            }
+        }
+
+        function exportToExcel() {
+            window.location.href = "/admin/export-patients/excel";
+        }
+
+        function showToast(message, type = 'success') {
+            const toastContainer = document.createElement('div');
+            toastContainer.className = `toast align-items-center text-white bg-${type} border-0`;
+            toastContainer.setAttribute('role', 'alert');
+            toastContainer.setAttribute('aria-live', 'assertive');
+            toastContainer.setAttribute('aria-atomic', 'true');
+            
+            toastContainer.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            `;
+            
+            document.body.appendChild(toastContainer);
+            const toast = new bootstrap.Toast(toastContainer);
+            toast.show();
+            
+            toastContainer.addEventListener('hidden.bs.toast', () => {
+                toastContainer.remove();
+            });
+        }
+    </script>
+</body>
+</html>
+<%- include('footeradmin') %>

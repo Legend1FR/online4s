@@ -1,0 +1,9 @@
+
+<!-- node-project\views\receptionist-dashboard.ejs file -->
+<%- include('headerrece', { title: 'لوحة تحكم موظف الاستقبال' }) %>
+<div class="content" style="width: 600px; margin: auto; background-color: #e6e6e6; padding: 20px; border-radius: 8px; text-align: center;">
+    <h2>مرحبًا، <%= receptionist.username %>!</h2>
+    <p>هذه هي لوحة التحكم الخاصة بموظف الاستقبال.</p>
+    <a href="/receptionist/logout">تسجيل الخروج</a>
+</div>
+<%- include('footerrece') %>

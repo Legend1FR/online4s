@@ -1,0 +1,26 @@
+
+
+
+
+
+
+<!-- node-project\views\verify-code.ejs file -->
+ <%- include('header', { title: 'إدخال كود التحقق' }) %>
+    <div class="content" style="width: 500px; height: 400px; background-color: rgb(211, 205, 204); border-radius:14px;margin: auto; color: white; box-shadow: 2px 3px 4px navajowhite;">
+        <form action="/verify-account" method="post">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <input type="text" placeholder="أدخل كود التحقق" name="code" style="border: none; background-color: rgb(17, 197, 234); width: inherit; display: block; color: white;">
+            <button type="submit" style="border: none; background-color: navy;  background-color:  rgb(17, 197, 234); display: block; color: white; cursor: pointer; width:70%; margin: auto; height: 20px;">تحقق</button>
+        </form>
+        <% if (error) { %>
+            <div style="color: red; text-align: center; margin-top: 20px;">
+                <%= error %>
+            </div>
+        <% } %>
+        <% if (success) { %>
+            <div style="color: green; text-align: center; margin-top: 20px;">
+                <%= success %>
+            </div>
+        <% } %>
+    </div>
+<%- include('footer') %>

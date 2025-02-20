@@ -1,0 +1,20 @@
+<%- include('headeradmin', { title: 'تعديل معلومات المريض' }) %>
+     <div class="container">
+         <h1 class="my-4">تعديل معلومات المريض</h1>
+         <form action="/admin/update-patient/<%= patient._id %>" method="POST">
+             <div class="mb-3">
+                 <label for="name" class="form-label">الاسم</label>
+                 <input type="text" class="form-control" id="name" name="name" value="<%= patient.name %>" required>
+             </div>
+             <div class="mb-3">
+                 <label for="email" class="form-label">البريد الإلكتروني</label>
+                 <input type="email" class="form-control" id="email" name="email" value="<%= patient.email %>" required>
+             </div>
+             <div class="mb-3 form-check">
+                 <input type="checkbox" class="form-check-input" id="isVerified" name="isVerified" <%= patient.isVerified ? 'checked' : '' %>>
+                 <label class="form-check-label" for="isVerified">تم التحقق</label>
+             </div>
+             <button type="submit" class="btn btn-primary">حفظ التعديلات</button>
+         </form>
+     </div>
+     <%- include('footeradmin') %>

@@ -1,0 +1,120 @@
+<!-- node-project\views\header.ejs file -->
+
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <style>
+        body {  
+            background: linear-gradient(45deg, #4169E1, #1E90FF);  
+            min-height: 100vh;  
+            display: flex;  
+            align-items: center;  
+            justify-content: center;  
+            margin: 0;  
+            font-family: system-ui, -apple-system, sans-serif;  
+        }  
+        
+        .content {  
+            padding: 30px;  
+            width: 500px;  
+            background: rgba(255, 255, 255, 0.1);  
+            backdrop-filter: blur(10px);  
+            border-radius: 20px;  
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);  
+            transition: transform 0.3s ease, box-shadow 0.3s ease;  
+        }  
+        
+        .content:hover {  
+            transform: translateY(-5px);  
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);  
+        }  
+        
+        .content form {  
+            display: flex;  
+            flex-direction: column;  
+            gap: 20px;  
+        }  
+        
+        .content input {  
+            padding: 15px 20px;  
+            border: none;  
+            border-radius: 12px;  
+            background: rgba(17, 197, 234, 0.8);  
+            color: white;  
+            font-size: 16px;  
+            transition: all 0.3s ease;  
+            box-shadow: 0 5px 15px rgba(17, 197, 234, 0.2);  
+            width: 100%;  
+            outline: none;  
+        }  
+        
+        .content input::placeholder {  
+            color: rgba(255, 255, 255, 0.8);  
+        }  
+        
+        .content input:focus {  
+            background: rgba(17, 197, 234, 1);  
+            transform: scale(1.02);  
+            box-shadow: 0 8px 20px rgba(17, 197, 234, 0.3);  
+        }  
+        
+        .content button {  
+            padding: 15px 30px;  
+            border: none;  
+            border-radius: 12px;  
+            background: linear-gradient(45deg, rgb(17, 197, 234), rgb(0, 150, 199));  
+            color: white;  
+            font-size: 16px;  
+            font-weight: bold;  
+            cursor: pointer;  
+            transition: all 0.3s ease;  
+            width: 70%;  
+            margin: 20px auto;  
+            position: relative;  
+            overflow: hidden;  
+        }  
+        
+        .content button:hover {  
+            transform: translateY(-2px);  
+            box-shadow: 0 10px 25px rgba(17, 197, 234, 0.4);  
+        }  
+        
+        .content button:active {  
+            transform: translateY(1px);  
+        }  
+        
+        .content button::after {  
+            content: '';  
+            position: absolute;  
+            background: rgba(255, 255, 255, 0.3);  
+            top: 50%;  
+            left: 50%;  
+            width: 200px;  
+            height: 200px;  
+            border-radius: 50%;  
+            transform: translate(-50%, -50%) scale(0);  
+            opacity: 0;  
+            transition: all 0.5s ease;  
+        }  
+        
+        .content button:active::after {  
+            transform: translate(-50%, -50%) scale(1);  
+            opacity: 1;  
+            transition: 0s;  
+        }  
+        
+        @keyframes float {  
+            0% { transform: translateY(0px); }  
+            50% { transform: translateY(-10px); }  
+            100% { transform: translateY(0px); }  
+        }  
+        
+        .content {  
+            animation: float 6s ease-in-out infinite;  
+        }  
+    </style>
+</head>
+<body style="background-color: royalblue">
