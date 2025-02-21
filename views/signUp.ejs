@@ -5,19 +5,9 @@
             <!-- تغيير "اسم المريض" إلى "اسم المستخدم" -->
             <input type="text" placeholder="اسم المستخدم" name="name" style="border: none; background-color: rgb(17, 197, 234); width: inherit; display: block; color: white;">
             <input type="email" placeholder="الايميل" name="email" style="border: none; background-color:  rgb(17, 197, 234); width: inherit;display: block; color: white;">
-            <!-- حقل كلمة المرور مع نص توضيحي -->
-            <input type="password" placeholder="كلمة المرور (8 أحرف، حرف كبير، حرف صغير، رقم، حرف خاص)" name="password" id="password" style="border: none; background-color: rgb(17, 197, 234); width: inherit;display: block;color: white;">
-            <!-- نص توضيحي يظهر عند التركيز على الحقل -->
-            <div id="passwordRequirements" style="display: none; text-align: right; margin-top: 5px; font-size: 12px; color: #333;">
-                كلمة المرور يجب أن تحتوي على:
-                <ul style="margin: 5px 0; padding-left: 20px;">
-                    <li id="lengthRequirement">8 أحرف على الأقل</li>
-                    <li id="uppercaseRequirement">حرف كبير واحد على الأقل (A-Z)</li>
-                    <li id="lowercaseRequirement">حرف صغير واحد على الأقل (a-z)</li>
-                    <li id="numberRequirement">رقم واحد على الأقل (0-9)</li>
-                    <li id="specialCharRequirement">حرف خاص واحد على الأقل (!@#$%^&*)</li>
-                </ul>
-            </div>
+            <input type="password" placeholder="كلمة المرور" name="password" style="border: none; background-color: rgb(17, 197, 234); width: inherit;display: block;color: white;">
+            <!-- إضافة نص توضيحي لمتطلبات كلمة المرور -->
+            
             <button type="submit" id="submitButton" style="border: none; background-color: navy;  background-color:  rgb(17, 197, 234); display: block; color: white; cursor: pointer; width:70%; margin: auto; height: 20px;">تسجيل</button>
             <div id="loadingSpinner" style="display: none; text-align: center; margin-top: 10px;">جاري التحميل...</div>
         </form>
@@ -33,58 +23,6 @@
         <% } %>
     </div>
     <script>
-        // عرض متطلبات كلمة المرور عند التركيز على الحقل
-        const passwordInput = document.getElementById('password');
-        const passwordRequirements = document.getElementById('passwordRequirements');
-
-        passwordInput.addEventListener('focus', () => {
-            passwordRequirements.style.display = 'block';
-        });
-
-        passwordInput.addEventListener('blur', () => {
-            passwordRequirements.style.display = 'none';
-        });
-
-        // التحقق من متطلبات كلمة المرور أثناء الكتابة
-        passwordInput.addEventListener('input', () => {
-            const password = passwordInput.value;
-
-            // التحقق من الطول
-            if (password.length >= 8) {
-                document.getElementById('lengthRequirement').style.color = 'green';
-            } else {
-                document.getElementById('lengthRequirement').style.color = '#333';
-            }
-
-            // التحقق من وجود حرف كبير
-            if (/[A-Z]/.test(password)) {
-                document.getElementById('uppercaseRequirement').style.color = 'green';
-            } else {
-                document.getElementById('uppercaseRequirement').style.color = '#333';
-            }
-
-            // التحقق من وجود حرف صغير
-            if (/[a-z]/.test(password)) {
-                document.getElementById('lowercaseRequirement').style.color = 'green';
-            } else {
-                document.getElementById('lowercaseRequirement').style.color = '#333';
-            }
-
-            // التحقق من وجود رقم
-            if (/\d/.test(password)) {
-                document.getElementById('numberRequirement').style.color = 'green';
-            } else {
-                document.getElementById('numberRequirement').style.color = '#333';
-            }
-
-            // التحقق من وجود حرف خاص
-            if (/[!@#$%^&*]/.test(password)) {
-                document.getElementById('specialCharRequirement').style.color = 'green';
-            } else {
-                document.getElementById('specialCharRequirement').style.color = '#333';
-            }
-        });
-
         function validateForm() {
             const name = document.querySelector('input[name="name"]').value;
             const email = document.querySelector('input[name="email"]').value;
