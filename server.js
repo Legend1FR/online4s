@@ -881,10 +881,19 @@ app.get("/receptionist/logout", (req, res) => {
 app.get("/admin/login", (req, res) => {
     res.render("admin-login", { error: null, csrfToken: req.csrfToken() });
 });
-
 app.post("/admin/login", async (req, res) => {
-    const { username, password } = req.body;
+    const { username, password, 'g-recaptcha-response': recaptchaResponse } = req.body;
+
+    // Verify reCAPTCHA
+    const secretKey = 'YOUR_RECAPTCHA_SECRET_KEY';
+    const verificationURL = `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${recaptchaResponse}`;
+
     try {
+        const response = await axios.post(verificationURL);
+        if (!response.data.success) {
+            return res.render("admin-login", { error: "التحقق من reCAPTCHA فشل. حاول مرة أخرى.", csrfToken: req.csrfToken() });
+        }
+
         const admin = await Admin.findOne({ username });
         if (!admin) {
             return res.render("admin-login", { error: "اسم المستخدم أو كلمة المرور غير صحيحة", csrfToken: req.csrfToken() });
