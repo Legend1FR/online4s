@@ -885,7 +885,7 @@ app.post("/admin/login", async (req, res) => {
     const { username, password, 'g-recaptcha-response': recaptchaResponse } = req.body;
 
     // Verify reCAPTCHA
-    const secretKey = '6Lfr_t0qAAAAANDedul8N5AldRwzakiejic0d0V1';
+    const secretKey = '6LepBN4qAAAAAJTwwn_7KmQRaw56LNXl4-owZygd';
     const verificationURL = `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${recaptchaResponse}`;
 
     try {
