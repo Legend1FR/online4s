@@ -8,12 +8,12 @@
 </div>
 <div style="display: flex; flex-wrap: row wrap; justify-content: right;"></div>
 <br>
-<nav style="width: 100%; background-color: rgb(255, 245, 245); height:80px; padding: 10px 10px; box-shadow: 2px 2px 2px 2px rgb(94, 90, 81); border: none;">
+<<nav style="width: 100%; background-color: rgb(255, 245, 245); height:80px; padding: 10px 10px; box-shadow: 2px 2px 2px 2px rgb(94, 90, 81); border: none;">
     <div style="display: flex; flex-flow: row wrap; justify-content: space-around;">
         <div class="information">الاقسام الطبية</div>
         <div class="information">الاقسام النفسية</div>
         <div class="information">علاج طبيعي</div>
-        <div class="information"> ارشادات</div>
+        <div class="information" onclick="window.location.href='<%= patient ? "/patient/sessions" : "/signUp" %>'">جلساتي</div>
         <div class="information" onclick="window.location.href='/community'">المجتمع</div>
     </div>
 </nav>
@@ -98,7 +98,7 @@
                         </div>
                     </div>
                 </div>
-            </section>;
+            </section>;z
     }
 
     function index2() {
