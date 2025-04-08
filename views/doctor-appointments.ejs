@@ -1,0 +1,420 @@
+<%- include('headerdoc') %>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة المواعيد</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f8f9fa; padding-top: 70px; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .section-title { font-size: 24px; margin-bottom: 25px; color: #2c3e50; font-weight: 600; }
+        .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 30px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 10px; font-weight: 600; color: #34495e; }
+        .checkbox-container { display: flex; flex-wrap: wrap; gap: 15px; }
+        .checkbox-item { display: flex; align-items: center; }
+        .checkbox-item input { margin-left: 8px; }
+        .time-slot { display: flex; align-items: center; gap: 15px; margin-top: 15px; }
+        .time-input { padding: 10px 15px; border: 1px solid #ddd; border-radius: 6px; width: 150px; }
+        .btn { padding: 12px 25px; border-radius: 6px; font-size: 16px; cursor: pointer; transition: all 0.3s; border: none; }
+        .btn-primary { background: #3498db; color: white; }
+        .btn-primary:hover { background: #2980b9; }
+        .btn-warning { background: #f39c12; color: white; }
+        .btn-warning:hover { background: #d35400; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn:disabled { background: #95a5a6; cursor: not-allowed; }
+        .appointments-list { margin-top: 40px; }
+        .appointment-item { background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+        .appointment-details { flex: 1; }
+        .appointment-date { font-weight: 600; color: #2c3e50; margin-bottom: 5px; }
+        .appointment-time { color: #7f8c8d; margin-bottom: 5px; }
+        .appointment-patient { color: #16a085; font-weight: 500; }
+        .appointment-patient-email { color: #7f8c8d; font-size: 14px; }
+        .appointment-notes { color: #7f8c8d; font-style: italic; margin-top: 5px; }
+        .appointment-status { padding: 5px 10px; border-radius: 4px; font-size: 14px; }
+        .status-confirmed { background: #d4edda; color: #155724; }
+        .status-cancelled { background: #f8d7da; color: #721c24; }
+        .status-completed { background: #e2e3e5; color: #383d41; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-unconfirmed { background: #f8d7da; color: #721c24; }
+        .no-appointments { text-align: center; padding: 30px; color: #7f8c8d; font-size: 18px; }
+        .doctor-status-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding: 15px; background: white; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .doctor-status { padding: 8px 15px; border-radius: 20px; font-size: 14px; font-weight: 500; }
+        .status-available { background-color: #d4edda; color: #155724; }
+        .status-unavailable { background-color: #f8d7da; color: #721c24; }
+        .notification-container { position: fixed; top: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
+        .notification { padding: 15px 20px; border-radius: 8px; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateX(150%); transition: transform 0.3s ease; max-width: 300px; }
+        .notification.show { transform: translateX(0); }
+        .notification.success { background-color: #28a745; }
+        .notification.error { background-color: #dc3545; }
+        .notification.warning { background-color: #ffc107; color: #212529; }
+        .loading-spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .availability-warning { background-color: #fff3cd; color: #856404; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ffeeba; }
+        .payment-status { font-size: 13px; margin-top: 5px; }
+        .payment-paid { color: #28a745; }
+        .payment-unpaid { color: #dc3545; }
+        .payment-pending { color: #ffc107; }
+        /* في قسم الأنماط */
+.payment-option {
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.payment-option.selected {
+    border-color: #3498db;
+    background-color: #f8f9fa;
+}
+
+.payment-option h3 {
+    margin-bottom: 5px;
+    color: #2c3e50;
+}
+
+.payment-option p {
+    margin: 0;
+    color: #7f8c8d;
+    font-size: 14px;
+}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="section-title">إدارة المواعيد</h1>
+        
+        <div class="doctor-status-container">
+            <div>
+                <h3>حالة الحجوزات</h3>
+                <p>يمكنك التحكم في قبول الحجوزات الجديدة من هنا</p>
+            </div>
+            <div>
+                <button id="toggleAppointmentsBtn" class="btn <%= doctor.acceptingAppointments ? 'btn-warning' : 'btn-primary' %>">
+                    <%= doctor.acceptingAppointments ? 'إيقاف الحجوزات' : 'تفعيل الحجوزات' %>
+                </button>
+            </div>
+        </div>
+        
+        <% if (locals.hasUpcomingAppointments && !doctor.acceptingAppointments) { %>
+        <div class="availability-warning">
+            <p>⚠️ لديك مواعيد قادمة، لا يمكن تغيير أوقات العمل حتى تنتهي جميع المواعيد الحالية.</p>
+        </div>
+        <% } %>
+        
+        <div class="card">
+            <h2>تحديد أوقات التوفر</h2>
+            <form id="availabilityForm">
+                <div class="form-group">
+                    <label>أيام العمل:</label>
+                    <div class="checkbox-container">
+                        <% const days = ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة']; %>
+                        <% days.forEach(day => { %>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="<%= day %>" name="days" value="<%= day %>" 
+                                    <%= (doctor.availableDays && doctor.availableDays.includes(day)) ? 'checked' : '' %>
+                                    <%= locals.hasUpcomingAppointments ? 'disabled' : '' %>>
+                                <label for="<%= day %>"><%= day %></label>
+                            </div>
+                        <% }); %>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>الفترة الصباحية:</label>
+                    <div class="time-slot">
+                        <div>
+                            <label for="morningStart">بداية:</label>
+                            <select id="morningStart" name="morningStart" class="time-input" required <%= locals.hasUpcomingAppointments ? 'disabled' : '' %>>
+                                <% for(let h=6; h<12; h++) { %>
+                                    <option value="<%= h.toString().padStart(2, '0') %>:00" <%= doctor.morningStart === `${h.toString().padStart(2, '0')}:00` ? 'selected' : '' %>>
+                                        <%= h.toString().padStart(2, '0') %>:00
+                                    </option>
+                                    <option value="<%= h.toString().padStart(2, '0') %>:30" <%= doctor.morningStart === `${h.toString().padStart(2, '0')}:30` ? 'selected' : '' %>>
+                                        <%= h.toString().padStart(2, '0') %>:30
+                                    </option>
+                                <% } %>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="morningEnd">نهاية:</label>
+                            <select id="morningEnd" name="morningEnd" class="time-input" required <%= locals.hasUpcomingAppointments ? 'disabled' : '' %>>
+                                <% for(let h=6; h<=12; h++) { %>
+                                    <option value="<%= h.toString().padStart(2, '0') %>:00" 
+                                        <%= (h === 12 && doctor.morningEnd === '12:00') || doctor.morningEnd === `${h.toString().padStart(2, '0')}:00` ? 'selected' : '' %>>
+                                        <%= h.toString().padStart(2, '0') %>:00
+                                    </option>
+                                    <% if (h !== 12) { %>
+                                        <option value="<%= h.toString().padStart(2, '0') %>:30" <%= doctor.morningEnd === `${h.toString().padStart(2, '0')}:30` ? 'selected' : '' %>>
+
+                                            <%= h.toString().padStart(2, '0') %>:30
+                                        </option>
+                                    <% } %>
+                                <% } %>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>الفترة المسائية:</label>
+                    <div class="time-slot">
+                        <div>
+                            <label for="eveningStart">بداية:</label>
+                            <select id="eveningStart" name="eveningStart" class="time-input" required <%= locals.hasUpcomingAppointments ? 'disabled' : '' %>>
+                                <% for(let h=12; h<18; h++) { %>
+                                    <option value="<%= h.toString().padStart(2, '0') %>:00" 
+                                        <%= (h === 12 && doctor.eveningStart === '12:00') || doctor.eveningStart === `${h.toString().padStart(2, '0')}:00` ? 'selected' : '' %>>
+                                        <%= h.toString().padStart(2, '0') %>:00
+                                    </option>
+                                    <option value="<%= h.toString().padStart(2, '0') %>:30" <%= doctor.eveningStart === `${h.toString().padStart(2, '0')}:30` ? 'selected' : '' %>>
+                                        <%= h.toString().padStart(2, '0') %>:30
+                                    </option>
+                                <% } %>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="eveningEnd">نهاية:</label>
+                            <select id="eveningEnd" name="eveningEnd" class="time-input" required <%= locals.hasUpcomingAppointments ? 'disabled' : '' %>>
+                                <% for(let h=12; h<=18; h++) { %>
+                                    <option value="<%= h.toString().padStart(2, '0') %>:00" 
+                                        <%= (h === 18 && doctor.eveningEnd === '18:00') || doctor.eveningEnd === `${h.toString().padStart(2, '0')}:00` ? 'selected' : '' %>>
+                                        <%= h.toString().padStart(2, '0') %>:00
+                                    </option>
+                                    <% if (h !== 18) { %>
+                                        <option value="<%= h.toString().padStart(2, '0') %>:30" <%= doctor.eveningEnd === `${h.toString().padStart(2, '0')}:30` ? 'selected' : '' %>>
+                                            <%= h.toString().padStart(2, '0') %>:30
+                                        </option>
+                                    <% } %>
+                                <% } %>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="button" class="btn btn-primary" id="saveAvailabilityBtn" <%= locals.hasUpcomingAppointments ? 'disabled' : '' %>>
+                    <span id="saveBtnText">حفظ الأوقات</span>
+                    <span id="saveBtnSpinner" class="loading-spinner" style="display: none;"></span>
+                </button>
+                <% if (locals.hasUpcomingAppointments) { %>
+                <div class="availability-warning" style="margin-top: 15px;">
+                    <p>⚠️ لا يمكن تعديل أوقات العمل بسبب وجود مواعيد قادمة</p>
+                </div>
+                <% } %>
+            </form>
+        </div>
+        
+        <div class="appointments-list">
+            <h2 class="section-title">المواعيد المحجوزة</h2>
+            <div id="appointmentsContainer">
+                <div class="no-appointments">جارٍ تحميل المواعيد...</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="notification-container" id="notificationContainer"></div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAppointments();
+            setInterval(loadAppointments, 30000);
+            
+            document.getElementById('saveAvailabilityBtn').addEventListener('click', saveAvailability);
+            document.getElementById('toggleAppointmentsBtn').addEventListener('click', toggleAppointmentsStatus);
+        });
+    
+        function showNotification(message, type = 'success') {
+            const notificationContainer = document.getElementById('notificationContainer');
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            notificationContainer.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 5000);
+        }
+    
+        function convertTo12Hour(time24) {
+            let [hours, minutes] = time24.split(':');
+            hours = parseInt(hours);
+            const period = hours >= 12 ? 'م' : 'ص';
+            hours = hours % 12 || 12;
+            return `${hours}:${minutes} ${period}`;
+        }
+    
+        async function saveAvailability() {
+            const days = Array.from(document.querySelectorAll('input[name="days"]:checked')).map(el => el.value);
+            const morningStart = document.getElementById('morningStart').value;
+            const morningEnd = document.getElementById('morningEnd').value;
+            const eveningStart = document.getElementById('eveningStart').value;
+            const eveningEnd = document.getElementById('eveningEnd').value;
+            
+            const saveBtn = document.getElementById('saveAvailabilityBtn');
+            const saveBtnText = document.getElementById('saveBtnText');
+            const saveBtnSpinner = document.getElementById('saveBtnSpinner');
+            
+            if (days.length === 0) {
+                showNotification('يجب اختيار يوم عمل واحد على الأقل', 'error');
+                return;
+            }
+            
+            try {
+                saveBtnText.style.display = 'none';
+                saveBtnSpinner.style.display = 'inline-block';
+                saveBtn.disabled = true;
+                
+                const response = await axios.post('/doctor/save-availability', {
+                    days,
+                    morningStart,
+                    morningEnd,
+                    eveningStart,
+                    eveningEnd
+                }, {
+                    headers: {
+                        'CSRF-Token': '<%= csrfToken %>'
+                    }
+                });
+                
+                if (response.data.success) {
+                    showNotification('تم حفظ أوقات التوفر بنجاح');
+                    setTimeout(() => {
+                        loadAppointments();
+                    }, 1500);
+                } else {
+                    showNotification(response.data.message || 'حدث خطأ أثناء الحفظ', 'error');
+                }
+            } catch (error) {
+                console.error('Error saving availability:', error);
+                showNotification(error.response?.data?.message || 'حدث خطأ أثناء حفظ أوقات التوفر', 'error');
+            } finally {
+                saveBtnText.style.display = 'inline-block';
+                saveBtnSpinner.style.display = 'none';
+                saveBtn.disabled = false;
+            }
+        }
+    
+        async function toggleAppointmentsStatus() {
+            const toggleBtn = document.getElementById('toggleAppointmentsBtn');
+            const currentStatus = toggleBtn.textContent.includes('تفعيل');
+            
+            try {
+                toggleBtn.disabled = true;
+                toggleBtn.innerHTML = `<span class="loading-spinner"></span>`;
+                
+                const response = await axios.post('/doctor/toggle-appointments', {}, {
+                    headers: {
+                        'CSRF-Token': '<%= csrfToken %>',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.data.success) {
+                    showNotification(response.data.message);
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showNotification(response.data.message, 'error');
+                    toggleBtn.disabled = false;
+                    toggleBtn.textContent = currentStatus ? 'إيقاف الحجوزات' : 'تفعيل الحجوزات';
+                }
+            } catch (error) {
+                console.error('Error toggling appointments status:', error);
+                showNotification(error.response?.data?.message || 'حدث خطأ أثناء تغيير حالة الحجوزات', 'error');
+                toggleBtn.disabled = false;
+                toggleBtn.textContent = currentStatus ? 'إيقاف الحجوزات' : 'تفعيل الحجوزات';
+            }
+        }
+    
+        async function loadAppointments() {
+            try {
+                const response = await axios.get('/doctor/get-appointments');
+                updateAppointmentsDisplay(response.data);
+            } catch (error) {
+                console.error('Error loading appointments:', error);
+                showNotification('حدث خطأ أثناء تحميل المواعيد', 'error');
+            }
+        }
+    
+        function updateAppointmentsDisplay(data) {
+            const container = document.getElementById('appointmentsContainer');
+            const fragment = document.createDocumentFragment();
+            
+            if (data.error || !data.appointments || data.appointments.length === 0) {
+                const message = data.error ? data.message : 'ليست هناك مواعيد محجوزة حالياً';
+                const noAppointments = document.createElement('div');
+                noAppointments.className = 'no-appointments';
+                noAppointments.textContent = message;
+                fragment.appendChild(noAppointments);
+            } else {
+                data.appointments.forEach(app => {
+                    const date = new Date(app.date);
+                    const formattedDate = date.toLocaleDateString('ar-EG', { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                    });
+                    
+                    const displayTime = convertTo12Hour(app.time);
+                    
+                    const appointmentItem = document.createElement('div');
+                    appointmentItem.className = 'appointment-item';
+                    
+                    let statusClass = '';
+                    if (app.status === 'مؤكد') statusClass = 'status-confirmed';
+                    else if (app.status === 'ملغي') statusClass = 'status-cancelled';
+                    else if (app.status === 'مكتمل') statusClass = 'status-completed';
+                    else if (app.status === 'غير مؤكد') statusClass = 'status-unconfirmed';
+                    else statusClass = 'status-pending';
+                    
+                    let paymentClass = '';
+                    if (app.paymentStatus === 'مدفوع') paymentClass = 'payment-paid';
+                    else if (app.paymentStatus === 'غير مدفوع') paymentClass = 'payment-unpaid';
+                    else paymentClass = 'payment-pending';
+                    
+                    appointmentItem.innerHTML = `
+                        <div class="appointment-details">
+                            <div class="appointment-date">${formattedDate}</div>
+                            <div class="appointment-time">الوقت: ${displayTime}</div>
+                            <div class="appointment-patient">المريض: ${app.patient.name}</div>
+                            <div class="appointment-patient-email">البريد: ${app.patient.email}</div>
+                            ${app.notes ? `<div class="appointment-notes">ملاحظات: ${app.notes}</div>` : ''}
+                            <!-- في قسم عرض المواعيد -->
+                             <div class="payment-status ${paymentClass}">
+                             حالة الدفع: ${app.paymentStatus} - طريقة الدفع: ${app.paymentMethod || 'غير محدد'}
+                            ${app.amountPaid ? ` - المبلغ: ${app.amountPaid.toFixed(2)} ر.س` : ''}
+                             </div>
+                        </div>
+                        <div class="appointment-status ${statusClass}">
+                            ${app.status}
+                        </div>
+                    `;
+                    
+                    fragment.appendChild(appointmentItem);
+                });
+            }
+            
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
+            container.appendChild(fragment);
+        }
+    </script>
