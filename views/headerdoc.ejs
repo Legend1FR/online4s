@@ -1,104 +1,100 @@
-
-<!-- node-project\views\headerdoc.ejs file -->
+<!-- node-project\views\headerdoc.ejs -->
 <div class="header">
     <div class="header-left">
         <span class="menu-icon" onclick="toggleSidebar()">☰</span>
         <span class="doctor-info"><%= doctor.username %> - <%= doctor.specialization %></span>
     </div>
-    <a class="logout" href="/admin/logout">تسجيل خروج</a>
+    <a class="logout" href="/doctor/logout">تسجيل خروج</a>
 </div>
 
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
-    <a href="#">الرئيسية</a>
-    <a href="/doctor/community">مجتمع</a>
-    <a href="#">المواعيد</a>
+    <a href="/doctor">الرئيسية</a>
+    <a href="/doctor/sessions">الجلسات</a>
+    <a href="/doctor/appointments">المواعيد</a>
     <a href="#">المرضى</a>
     <a href="#">التقارير</a>
     <a href="#">الإعدادات</a>
-    <a href="#">>تسجيل خروج
-
-
-    </a>
+    <a href="/doctor/logout">تسجيل خروج</a>
 </div>
 
 <style>
-/* Header */
-.header {
-    background-color: #fff;
-    padding: 15px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.1);
-    position: fixed;
-    width: 100%;
-    top: 0;
-    left: 0;
-    z-index: 1000;
-}
+    /* Header */
+    .header {
+        background-color: #fff;
+        padding: 15px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.1);
+        position: fixed;
+        width: 100%;
+        top: 0;
+        left: 0;
+        z-index: 1000;
+    }
 
-/* Left Side (Menu + Doctor Info) */
-.header-left {
-    display: flex;
-    align-items: center;
-}
+    /* Left Side (Menu + Doctor Info) */
+    .header-left {
+        display: flex;
+        align-items: center;
+    }
 
-.menu-icon {
-    font-size: 24px;
-    cursor: pointer;
-    margin-right: 20px;
-}
+    .menu-icon {
+        font-size: 24px;
+        cursor: pointer;
+        margin-right: 20px;
+    }
 
-/* Doctor Info */
-.doctor-info {
-    font-size: 16px;
-    font-weight: bold;
-}
+    /* Doctor Info */
+    .doctor-info {
+        font-size: 16px;
+        font-weight: bold;
+    }
 
-/* Right Side (Logout) */
-.logout {
-    text-decoration: none;
-    color: #ff4d4d;
-    font-weight: bold;
-}
+    /* Right Side (Logout) */
+    .logout {
+        text-decoration: none;
+        color: #ff4d4d;
+        font-weight: bold;
+    }
 
-/* Sidebar (Hidden by Default) */
-.sidebar {
-    width: 250px;
-    background: #2c3e50;
-    position: fixed;
-    top: 0;
-    left: -250px;
-    height: 100%;
-    transition: 0.3s;
-    padding-top: 60px;
-}
+    /* Sidebar (Hidden by Default) */
+    .sidebar {
+        width: 250px;
+        background: #2c3e50;
+        position: fixed;
+        top: 0;
+        left: -250px;
+        height: 100%;
+        transition: 0.3s;
+        padding-top: 60px;
+    }
 
-.sidebar a {
-    padding: 15px;
-    text-decoration: none;
-    display: block;
-    color: white;
-    font-size: 18px;
-}
+    .sidebar a {
+        padding: 15px;
+        text-decoration: none;
+        display: block;
+        color: white;
+        font-size: 18px;
+    }
 
-.sidebar a:hover {
-    background: #34495e;
-}
+    .sidebar a:hover {
+        background: #34495e;
+    }
 
-.show-sidebar {
-    left: 0 !important;
-}
+    .show-sidebar {
+        left: 0 !important;
+    }
 </style>
 
 <script>
-function toggleSidebar() {
-    var sidebar = document.getElementById("sidebar");
-    if (sidebar.style.left === "-250px") {
-        sidebar.style.left = "0";
-    } else {
-        sidebar.style.left = "-250px";
+    function toggleSidebar() {
+        var sidebar = document.getElementById("sidebar");
+        if (sidebar.style.left === "-250px") {
+            sidebar.style.left = "0";
+        } else {
+            sidebar.style.left = "-250px";
+        }
     }
-}
 </script>
