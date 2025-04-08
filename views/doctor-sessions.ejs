@@ -1,0 +1,404 @@
+<%- include('headerdoc') %>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>جلسات الدكتور</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background-color: #f5f5f5;
+            padding-top: 70px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .doctor-profile {
+            display: flex;
+            align-items: center;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .doctor-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #3498db;
+            margin-left: 20px;
+        }
+        .doctor-info {
+            flex: 1;
+        }
+        .doctor-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        .doctor-specialty {
+            font-size: 18px;
+            color: #7f8c8d;
+        }
+        .sessions-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        .section-title {
+            font-size: 22px;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+        .session-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .session-item:hover {
+            background: #f9f9f9;
+            transform: translateY(-3px);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        .patient-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-left: 15px;
+            border: 2px solid #e0e0e0;
+        }
+        .session-details {
+            flex: 1;
+        }
+        .patient-name {
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+        .session-info {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .status-confirmed {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .start-session-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .start-session-btn:hover {
+            background: #218838;
+            transform: scale(1.05);
+        }
+        .start-session-btn i {
+            font-size: 14px;
+        }
+        .no-sessions {
+            text-align: center;
+            padding: 30px;
+            color: #7f8c8d;
+            font-size: 18px;
+        }
+        
+        /* Modal Styles */
+        .confirmation-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        .modal-content h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        .modal-content p {
+            margin-bottom: 20px;
+            color: #555;
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        .modal-actions button {
+            padding: 8px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            border: none;
+            font-weight: bold;
+        }
+        .modal-actions button:first-child {
+            background: #28a745;
+            color: white;
+        }
+        .modal-actions button:last-child {
+            background: #f1f1f1;
+            color: #333;
+        }
+        
+        /* Notification Toast */
+        .notification-toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 5px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .notification-toast.show {
+            opacity: 1;
+        }
+        .notification-toast i {
+            font-size: 20px;
+        }
+        
+        /* Error Message */
+        .error-message {
+            color: #dc3545;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background: #f8d7da;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Doctor Profile Section -->
+        <div class="doctor-profile">
+            <% if (doctor.profileImage) { %>
+                <img src="<%= doctor.profileImage %>" alt="صورة الدكتور" class="doctor-avatar">
+            <% } else { %>
+                <img src="/images/default-doctor.jpg" alt="صورة الدكتور" class="doctor-avatar">
+            <% } %>
+            <div class="doctor-info">
+                <h1 class="doctor-name"><%= doctor.username %></h1>
+                <p class="doctor-specialty"><%= doctor.specialization %></p>
+            </div>
+        </div>
+
+        <!-- Sessions Section -->
+        <div class="sessions-container">
+            <h2 class="section-title">جلساتي مع المرضى</h2>
+            
+            <div id="errorMessage" class="error-message"></div>
+            
+            <% if (sessions && sessions.length > 0) { %>
+                <% sessions.forEach(session => { %>
+                    <div class="session-item" id="session-<%= session._id %>">
+                        <% if (session.patient.profileImage) { %>
+                            <img src="<%= session.patient.profileImage %>" alt="صورة المريض" class="patient-avatar">
+                        <% } else { %>
+                            <img src="/images/default-patient.jpg" alt="صورة المريض" class="patient-avatar">
+                        <% } %>
+                        <div class="session-details">
+                            <div class="patient-name">
+                                <span class="status-badge <%= session.status === 'مؤكد' ? 'status-confirmed' : 'status-pending' %>">
+                                    <%= session.status %>
+                                </span>
+                                <%= session.patient.name %>
+                            </div>
+                            <div class="session-info">
+                                <i class="far fa-calendar-alt"></i> تاريخ الجلسة: <%= new Date(session.date).toLocaleDateString('ar-EG') %> | 
+                                <i class="far fa-clock"></i> الوقت: <%= session.time %>
+                                <% if (session.notes) { %>
+                                    | <i class="far fa-sticky-note"></i> ملاحظات: <%= session.notes %>
+                                <% } %>
+                            </div>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="start-session-btn" 
+                                    onclick="showConfirmationModal('<%= session._id %>', '<%= session.patient.name %>')">
+                                <i class="fas fa-video"></i> بدء الجلسة
+                            </button>
+                        </div>
+                    </div>
+                <% }); %>
+            <% } else { %>
+                <div class="no-sessions">لا توجد جلسات متاحة حالياً</div>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="confirmation-modal" id="confirmationModal">
+        <div class="modal-content">
+            <h3>تأكيد بدء الجلسة</h3>
+            <p id="modalPatientName">سيتم إرسال دعوة للمريض للانضمام</p>
+            <div class="modal-actions">
+                <button onclick="confirmStartSession()">تأكيد</button>
+                <button onclick="hideConfirmationModal()">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="notification-toast" id="notificationToast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage">تم إرسال دعوة الجلسة للمريض</span>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let socket;
+        let currentSessionId;
+        let currentPatientName;
+        
+        // Initialize Socket.io connection
+        function initSocket() {
+            socket = io();
+            
+            socket.on('connect', () => {
+                console.log('Connected to Socket.io server');
+            });
+            
+            socket.on('disconnect', () => {
+                console.log('Disconnected from Socket.io server');
+            });
+            
+            socket.on('error', (error) => {
+                showError(error.message || 'حدث خطأ في الاتصال');
+            });
+        }
+        
+        // Show confirmation modal
+        function showConfirmationModal(sessionId, patientName) {
+            currentSessionId = sessionId;
+            currentPatientName = patientName;
+            document.getElementById('modalPatientName').textContent = `سيتم إرسال دعوة للمريض ${patientName} للانضمام`;
+            document.getElementById('confirmationModal').style.display = 'flex';
+        }
+        
+        // Hide confirmation modal
+        function hideConfirmationModal() {
+            document.getElementById('confirmationModal').style.display = 'none';
+        }
+        
+        // Confirm and start session
+        function confirmStartSession() {
+            hideConfirmationModal();
+            
+            fetch('/api/sessions/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'CSRF-Token': '<%= csrfToken %>'
+                },
+                body: JSON.stringify({ sessionId: currentSessionId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`تم إرسال دعوة الجلسة للمريض ${currentPatientName}`);
+                    // Redirect to session page after 2 seconds
+                    setTimeout(() => {
+                        window.location.href = `/session/${currentSessionId}`;
+                    }, 2000);
+                } else {
+                    showError(data.error || 'فشل في بدء الجلسة');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showError('حدث خطأ أثناء محاولة بدء الجلسة');
+            });
+        }
+        
+        // Show notification toast
+        function showNotification(message) {
+            const toast = document.getElementById('notificationToast');
+            document.getElementById('toastMessage').textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Show error message
+        function showError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            
+            setTimeout(() => {
+                errorElement.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            initSocket();
+        });
+    </script>
+</body>
+</html>
+<%- include('footerdoc') %>
