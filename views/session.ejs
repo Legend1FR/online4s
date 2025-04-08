@@ -1,0 +1,563 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>جلسةH مع د. <%= session.doctor.username %></title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* أنماط CSS لتحسين واجهة المستخدم */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background-color: #f0f2f5;
+        }
+        .session-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .session-header {
+            background: #3498db;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .session-title {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .session-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .timer {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        .end-button {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .end-button:hover {
+            background: #c82333;
+            transform: scale(1.05);
+        }
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        .video-container {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            background: #1a1a1a;
+            position: relative;
+        }
+        .video-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 18px;
+            background: #333;
+        }
+        .video-wrapper {
+            position: relative;
+            flex: 1;
+            overflow: hidden;
+        }
+        .video-element {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .user-video {
+            height: 30%;
+            max-height: 200px;
+            border-top: 2px solid #444;
+        }
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            border-left: 1px solid #ddd;
+        }
+        .chat-header {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            font-weight: bold;
+            color: #333;
+        }
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            background: #f9f9f9;
+        }
+        .message {
+            margin-bottom: 15px;
+            max-width: 80%;
+        }
+        .message-content {
+            padding: 10px 15px;
+            border-radius: 18px;
+            word-wrap: break-word;
+        }
+        .received {
+            align-self: flex-start;
+        }
+        .received .message-content {
+            background: #e9e9e9;
+            color: #333;
+            border-bottom-left-radius: 5px;
+        }
+        .sent {
+            align-self: flex-end;
+        }
+        .sent .message-content {
+            background: #3498db;
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+        .message-sender {
+            font-size: 12px;
+            color: #777;
+            margin-bottom: 3px;
+        }
+        .chat-input-container {
+            display: flex;
+            padding: 15px;
+            border-top: 1px solid #eee;
+            background: white;
+        }
+        .chat-input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            outline: none;
+        }
+        .send-button {
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 0 20px;
+            margin-right: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .send-button:hover {
+            background: #2180d8;
+        }
+        .action-button {
+            background: #f1f1f1;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: all 0.3s;
+        }
+        .action-button:hover {
+            background: #e0e0e0;
+        }
+        .error-message {
+            color: #dc3545;
+            padding: 10px;
+            margin: 10px;
+            border-radius: 5px;
+            background: #f8d7da;
+            display: none;
+        }
+        
+        /* تصميم متجاوب للشاشات الصغيرة */
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            .video-container {
+                flex: 1;
+            }
+            .chat-container {
+                flex: 1;
+                border-left: none;
+                border-top: 1px solid #ddd;
+            }
+            .user-video {
+                height: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="session-container">
+        <div class="session-header">
+            <div class="session-title">
+                جلسة مع د. <%= session.doctor.username %>
+            </div>
+            <div class="session-controls">
+                <div class="timer" id="sessionTimer">30:00</div>
+                <button class="end-button" id="endSessionBtn">
+                    <i class="fas fa-phone-slash"></i> إنهاء الجلسة
+                </button>
+            </div>
+        </div>
+        
+        <div id="errorMessage" class="error-message"></div>
+        
+        <div class="main-content">
+            <div class="video-container">
+                <div class="video-wrapper" id="remoteVideoWrapper">
+                    <div class="video-placeholder" id="remoteVideoPlaceholder">
+                        في انتظار اتصال <%= userType === 'doctor' ? 'المريض' : 'الطبيب' %>...
+                    </div>
+                    <video id="remoteVideo" autoplay playsinline class="video-element"></video>
+                </div>
+                <div class="video-wrapper user-video" id="localVideoWrapper">
+                    <video id="localVideo" autoplay muted playsinline class="video-element"></video>
+                </div>
+            </div>
+            
+            <div class="chat-container">
+                <div class="chat-header">
+                    <i class="far fa-comments"></i> محادثة الجلسة
+                </div>
+                <div class="messages-container" id="messagesContainer">
+                    <!-- الرسائل ستظهر هنا -->
+                </div>
+                <div class="chat-input-container">
+                    <input type="text" class="chat-input" id="messageInput" placeholder="اكتب رسالتك هنا...">
+                    <button class="send-button" id="sendMessageBtn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                    <button class="action-button" id="attachFileBtn">
+                        <i class="fas fa-paperclip"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // المتغيرات العامة
+        let socket;
+        let peerConnection;
+        let localStream;
+        let remoteStream;
+        let timeLeft = 30 * 60; // 30 دقيقة بالثواني
+        let timerInterval;
+        const currentUserType = '<%= userType %>'; // نوع المستخدم من الخادم
+        
+        // عناصر DOM
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const remoteVideoPlaceholder = document.getElementById('remoteVideoPlaceholder');
+        const messagesContainer = document.getElementById('messagesContainer');
+        const messageInput = document.getElementById('messageInput');
+        const sendMessageBtn = document.getElementById('sendMessageBtn');
+        const endSessionBtn = document.getElementById('endSessionBtn');
+        const sessionTimer = document.getElementById('sessionTimer');
+        const errorMessage = document.getElementById('errorMessage');
+        
+        // تهيئة الجلسة
+        async function initSession() {
+            try {
+                // تهيئة اتصال Socket.io
+                socket = io();
+                
+                // إعداد مستمعي الأحداث
+                setupSocketListeners();
+                
+                // الحصول على وسائط المستخدم
+                await setupMediaDevices();
+                
+                // بدء عداد الجلسة
+                startTimer();
+                
+                // تهيئة اتصال WebRTC
+                if (currentUserType === 'doctor') {
+                    createPeerConnection();
+                    socket.emit('joinSession', { 
+                        sessionId: '<%= session._id %>',
+                        doctorId: '<%= session.doctor._id %>',
+                        patientId: '<%= session.patient._id %>',
+                        userType: 'doctor'
+                    });
+                } else {
+                    socket.emit('joinSession', { 
+                        sessionId: '<%= session._id %>',
+                        doctorId: '<%= session.doctor._id %>',
+                        patientId: '<%= session.patient._id %>',
+                        userType: 'patient'
+                    });
+                }
+                
+            } catch (error) {
+                showError('تعذر بدء الجلسة: ' + error.message);
+                console.error('خطأ في تهيئة الجلسة:', error);
+            }
+        }
+        
+        // إعداد مستمعي Socket.io
+        function setupSocketListeners() {
+            socket.on('connect', () => {
+                console.log('تم الاتصال بخادم Socket.io');
+            });
+            
+            socket.on('disconnect', () => {
+                showError('تم قطع الاتصال بالخادم. يحاول إعادة الاتصال...');
+            });
+            
+            socket.on('connect_error', (error) => {
+                showError('خطأ في الاتصال: ' + (error.message || 'خطأ غير معروف'));
+            });
+            
+            socket.on('newMessage', (message) => {
+                addMessage(message.sender === currentUserType ? 'sent' : 'received', 
+                         message.message, 
+                         new Date(message.timestamp));
+            });
+            
+            socket.on('sessionEnded', () => {
+                endSession(true);
+            });
+            
+            socket.on('error', (error) => {
+                showError(error.message || 'حدث خطأ في الجلسة');
+            });
+            
+            // أحداث إشارات WebRTC
+            socket.on('offer', async (offer) => {
+                if (currentUserType === 'patient') {
+                    await createPeerConnection();
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    socket.emit('answer', { 
+                        sessionId: '<%= session._id %>',
+                        answer: answer 
+                    });
+                }
+            });
+            
+            socket.on('answer', async (answer) => {
+                if (currentUserType === 'doctor') {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                }
+            });
+            
+            socket.on('iceCandidate', async (candidate) => {
+                try {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                } catch (error) {
+                    console.error('خطأ في إضافة مرشح ICE:', error);
+                }
+            });
+        }
+        
+        // إعداد أجهزة الوسائط
+        async function setupMediaDevices() {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: true, 
+                    audio: true 
+                });
+                localVideo.srcObject = localStream;
+            } catch (error) {
+                showError('تعذر الوصول إلى الكاميرا/الميكروفون. يرجى التحقق من الأذونات.');
+                console.error('خطأ في أجهزة الوسائط:', error);
+            }
+        }
+        
+        // إنشاء اتصال WebRTC
+        async function createPeerConnection() {
+            const configuration = {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    // أضف خوادم TURN هنا إذا لزم الأمر
+                ]
+            };
+            
+            peerConnection = new RTCPeerConnection(configuration);
+            
+            // إضافة التدفق المحلي إلى الاتصال
+            if (localStream) {
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+            }
+            
+            // إعداد معالجات الأحداث
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('iceCandidate', {
+                        sessionId: '<%= session._id %>',
+                        candidate: event.candidate
+                    });
+                }
+            };
+            
+            peerConnection.ontrack = (event) => {
+                remoteStream = event.streams[0];
+                remoteVideo.srcObject = remoteStream;
+                remoteVideoPlaceholder.style.display = 'none';
+            };
+            
+            peerConnection.onconnectionstatechange = () => {
+                console.log('حالة الاتصال:', peerConnection.connectionState);
+                if (peerConnection.connectionState === 'disconnected' || 
+                    peerConnection.connectionState === 'failed') {
+                    showError('تم فقدان الاتصال مع الطرف الآخر');
+                }
+            };
+            
+            // إذا كان المستخدم طبيباً، أنشئ عرضاً
+            if (currentUserType === 'doctor') {
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                socket.emit('offer', { 
+                    sessionId: '<%= session._id %>',
+                    offer: offer 
+                });
+            }
+        }
+        
+        // إضافة رسالة إلى المحادثة
+        function addMessage(type, content, timestamp) {
+            const messageElement = document.createElement('div');
+            messageElement.className = `message ${type}`;
+            
+            const senderName = type === 'sent' ? 'أنت' : 
+                              (currentUserType === 'doctor' ? 'المريض' : 'الطبيب');
+            
+            messageElement.innerHTML = `
+                <div class="message-sender">${senderName} - ${formatTime(timestamp)}</div>
+                <div class="message-content">${content}</div>
+            `;
+            
+            messagesContainer.appendChild(messageElement);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        // تنسيق الوقت
+        function formatTime(date) {
+            if (!(date instanceof Date)) {
+                date = new Date(date);
+            }
+            return date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+        }
+        
+        // إرسال رسالة
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (message) {
+                socket.emit('sendMessage', {
+                    sessionId: '<%= session._id %>',
+                    sender: currentUserType,
+                    message: message,
+                    timestamp: new Date()
+                });
+                addMessage('sent', message, new Date());
+                messageInput.value = '';
+            }
+        }
+        
+        // بدء عداد الجلسة
+        function startTimer() {
+            updateTimerDisplay();
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                
+                if (timeLeft <= 0) {
+                    endSession(false);
+                }
+            }, 1000);
+        }
+        
+        // تحديث عرض العداد
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            sessionTimer.textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        // إنهاء الجلسة
+        function endSession(remoteEnd) {
+            clearInterval(timerInterval);
+            
+            // إغلاق اتصال WebRTC
+            if (peerConnection) {
+                peerConnection.close();
+            }
+            
+            // إيقاف تدفقات الوسائط المحلية
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+            
+            // إعلام الخادم
+            if (!remoteEnd) {
+                socket.emit('endSession', { sessionId: '<%= session._id %>' });
+            }
+            
+            // عرض رسالة الإنهاء
+            showError('انتهت الجلسة. سيتم إغلاق النافذة تلقائياً.');
+            
+            // إعادة التوجيه بعد تأخير
+            setTimeout(() => {
+                window.location.href = currentUserType === 'doctor' ? 
+                    '/doctor/sessions' : '/patient/sessions';
+            }, 3000);
+        }
+        
+        // عرض رسالة خطأ
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+        
+        // مستمعي الأحداث
+        sendMessageBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+        endSessionBtn.addEventListener('click', () => endSession(false));
+        
+        // التهيئة عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', initSession);
+    </script>
+</body>
+</html>
