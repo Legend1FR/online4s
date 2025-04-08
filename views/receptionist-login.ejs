@@ -5,10 +5,7 @@
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <input type="text" name="username" placeholder="اسم المستخدم" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px;" required>
         <input type="password" name="password" placeholder="كلمة المرور" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px;" required>
-        <div style="margin: 10px 0;">
-            <input type="checkbox" name="rememberMe" id="rememberMe">
-            <label for="rememberMe">تذكرني</label>
-        </div>
+       
         <div class="g-recaptcha" data-sitekey="YOUR_RECAPTCHA_SITE_KEY"></div>
         <button type="submit" id="submitButton" style="width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">تسجيل الدخول</button>
         <div id="loadingSpinner" style="display: none; margin-top: 10px;">جاري التحميل...</div>
@@ -17,7 +14,7 @@
         <p style="color: red; margin-top: 10px;"><%= error %></p>
     <% } %>
 </div>
-<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
 <script>
     function validateLoginForm() {
         const username = document.querySelector('input[name="username"]').value;
