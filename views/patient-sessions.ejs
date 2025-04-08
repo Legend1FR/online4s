@@ -1,0 +1,376 @@
+<%- include('headerpatient') %>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>جلساتي</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background-color: #f5f7fa;
+            padding-top: 20px;
+        }
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .header h1 {
+            color: #2c3e50;
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        .sessions-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .session-card {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border-right: 4px solid #3498db;
+            transition: all 0.3s ease;
+        }
+        .session-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .doctor-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #e0e0e0;
+        }
+        .session-info {
+            flex: 1;
+        }
+        .doctor-name {
+            font-size: 18px;
+            color: #2c3e50;
+            margin-bottom: 3px;
+            font-weight: 600;
+        }
+        .doctor-specialty {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        .session-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .meta-item {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            color: #555;
+        }
+        .meta-item i {
+            margin-left: 5px;
+            color: #3498db;
+            font-size: 12px;
+        }
+        .session-status {
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 500;
+            display: inline-block;
+            margin-top: 5px;
+        }
+        .status-confirmed {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .status-cancelled {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .status-pending {
+            background: #fff8e1;
+            color: #f57f17;
+        }
+        .payment-status {
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .paid {
+            color: #2e7d32;
+        }
+        .unpaid {
+            color: #c62828;
+        }
+        .join-session-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            display: none;
+            width: 100%;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        .join-session-btn:hover {
+            background: #218838;
+            transform: scale(1.02);
+        }
+        .no-sessions {
+            text-align: center;
+            padding: 40px 20px;
+            color: #7f8c8d;
+            font-size: 16px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        /* Session Notification */
+        .session-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            padding: 15px;
+            width: 90%;
+            max-width: 350px;
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+        }
+        .session-notification.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .notification-bell {
+            font-size: 24px;
+            color: #ffc107;
+            animation: ring 2s infinite;
+        }
+        .notification-content {
+            flex: 1;
+        }
+        .notification-content p {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .join-now-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+        }
+        .join-now-btn:hover {
+            background: #218838;
+        }
+        
+        @keyframes ring {
+            0% { transform: rotate(0deg); }
+            5% { transform: rotate(15deg); }
+            10% { transform: rotate(-15deg); }
+            15% { transform: rotate(15deg); }
+            20% { transform: rotate(-15deg); }
+            25% { transform: rotate(0deg); }
+            100% { transform: rotate(0deg); }
+        }
+        
+        /* Error Message */
+        .error-message {
+            color: #dc3545;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background: #f8d7da;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>جلساتي المحجوزة</h1>
+            <p>عرض جميع الجلسات مع الأطباء</p>
+        </div>
+
+        <div id="errorMessage" class="error-message"></div>
+
+        <div class="sessions-container">
+            <% if (sessions.length === 0) { %>
+                <div class="no-sessions">
+                    لا توجد لديك جلسات محجوزة حالياً
+                </div>
+            <% } else { %>
+                <% sessions.forEach(session => { %>
+                    <div class="session-card" id="session-<%= session._id %>">
+                        <% if (session.doctor && session.doctor.profileImage) { %>
+                            <img src="<%= session.doctor.profileImage %>" alt="<%= session.doctor.username %>" class="doctor-image">
+                        <% } else { %>
+                            <img src="/images/default-doctor.jpg" alt="طبيب" class="doctor-image">
+                        <% } %>
+                        
+                        <div class="session-info">
+                            <% if (session.doctor) { %>
+                                <div class="doctor-name"><%= session.doctor.username %></div>
+                                <div class="doctor-specialty"><%= session.doctor.specialization %></div>
+                            <% } else { %>
+                                <div class="doctor-name">طبيب محذوف</div>
+                            <% } %>
+                            
+                            <div class="session-meta">
+                                <div class="meta-item">
+                                    <i class="far fa-calendar-alt"></i>
+                                    <%= new Date(session.date).toLocaleDateString('ar-EG') %>
+                                </div>
+                                <div class="meta-item">
+                                    <i class="far fa-clock"></i>
+                                    <%= session.time %>
+                                </div>
+                            </div>
+                            
+                            <span class="session-status <%= 
+                                session.status === 'مؤكد' ? 'status-confirmed' : 
+                                session.status === 'ملغي' ? 'status-cancelled' : 
+                                'status-pending' %>">
+                                <%= session.status %>
+                            </span>
+                            
+                            <% if (session.paymentStatus) { %>
+                                <div class="payment-status <%= 
+                                    session.paymentStatus === 'مدفوع' ? 'paid' : 'unpaid' %>">
+                                    <i class="fas fa-<%= session.paymentStatus === 'مدفوع' ? 'check-circle' : 'times-circle' %>"></i>
+                                    <%= session.paymentStatus %>
+                                </div>
+                            <% } %>
+                            
+                            <button class="join-session-btn" 
+                                    id="joinBtn-<%= session._id %>" 
+                                    onclick="joinSession('<%= session._id %>', '<%= session.doctor._id %>', '<%= session.doctor.username %>')">
+                                <i class="fas fa-video"></i> الجلسة قد بدأت - انضم الآن
+                            </button>
+                        </div>
+                    </div>
+                <% }); %>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Session Notification -->
+    <div class="session-notification" id="sessionNotification">
+        <div class="notification-bell">🔔</div>
+        <div class="notification-content">
+            <p>لديك جلسة مع د. <span id="doctorName"></span></p>
+            <button class="join-now-btn" id="joinNowBtn">انضم الآن!</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let socket;
+        let currentSessionId;
+        let currentDoctorId;
+        let currentDoctorName;
+        
+        // Initialize Socket.io connection
+        function initSocket() {
+            socket = io();
+            
+            // Listen for session ready notification
+            socket.on('sessionReady', (data) => {
+                currentSessionId = data.sessionId;
+                currentDoctorId = '<%= patient._id %>'; // This should be updated based on your logic
+                currentDoctorName = data.doctorName;
+                
+                // Show notification
+                document.getElementById('doctorName').textContent = data.doctorName;
+                const notification = document.getElementById('sessionNotification');
+                notification.classList.add('show');
+                
+                // Show join button on the specific session card
+                const joinBtn = document.getElementById(`joinBtn-${data.sessionId}`);
+                if (joinBtn) {
+                    joinBtn.style.display = 'block';
+                }
+            });
+            
+            // Handle connection errors
+            socket.on('connect_error', (error) => {
+                showError('تعذر الاتصال بالخادم: ' + (error.message || 'خطأ غير معروف'));
+            });
+            
+            socket.on('error', (error) => {
+                showError(error.message || 'حدث خطأ في الاتصال');
+            });
+        }
+        
+        // Join session
+        function joinSession(sessionId, doctorId, doctorName) {
+            currentSessionId = sessionId;
+            currentDoctorId = doctorId;
+            currentDoctorName = doctorName;
+            
+            // Hide notification if shown
+            document.getElementById('sessionNotification').classList.remove('show');
+            
+            // Redirect to session page
+            window.location.href = `/session/${sessionId}`;
+        }
+        
+        // Show error message
+        function showError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            
+            setTimeout(() => {
+                errorElement.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            initSocket();
+            
+            // Set up join now button in notification
+            document.getElementById('joinNowBtn').addEventListener('click', () => {
+                if (currentSessionId) {
+                    window.location.href = `/session/${currentSessionId}`;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+<%- include('footerpatient') %>
