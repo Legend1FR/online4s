@@ -1,6 +1,5 @@
 const jwt = require("jsonwebtoken");
 const Patient = require("../models/patient");
-const Admin = require("../models/admin");
 
 const verii = async (req, res, next) => {
     try {
@@ -10,23 +9,17 @@ const verii = async (req, res, next) => {
         }
 
         const decoded = jwt.verify(token, "fgrpekrfg");
-        let user;
+        const patient = await Patient.findOne({ _id: decoded._id });
 
-        if (decoded.role === "admin") {
-            user = await Admin.findOne({ _id: decoded._id });
-        } else {
-            user = await Patient.findOne({ _id: decoded._id });
+        if (!patient) {
+            return res.status(401).send("المريض غير موجود");
         }
 
-        if (!user) {
-            return res.status(401).send("المستخدم غير موجود");
-        }
-
-        req.user = user; 
+        req.patient = patient;
         next();
     } catch (error) {
         console.error("Error in verii middleware:", error);
-        res.status(500).send("حدث خطأ أثناء التحقق من المستخدم");
+        res.status(500).send("حدث خطأ أثناء التحقق من المريض");
     }
 };
 
