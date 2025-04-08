@@ -9,7 +9,7 @@ mongoose.connect("mongodb+srv://malhdar039:462039Mh@cluster0.kddsb.mongodb.net/a
 const receptionistSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    email: { type: String, required: true, unique: true }, // إضافة حقل email
+    email: { type: String, required: true, unique: true }, 
     isFrozen: { type: Boolean, default: false }
 
 });
