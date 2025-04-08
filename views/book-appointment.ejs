@@ -1,0 +1,484 @@
+<%- include('headerpatient') %>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حجز موعد</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f8f9fa; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .doctor-info { background: white; padding: 25px; border-radius: 10px; margin-bottom: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+        .doctor-details { flex: 1; }
+        .doctor-name { font-size: 24px; font-weight: 600; color: #2c3e50; margin-bottom: 5px; }
+        .doctor-specialty { font-size: 18px; color: #7f8c8d; margin-bottom: 15px; }
+        .doctor-status { padding: 8px 15px; border-radius: 20px; font-size: 14px; font-weight: 500; }
+        .status-available { background-color: #d4edda; color: #155724; }
+        .status-unavailable { background-color: #f8d7da; color: #721c24; }
+        .booking-form { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .form-group { margin-bottom: 25px; }
+        label { display: block; margin-bottom: 10px; font-weight: 600; color: #34495e; }
+        input, select, textarea { width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
+        textarea { min-height: 100px; resize: vertical; }
+        .btn-submit { background: #3498db; color: white; border: none; padding: 14px 25px; border-radius: 6px; font-size: 16px; cursor: pointer; transition: background 0.3s; margin-top: 15px; }
+        .btn-submit:hover { background: #2980b9; }
+        .btn-submit:disabled { background: #95a5a6; cursor: not-allowed; }
+        .available-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin-top: 20px; }
+        .slot { padding: 12px 20px; background: #e9f7ef; border: 1px solid #c8e6c9; border-radius: 6px; cursor: pointer; transition: all 0.3s; text-align: center; }
+        .slot:hover { background: #d4edda; }
+        .slot.selected { background: #28a745; color: white; border-color: #28a745; }
+        .slot.unavailable { background: #f8d7da; color: #721c24; cursor: not-allowed; opacity: 0.6; }
+        .slot.booked { background: #fff3cd; color: #856404; cursor: not-allowed; }
+        .notification-container { position: fixed; top: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
+        .notification { padding: 15px 20px; border-radius: 8px; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateX(150%); transition: transform 0.3s ease; max-width: 300px; }
+        .notification.show { transform: translateX(0); }
+        .notification.success { background-color: #28a745; }
+        .notification.error { background-color: #dc3545; }
+        .notification.warning { background-color: #ffc107; color: #212529; }
+        .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .existing-booking { background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; margin-bottom: 20px; }
+        .existing-booking h3 { color: #2c3e50; margin-bottom: 10px; font-size: 18px; }
+        .existing-booking p { margin-bottom: 5px; color: #7f8c8d; }
+        .error-message { color: #dc3545; margin-top: 10px; }
+        .payment-methods { display: flex; gap: 15px; margin-top: 10px; }
+        .payment-method { padding: 12px 20px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; transition: all 0.3s; text-align: center; flex: 1; }
+        .payment-method:hover { border-color: #3498db; }
+        .payment-method.selected { background: #3498db; color: white; border-color: #3498db; }
+        .payment-method input { display: none; }
+        .payment-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center; }
+        .payment-content { background: white; padding: 30px; border-radius: 10px; width: 90%; max-width: 500px; }
+        .payment-options { margin-top: 20px; }
+        .payment-option { padding: 15px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 10px; cursor: pointer; }
+        .payment-option:hover { border-color: #3498db; }
+        .payment-option.selected { background: #f8f9fa; border-color: #3498db; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <% if (!patient) { %>
+            <div class="error-message">يجب تسجيل الدخول كـ مريض أولاً</div>
+        <% } else { %>
+            <div class="doctor-info">
+                <div class="doctor-details">
+                    <div class="doctor-name"><%= doctor.username %></div>
+                    <div class="doctor-specialty"><%= doctor.specialization %></div>
+                </div>
+                <div class="doctor-status <%= doctor.acceptingAppointments ? 'status-available' : 'status-unavailable' %>">
+                    <%= doctor.acceptingAppointments ? 'يقبل الحجوزات حالياً' : 'لا يقبل الحجوزات حالياً' %>
+                </div>
+            </div>
+            
+            <% if (locals.existingAppointment) { %>
+            <div class="existing-booking">
+                <h3>لديك موعد محجز مسبقاً مع هذا الطبيب</h3>
+                <p>التاريخ: <%= new Date(existingAppointment.date).toLocaleDateString('ar-EG') %></p>
+                <p>الوقت: <%= existingAppointment.time %></p>
+                <p>الحالة: <%= existingAppointment.status %></p>
+                <% if (existingAppointment.paymentStatus) { %>
+                    <p>حالة الدفع: <%= existingAppointment.paymentStatus %></p>
+                <% } %>
+            </div>
+            <% } %>
+            
+            <div class="booking-form">
+                <h2 style="margin-bottom: 25px; color: #2c3e50;">حجز موعد جديد</h2>
+                <form id="bookingForm">
+                    <input type="hidden" name="doctorId" value="<%= doctor._id %>">
+                    <input type="hidden" name="patientId" value="<%= patient._id %>">
+                    <input type="hidden" name="time" id="selectedTime">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    
+                    <div class="form-group">
+                        <label for="date">تاريخ الموعد:</label>
+                        <input type="text" id="date" name="date" placeholder="اختر تاريخ" required <%= locals.existingAppointment || !doctor.acceptingAppointments ? 'disabled' : '' %>>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>الأوقات المتاحة:</label>
+                        <div class="available-slots" id="timeSlots">
+                            <% if (locals.existingAppointment) { %>
+                                <div class="slot booked">لديك موعد محجز مسبقاً</div>
+                            <% } else if (!doctor.acceptingAppointments) { %>
+                                <div class="slot unavailable">الطبيب لا يقبل الحجوزات حالياً</div>
+                            <% } else { %>
+                                <div class="slot unavailable">اختر تاريخاً أولاً</div>
+                            <% } %>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" id="paymentOptions" style="display: none;">
+                        <label>طريقة الدفع:</label>
+                        <div class="payment-methods">
+                            <div class="payment-method" data-method="cash">
+                                <input type="radio" id="cashPayment" name="paymentMethod" value="cash" checked>
+                                <label for="cashPayment">الدفع لاحقاً</label>
+                            </div>
+                            <div class="payment-method" data-method="electronic">
+                                <input type="radio" id="electronicPayment" name="paymentMethod" value="electronic">
+                                <label for="electronicPayment">الدفع الإلكتروني</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="notes">ملاحظات (اختياري):</label>
+                        <textarea id="notes" name="notes" placeholder="أي ملاحظات تريد إضافتها..." <%= locals.existingAppointment || !doctor.acceptingAppointments ? 'disabled' : '' %>></textarea>
+                    </div>
+                    
+                    <button type="button" class="btn-submit" id="submitBooking" <%= locals.existingAppointment || !doctor.acceptingAppointments ? 'disabled' : '' %>>
+                        <span id="submitText">
+                            <%= locals.existingAppointment ? 'لديك موعد مسبق' : !doctor.acceptingAppointments ? 'الحجوزات متوقفة' : 'تأكيد الحجز' %>
+                        </span>
+                        <span id="submitSpinner" class="loading" style="display: none;"></span>
+                    </button>
+                </form>
+            </div>
+        <% } %>
+    </div>
+
+    <div class="notification-container" id="notificationContainer"></div>
+
+<div class="payment-modal" id="paymentModal">
+    <div class="payment-content">
+        <h2>إتمام عملية الدفع</h2>
+        <p id="paymentMessage">الرجاء اختيار طريقة الدفع المفضلة</p>
+        
+        <div class="payment-options">
+            <div class="payment-option" id="creditCardOption">
+                <h3>بطاقة ائتمان</h3>
+                <p>الدفع باستخدام بطاقة فيزا أو ماستركارد</p>
+            </div>
+            <div class="payment-option selected" id="walletOption">
+                <h3>المحفظة</h3>
+                <p>الدفع باستخدام رصيد المحفظة (<span id="walletBalanceDisplay"><%= patient.wallet.balance.toFixed(2) %> ر.س</span>)</p>
+            </div>
+        </div>
+        
+        <div id="paymentDetails" style="margin-top: 20px;">
+            <p>سعر الحجز: <strong id="appointmentPrice">100 ر.س</strong></p>
+            <p id="walletStatus" style="color: green;">رصيدك كافٍ لإتمام العملية</p>
+        </div>
+        
+        <button type="button" class="btn-submit" id="completePayment" style="margin-top: 20px;">إتمام الدفع</button>
+        <button type="button" class="btn-submit" id="cancelPayment" style="background: #e74c3c; margin-top: 10px;">إلغاء</button>
+    </div>
+</div>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const datePicker = flatpickr("#date", {
+                locale: "ar",
+                minDate: "today",
+                maxDate: new Date().fp_incr(30),
+                disable: [
+                    function(date) {
+                        const availableDays = JSON.parse('<%- JSON.stringify(doctor.availableDays || []) %>');
+                        if (availableDays.length === 0) return false;
+                        
+                        const day = date.getDay();
+                        const dayNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+                        return !availableDays.includes(dayNames[day]);
+                    }
+                ]
+            });
+
+            document.getElementById('date').addEventListener('change', function() {
+                const date = this.value;
+                const doctorId = '<%= doctor._id %>';
+                
+                if (date) {
+                    loadAvailableSlots(doctorId, date);
+                    document.getElementById('paymentOptions').style.display = 'block';
+                } else {
+                    updateTimeSlotsDisplay([], 'اختر تاريخاً أولاً');
+                    document.getElementById('paymentOptions').style.display = 'none';
+                }
+            });
+
+            
+            document.querySelectorAll('.payment-method').forEach(method => {
+                method.addEventListener('click', function() {
+                    document.querySelectorAll('.payment-method').forEach(m => m.classList.remove('selected'));
+                    this.classList.add('selected');
+                    const input = this.querySelector('input');
+                    input.checked = true;
+                });
+            });
+
+            document.getElementById('submitBooking').addEventListener('click', function() {
+                const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+                
+                if (paymentMethod === 'electronic') {
+                    
+                    document.getElementById('paymentModal').style.display = 'flex';
+                } else {
+                    
+                    bookAppointment();
+                }
+            });
+
+            
+            document.getElementById('cancelPayment').addEventListener('click', function() {
+                document.getElementById('paymentModal').style.display = 'none';
+            });
+
+            document.getElementById('completePayment').addEventListener('click', function() {
+               
+                document.getElementById('paymentMessage').textContent = 'جاري معالجة الدفع...';
+                document.getElementById('completePayment').disabled = true;
+                
+                setTimeout(() => {
+                    document.getElementById('paymentModal').style.display = 'none';
+                    bookAppointment();
+                }, 2000);
+            });
+
+            
+            document.querySelectorAll('.payment-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('selected'));
+                    this.classList.add('selected');
+                });
+            });
+        });
+
+        function showNotification(message, type = 'success') {
+            const notificationContainer = document.getElementById('notificationContainer');
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            notificationContainer.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 5000);
+        }
+
+        function updateTimeSlotsDisplay(slots, message = null) {
+            const slotsContainer = document.getElementById('timeSlots');
+            
+            while (slotsContainer.firstChild) {
+                slotsContainer.removeChild(slotsContainer.firstChild);
+            }
+            
+            if (message) {
+                const messageElement = document.createElement('div');
+                messageElement.className = 'slot unavailable';
+                messageElement.textContent = message;
+                slotsContainer.appendChild(messageElement);
+                return;
+            }
+            
+            if (slots.length === 0) {
+                updateTimeSlotsDisplay([], 'لا توجد أوقات متاحة في هذا التاريخ');
+                return;
+            }
+            
+            slots.forEach(slot => {
+                const slotElement = document.createElement('div');
+                slotElement.className = 'slot';
+                slotElement.textContent = slot;
+                slotElement.addEventListener('click', function() {
+                    document.querySelectorAll('.slot').forEach(el => el.classList.remove('selected'));
+                    this.classList.add('selected');
+                    document.getElementById('selectedTime').value = slot;
+                });
+                slotsContainer.appendChild(slotElement);
+            });
+        }
+
+        function convertTimeTo24Hour(timeString) {
+            const [time, period] = timeString.split(' ');
+            let [hours, minutes] = time.split(':');
+            
+            hours = parseInt(hours);
+            if (period === 'م' && hours < 12) hours += 12;
+            if (period === 'ص' && hours === 12) hours = 0;
+            
+            return `${hours.toString().padStart(2, '0')}:${minutes}`;
+        }
+
+        async function bookAppointment() {
+            const form = document.getElementById('bookingForm');
+            const timeSlot = document.getElementById('selectedTime').value;
+            
+            if (!timeSlot) {
+                showNotification('الرجاء اختيار وقت', 'error');
+                return;
+            }
+            
+            const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+            
+            const formData = {
+                doctorId: form.doctorId.value,
+                date: form.date.value,
+                time: convertTimeTo24Hour(timeSlot),
+                notes: form.notes.value,
+                paymentMethod: paymentMethod === 'electronic' ? 'إلكتروني' : 'لاحقا',
+                _csrf: form._csrf.value
+            };
+            
+            const submitBtn = document.getElementById('submitBooking');
+            const submitText = document.getElementById('submitText');
+            const submitSpinner = document.getElementById('submitSpinner');
+            
+            try {
+                submitText.style.display = 'none';
+                submitSpinner.style.display = 'inline-block';
+                submitBtn.disabled = true;
+                
+                const response = await axios.post('/book-appointment', formData, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.data.success) {
+                    showNotification('تم حجز الموعد بنجاح');
+                    
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    showNotification(response.data.message || 'حدث خطأ أثناء الحجز', 'error');
+                }
+            } catch (error) {
+                console.error('Error booking appointment:', error);
+                showNotification(error.response?.data?.message || 'حدث خطأ أثناء حجز الموعد', 'error');
+            } finally {
+                submitText.style.display = 'inline-block';
+                submitSpinner.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        }
+
+        async function loadAvailableSlots(doctorId, date) {
+            try {
+                updateTimeSlotsDisplay([], 'جارٍ تحميل الأوقات المتاحة...');
+                
+                const response = await axios.get(`/get-available-slots?doctorId=${doctorId}&date=${date}&patientId=<%= patient._id %>`);
+                
+                if (response.data.message && response.data.message.includes("الطبيب لم يحدد")) {
+                    updateTimeSlotsDisplay([], 'الطبيب لم يحدد أوقات العمل بعد');
+                    return;
+                }
+                
+                if (response.data.existingAppointment) {
+                    window.location.reload();
+                    return;
+                }
+                
+                if (response.data.availableSlots && response.data.availableSlots.length > 0) {
+                    updateTimeSlotsDisplay(response.data.availableSlots);
+                } else {
+                    updateTimeSlotsDisplay([], 'لا توجد أوقات متاحة في هذا التاريخ');
+                }
+            } catch (error) {
+                console.error('Error loading available slots:', error);
+                updateTimeSlotsDisplay([], 'حدث خطأ أثناء جلب الأوقات المتاحة');
+            }
+        }
+   
+
+   
+    const appointmentPrice = 100; 
+    
+    document.addEventListener('DOMContentLoaded', function() {
+       
+        updateWalletStatus();
+        
+      
+        document.querySelectorAll('.payment-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('selected'));
+                this.classList.add('selected');
+                updateWalletStatus();
+            });
+        });
+        
+        
+        document.getElementById('completePayment').addEventListener('click', async function() {
+            const selectedMethod = document.querySelector('.payment-option.selected').id;
+            
+            if (selectedMethod === 'walletOption') {
+               
+                const walletBalance = <%= patient.wallet.balance %>;
+                if (walletBalance < appointmentPrice) {
+                    showNotification('رصيد المحفظة غير كافٍ', 'error');
+                    return;
+                }
+                
+                
+                if (!confirm(`هل أنت متأكد من دفع ${appointmentPrice} ر.س من محفظتك؟`)) {
+                    return;
+                }
+                
+                
+                try {
+                    document.getElementById('completePayment').disabled = true;
+                    document.getElementById('completePayment').innerHTML = '<span class="loading"></span>';
+                    
+                    const response = await axios.post('/process-wallet-payment', {
+                        doctorId: document.querySelector('input[name="doctorId"]').value,
+                        date: document.getElementById('date').value,
+                        time: document.getElementById('selectedTime').value,
+                        notes: document.getElementById('notes').value,
+                        amount: appointmentPrice,
+                        _csrf: document.querySelector('input[name="_csrf"]').value
+                    });
+                    
+                    if (response.data.success) {
+                        showNotification('تم الدفع بنجاح وتأكيد الحجز', 'success');
+                        setTimeout(() => {
+                            window.location.href = '/'; // أو أي صفحة أخرى مناسبة
+                        }, 2000);
+                    } else {
+                        showNotification(response.data.message || 'حدث خطأ أثناء الدفع', 'error');
+                        document.getElementById('completePayment').disabled = false;
+                        document.getElementById('completePayment').textContent = 'إتمام الدفع';
+                    }
+                } catch (error) {
+                    console.error('Payment error:', error);
+                    showNotification('حدث خطأ أثناء عملية الدفع', 'error');
+                    document.getElementById('completePayment').disabled = false;
+                    document.getElementById('completePayment').textContent = 'إتمام الدفع';
+                }
+            } else {
+               
+                showNotification('سيتم توجيهك إلى صفحة الدفع بالبطاقة', 'info');
+            }
+        });
+    });
+    
+    function updateWalletStatus() {
+        const walletBalance = <%= patient.wallet.balance %>;
+        const selectedMethod = document.querySelector('.payment-option.selected').id;
+        
+        if (selectedMethod === 'walletOption') {
+            if (walletBalance >= appointmentPrice) {
+                document.getElementById('walletStatus').textContent = 'رصيدك كافٍ لإتمام العملية';
+                document.getElementById('walletStatus').style.color = 'green';
+                document.getElementById('completePayment').disabled = false;
+            } else {
+                document.getElementById('walletStatus').textContent = 'رصيدك غير كافٍ لإتمام العملية';
+                document.getElementById('walletStatus').style.color = 'red';
+                document.getElementById('completePayment').disabled = true;
+            }
+        }
+    }
+</script>
+</body>
+</html>
+<%- include('footerpatient') %>
