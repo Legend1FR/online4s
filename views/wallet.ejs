@@ -1,0 +1,161 @@
+<!-- views/wallet.ejs -->
+<%- include('headerpatient') %>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محفظتي</title>
+    <style>
+        :root {
+            --primary-color: #2176FF;
+            --secondary-color: #33A1FD;
+            --positive-color: #28a745;
+            --negative-color: #dc3545;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 0;
+            padding-top: 80px; /* لمنع تداخل الهيدر مع المحتوى */
+        }
+        
+        .main-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .wallet-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin-top: 20px;
+        }
+        
+        .balance-card {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .transactions-header {
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+        }
+        
+        .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            align-items: center;
+            transition: background-color 0.3s;
+        }
+        
+        .transaction-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .transaction-info {
+            flex: 1;
+        }
+        
+        .transaction-amount {
+            font-weight: bold;
+            min-width: 100px;
+            text-align: left;
+        }
+        
+        .positive {
+            color: var(--positive-color);
+        }
+        
+        .negative {
+            color: var(--negative-color);
+        }
+        
+        .transaction-date {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .no-transactions {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+   
+    
+
+    <div class="main-container">
+        <div class="wallet-container">
+            <h1 style="text-align: center; color: var(--primary-color); margin-bottom: 30px;">محفظتي</h1>
+            
+            <div class="balance-card">
+                <h2 style="margin-bottom: 15px;">الرصيد الحالي</h2>
+                <div style="font-size: 2.5rem; font-weight: bold;">
+                    <%= patient.wallet.balance.toFixed(2) %> ر.س
+                </div>
+            </div>
+            
+            <h2 class="transactions-header">سجل المعاملات</h2>
+            
+            <% if (patient.wallet.transactions.length === 0) { %>
+                <div class="no-transactions">
+                    لا توجد معاملات حتى الآن
+                </div>
+            <% } else { %>
+                <div class="transactions-list">
+                    <% patient.wallet.transactions.forEach(transaction => { %>
+                        <div class="transaction-item">
+                            <div class="transaction-info">
+                                <div style="font-weight: bold;"><%= transaction.description %></div>
+                                <div class="transaction-date">
+                                    <%= new Date(transaction.date).toLocaleDateString('ar-SA', { 
+                                        weekday: 'long', 
+                                        year: 'numeric', 
+                                        month: 'long', 
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    }) %>
+                                </div>
+                            </div>
+                            <div class="transaction-amount <%= transaction.amount > 0 ? 'positive' : 'negative' %>">
+                                <%= transaction.amount > 0 ? '+' : '' %><%= transaction.amount.toFixed(2) %> ر.س
+                            </div>
+                        </div>
+                    <% }); %>
+                </div>
+            <% } %>
+        </div>
+    </div>
+
+    <script>
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            window.addEventListener('click', function(e) {
+                const patientMenu = document.getElementById('patientMenu');
+                if (patientMenu && !e.target.closest('#patientname')) {
+                    patientMenu.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+<%- include('footerpatient') %>
