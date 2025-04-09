@@ -11,6 +11,7 @@
   "description": "",
   "dependencies": {
     "@daily-co/daily-js": "^0.77.0",
+    "@google-cloud/translate": "^9.0.1",
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.3",
     "cookie-parser": "^1.4.7",
