@@ -142,23 +142,22 @@ appointmentSchema.pre('save', async function(next) {
     next();
 });
 
-// Post-save hook to notify patient
+
 appointmentSchema.post('save', async function(doc) {
     if (doc.status === 'مؤكد' && doc.isNew) {
-        // Here you would typically send a notification to the patient
-        // This could be an email, SMS, or Socket.io notification
+      
         console.log(`New appointment confirmed for patient ${doc.patient}`);
     }
 });
 
-// Method to start session
+
 appointmentSchema.methods.startSession = async function() {
     this.sessionStartedAt = new Date();
     this.status = 'مكتمل';
     await this.save();
 };
 
-// Method to end session
+
 appointmentSchema.methods.endSession = async function() {
     this.sessionEndedAt = new Date();
     this.sessionDuration = Math.floor((this.sessionEndedAt - this.sessionStartedAt) / 1000 / 60);
