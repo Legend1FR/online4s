@@ -195,250 +195,148 @@ const receptionistAuth = async (req, res, next) => {
         res.redirect("/receptionist/login");
     }
 };
-
-// Socket.io Real-time Communication
-const activeSessions = new Map();
-
-io.on('connection', (socket) => {
-    console.log('New user connected:', socket.id);
-
-    socket.on('joinSession', async ({ sessionId, doctorId, patientId, userType }) => {
-        try {
-            const session = await Appointment.findById(sessionId)
-                .populate('doctor', 'username profileImage')
-                .populate('patient', 'name profileImage');
-
-            if (!session) {
-                socket.emit('error', { message: 'الجلسة غير موجودة' });
-                return;
-            }
-
-            if (
-                (userType === 'doctor' && session.doctor._id.toString() !== doctorId) ||
-                (userType === 'patient' && session.patient._id.toString() !== patientId)
-            ) {
-                socket.emit('error', { message: 'ليس لديك صلاحية الدخول لهذه الجلسة' });
-                return;
-            }
-
-            const roomId = `session_${sessionId}`;
-            socket.join(roomId);
-
-            if (!activeSessions.has(sessionId)) {
-                activeSessions.set(sessionId, { roomId, participants: [] });
-            }
-            activeSessions.get(sessionId).participants.push(socket.id);
-
-            if (userType === 'doctor') {
-                io.to(roomId).emit('sessionStarted', {
-                    sessionId,
-                    duration: 30 * 60,
-                    startTime: new Date()
-                });
-
-                io.to(`patient_${patientId}`).emit('sessionReady', {
-                    sessionId,
-                    doctorName: session.doctor.username,
-                    doctorImage: session.doctor.profileImage
-                });
-            }
-
-            socket.emit('sessionJoined', { roomId });
-        } catch (error) {
-            console.error('Session join error:', error);
-            socket.emit('error', { message: 'حدث خطأ في الاتصال بالجلسة' });
-        }
-    });
-
-    // بقية معالجات Socket.io كما هي (sendMessage, endSession, disconnect)
-
-
-  // Handle Messages
-  socket.on('sendMessage', ({ sessionId, sender, message }) => {
-    const roomId = `session_${sessionId}`;
-    io.to(roomId).emit('newMessage', { sender, message, timestamp: new Date() });
-  });
-
-  // End Session
-  socket.on('endSession', async ({ sessionId }) => {
-    const roomId = `session_${sessionId}`;
-    io.to(roomId).emit('sessionEnded', { endTime: new Date() });
-    activeSessions.delete(sessionId);
-  });
-
-  // Disconnect
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-    // Clean up any sessions this socket was part of
-    activeSessions.forEach((session, sessionId) => {
-      if (session.participants.includes(socket.id)) {
-        io.to(session.roomId).emit('participantLeft', { socketId: socket.id });
-      }
-    });
-  });
-});
-
-
-// Doctor Sessions Route
 app.get("/doctor/sessions", doctorAuth, async (req, res) => {
     try {
-      const sessions = await Appointment.find({
-        doctor: req.doctor._id,
-        
-      }).populate({
-        path: 'patient',
-        select: 'name profileImage',
-        options: { allowNull: true }
-      }).sort({ date: 1, time: 1 });
-  
+      const sessions = await Appointment.find({ doctor: req.doctor._id })
+        .populate("patient", "name profileImage")
+        .sort({ date: 1, time: 1 });
       res.render("doctor-sessions", {
         doctor: req.doctor,
-        sessions: sessions || [],
-        csrfToken: req.csrfToken()
+        sessions,
+        csrfToken: req.csrfToken(),
       });
     } catch (error) {
-      console.error("Error loading doctor sessions:", error);
-      res.status(500).render('error', { 
-        message: "حدث خطأ أثناء تحميل الجلسات",
-        csrfToken: req.csrfToken()
-      });
+      res.status(500).json({ error: "خطأ في تحميل الجلسات" });
     }
   });
-  
-  // Patient Sessions Route
-  app.get('/patient/sessions', verii, csrfProtection, async (req, res) => {
+// Patient Sessions Page
+app.get("/patient/sessions", verii, async (req, res) => {
     try {
       const sessions = await Appointment.find({
         patient: req.patient._id,
-        date: { $gte: new Date() }
-      }).populate('doctor', 'username profileImage specialization')
+        date: { $gte: new Date() },
+      })
+        .populate("doctor", "username profileImage specialization")
         .sort({ date: 1, time: 1 });
-  
-      res.render('patient-sessions', {
+      res.render("patient-sessions", {
         patient: req.patient,
         sessions,
-        csrfToken: req.csrfToken()
+        csrfToken: req.csrfToken(),
       });
     } catch (error) {
-      console.error("Error loading patient sessions:", error);
-      res.status(500).render('error', { 
-        message: "حدث خطأ أثناء تحميل الجلسات",
-        csrfToken: req.csrfToken()
-      });
+      res.status(500).json({ error: "خطأ في تحميل الجلسات" });
     }
   });
   
-  // Start Session Route
-  app.post('/api/sessions/start', doctorAuth, async (req, res) => {
+  // Start Session API
+  app.post("/api/sessions/start", doctorAuth, async (req, res) => {
     try {
-        const { sessionId } = req.body;
-        const session = await Appointment.findById(sessionId)
-            .populate('patient', '_id name')
-            .populate('doctor', '_id username profileImage');
-
-        if (!session) {
-            return res.status(404).json({ error: 'الجلسة غير موجودة' });
-        }
-
-        if (session.doctor._id.toString() !== req.doctor._id.toString()) {
-            return res.status(403).json({ error: 'غير مصرح لك ببدء هذه الجلسة' });
-        }
-
-        
-
-        // تحديث حالة الجلسة لبدء الجلسة
-        await session.startSession();
-
-        // إرسال إشعار للمريض عبر Socket.io
-        io.to(`patient_${session.patient._id}`).emit('sessionReady', {
-            sessionId: session._id,
-            doctorName: req.doctor.username,
-            doctorImage: req.doctor.profileImage
-        });
-
-        res.json({
-            success: true,
-            sessionId: session._id,
-            patientName: session.patient.name,
-            redirectUrl: `/session/${session._id}`
-        });
+      const { sessionId } = req.body;
+      if (!sessionId) return res.status(400).json({ error: "معرف الجلسة مفقود" });
+  
+      const session = await Appointment.findById(sessionId).populate("patient");
+      if (!session) return res.status(404).json({ error: "الجلسة غير موجودة" });
+      if (session.doctor.toString() !== req.doctor._id.toString()) {
+        return res.status(403).json({ error: "غير مصرح" });
+      }
+  
+      await session.startSession();
+      io.to(sessionId).emit("sessionStarted", {
+        sessionId,
+        doctorName: req.doctor.username,
+      });
+  
+      res.json({ success: true, redirectUrl: `/doctor/session/${sessionId}` });
     } catch (error) {
-        console.error('Error starting session:', error);
-        res.status(500).json({ error: 'فشل في بدء الجلسة: ' + error.message });
+      res.status(500).json({ error: "فشل في بدء الجلسة" });
     }
-});
-app.get('/session/:id', async (req, res) => {
+  });
+  
+  // Doctor Session Page
+  app.get("/doctor/session/:id", doctorAuth, async (req, res) => {
     try {
-        const token = req.cookies.token || req.cookies.doctor_token;
-        if (!token) {
-            return res.redirect('/login'); // إعادة توجيه إلى صفحة تسجيل الدخول إذا لم يكن هناك توكن
-        }
-
-        let user, userType;
-        try {
-            const decoded = jwt.verify(token, secret);
-            user = await Doctor.findById(decoded._id) || await Patient.findById(decoded._id);
-            userType = user instanceof Doctor ? 'doctor' : 'patient';
-        } catch (error) {
-            return res.redirect('/login'); // إعادة توجيه إذا كان التوكن غير صالح
-        }
-
-        if (!user) {
-            return res.redirect('/login');
-        }
-
-        const session = await Appointment.findById(req.params.id)
-            .populate('doctor', 'username profileImage')
-            .populate('patient', 'name profileImage');
-
-        if (!session) {
-            return res.status(404).render('error', {
-                message: 'الجلسة غير موجودة',
-                csrfToken: req.csrfToken()
-            });
-        }
-
-        // التحقق من أن المستخدم هو إما الطبيب أو المريض المرتبط بالجلسة
-        if (
-            (userType === 'doctor' && session.doctor._id.toString() !== user._id.toString()) ||
-            (userType === 'patient' && session.patient._id.toString() !== user._id.toString())
-        ) {
-            return res.status(403).render('error', {
-                message: 'غير مصرح لك بالوصول إلى هذه الجلسة',
-                csrfToken: req.csrfToken()
-            });
-        }
-
-        res.render('session', {
-            session,
-            userType,
-            csrfToken: req.csrfToken()
-        });
+      const session = await Appointment.findById(req.params.id).populate(
+        "patient",
+        "name"
+      );
+      if (!session) return res.status(404).json({ error: "الجلسة غير موجودة" });
+      if (session.doctor.toString() !== req.doctor._id.toString()) {
+        return res.status(403).json({ error: "غير مصرح" });
+      }
+      res.render("doctor-session", { session, csrfToken: req.csrfToken() });
     } catch (error) {
-        console.error('Error loading session:', error);
-        res.status(500).render('error', {
-            message: 'حدث خطأ أثناء تحميل الجلسة: ' + error.message,
-            csrfToken: req.csrfToken()
+      res.status(500).json({ error: "خطأ في تحميل الجلسة" });
+    }
+  });
+  
+  // Patient Session Page
+  app.get("/patient/session/:id", verii, async (req, res) => {
+    try {
+      const session = await Appointment.findById(req.params.id).populate(
+        "doctor",
+        "username"
+      );
+      if (!session) return res.status(404).json({ error: "الجلسة غير موجودة" });
+      if (session.patient.toString() !== req.patient._id.toString()) {
+        return res.status(403).json({ error: "غير مصرح" });
+      }
+      res.render("patient-session", { session, csrfToken: req.csrfToken() });
+    } catch (error) {
+      res.status(500).json({ error: "خطأ في تحميل الجلسة" });
+    }
+  });
+  
+  // Socket.io Configuration
+  io.on("connection", (socket) => {
+    console.log("New user connected:", socket.id);
+  
+    socket.on("joinSession", ({ sessionId, userType }) => {
+      socket.join(sessionId);
+      socket.userType = userType;
+      socket.broadcast.to(sessionId).emit("userConnected", { userType });
+    });
+  
+    // داخل حدث sendMessage في Socket.io
+socket.on("sendMessage", async ({ sessionId, message, timestamp }) => {
+    const session = await Appointment.findById(sessionId);
+    if (session) {
+        session.chatHistory.push({
+            sender: socket.userType,
+            message,
+            timestamp: new Date(timestamp),
+            type: "text"
+        });
+        await session.save();
+        const time = new Date(timestamp).toLocaleTimeString('ar-EG', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+        io.to(sessionId).emit("newMessage", {
+            sender: socket.userType,
+            text: message,
+            time: time
         });
     }
 });
   
-  // Error Handling Middleware
-  app.use((err, req, res, next) => {
-    console.error(err.stack);
-    fs.appendFileSync('error.log', `${new Date().toISOString()} - ${err.stack}\n`);
-    
-    if (req.accepts('html')) {
-      res.status(500).render('error', { 
-        message: "حدث خطأ في الخادم",
-        csrfToken: req.csrfToken() 
-      });
-    } else if (req.accepts('json')) {
-      res.status(500).json({ error: 'Internal Server Error' });
-    } else {
-      res.status(500).send('Internal Server Error');
-    }
+    socket.on("offer", ({ sessionId, offer }) => {
+      socket.to(sessionId).emit("offer", offer);
+    });
+  
+    socket.on("answer", ({ sessionId, answer }) => {
+      socket.to(sessionId).emit("answer", answer);
+    });
+  
+    socket.on("iceCandidate", ({ sessionId, candidate }) => {
+      socket.to(sessionId).emit("iceCandidate", candidate);
+    });
+  
+    socket.on("disconnect", () => {
+      console.log("User disconnected:", socket.id);
+    });
   });
+  
+  
 
 app.post('/process-wallet-payment', verii, csrfProtection, async (req, res) => {
     try {
