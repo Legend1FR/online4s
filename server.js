@@ -285,61 +285,57 @@ app.get("/patient/sessions", verii, async (req, res) => {
       res.status(500).json({ error: "خطأ في تحميل الجلسة" });
     }
   });
-
-
-// Socket.io Configuration
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
-
-  socket.on('joinSession', async ({ sessionId, userType }) => {
-    try {
-      const session = await Appointment.findById(sessionId);
-      if (!session) throw new Error('Session not found');
-      
+  
+  // Socket.io Configuration
+  io.on("connection", (socket) => {
+    console.log("New user connected:", socket.id);
+  
+    socket.on("joinSession", ({ sessionId, userType }) => {
       socket.join(sessionId);
       socket.userType = userType;
-      socket.sessionId = sessionId;
-      
-      io.to(sessionId).emit('userJoined', { userType });
-    } catch (error) {
-      console.error('Join session error:', error);
-      socket.emit('error', { message: 'Failed to join session' });
+      socket.broadcast.to(sessionId).emit("userConnected", { userType });
+    });
+  
+    
+socket.on("sendMessage", async ({ sessionId, message, timestamp }) => {
+    const session = await Appointment.findById(sessionId);
+    if (session) {
+        session.chatHistory.push({
+            sender: socket.userType,
+            message,
+            timestamp: new Date(timestamp),
+            type: "text"
+        });
+        await session.save();
+        const time = new Date(timestamp).toLocaleTimeString('ar-EG', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+        io.to(sessionId).emit("newMessage", {
+            sender: socket.userType,
+            text: message,
+            time: time
+        });
     }
-  });
-
-  socket.on('offer', async (offer) => {
-    try {
-      const session = await Appointment.findById(socket.sessionId);
-      if (!session) throw new Error('Session not found');
-      
-      socket.to(socket.sessionId).emit('offer', offer);
-    } catch (error) {
-      console.error('Offer error:', error);
-      socket.emit('error', { message: 'Failed to send offer' });
-    }
-  });
-
-  socket.on('answer', async (answer) => {
-    try {
-      const session = await Appointment.findById(socket.sessionId);
-      if (!session) throw new Error('Session not found');
-      
-      socket.to(socket.sessionId).emit('answer', answer);
-    } catch (error) {
-      console.error('Answer error:', error);
-      socket.emit('error', { message: 'Failed to send answer' });
-    }
-  });
-
-  socket.on('iceCandidate', (candidate) => {
-    socket.to(socket.sessionId).emit('iceCandidate', candidate);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-  });
 });
-
+  
+    socket.on("offer", ({ sessionId, offer }) => {
+      socket.to(sessionId).emit("offer", offer);
+    });
+  
+    socket.on("answer", ({ sessionId, answer }) => {
+      socket.to(sessionId).emit("answer", answer);
+    });
+  
+    socket.on("iceCandidate", ({ sessionId, candidate }) => {
+      socket.to(sessionId).emit("iceCandidate", candidate);
+    });
+  
+    socket.on("disconnect", () => {
+      console.log("User disconnected:", socket.id);
+    });
+  });
+  
   
 
 app.post('/process-wallet-payment', verii, csrfProtection, async (req, res) => {
