@@ -1,72 +1,229 @@
-<%- include('headerpatient') %>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>جلساتي</title>
+  <title>جلسة مع د. <%= session.doctor.username %></title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    .session-card { transition: transform 0.3s, box-shadow 0.3s; }
-    .session-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
-    .notification { position: fixed; top: 20px; right: 20px; z-index: 1000; }
+    .video-container { position: relative; }
+    .video-placeholder { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    .message {
+      max-width: 70%;
+      padding: 12px;
+      border-radius: 20px;
+      margin: 8px 0;
+      transition: opacity 0.3s;
+    }
+    .message.sent {
+      background: #007bff;
+      color: white;
+      margin-left: auto;
+      border-bottom-right-radius: 2px;
+    }
+    .message.received {
+      background: #e9ecef;
+      color: #333;
+      margin-right: auto;
+      border-bottom-left-radius: 2px;
+    }
+    .message-time {
+      font-size: 0.75rem;
+      color: #666;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body class="bg-gray-100 font-sans">
-  <div class="container mx-auto p-6">
-    <div class="text-center mb-6">
-      <h1 class="text-2xl font-bold text-gray-800">جلساتي المحجوزة</h1>
-      <p class="text-gray-600">عرض جميع الجلسات مع الأطباء</p>
+  <div class="flex flex-col h-screen">
+    <div class="bg-blue-600 text-white p-4 text-center">
+      <h2 class="text-xl font-bold">جلسة مع د. <%= session.doctor.username %></h2>
+      <div id="connectionStatus" class="bg-yellow-100 text-yellow-800 p-2 text-center hidden">
+        جاري إنشاء الاتصال...
+      </div>
     </div>
-    <div id="sessionsList" class="space-y-4 max-w-lg mx-auto">
-      <% if (sessions.length === 0) { %>
-        <p class="text-gray-600">لا توجد لديك جلسات محجوزة حالياً</p>
-      <% } else { %>
-        <% sessions.forEach(session => { %>
-          <div class="session-card bg-white rounded-lg p-4 shadow-lg flex items-center justify-between">
-            <div class="flex items-center">
-              <img src="<%= session.doctor.profileImage || '/images/default-doctor.jpg' %>" alt="<%= session.doctor.username %>" class="w-16 h-16 rounded-full mr-4">
-              <div>
-                <p class="font-bold text-gray-800"><%= session.doctor.username %></p>
-                <p class="text-gray-600"><%= session.doctor.specialization %></p>
-                <p class="text-gray-600">
-                  <i class="far fa-calendar-alt"></i> <%= new Date(session.date).toLocaleDateString('ar-EG') %> |
-                  <i class="far fa-clock"></i> <%= session.time %>
-                </p>
-              </div>
-            </div>
-            <button class="join-session-btn bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600" data-session-id="<%= session._id %>">انضم إلى الجلسة</button>
-          </div>
-        <% }); %>
-      <% } %>
+    <div class="flex flex-1 overflow-hidden">
+      <div class="flex-2 bg-gray-900 video-container">
+        <div id="remoteVideoPlaceholder" class="video-placeholder flex flex-col items-center justify-center text-white bg-gray-700">
+          <i class="fas fa-user-doctor text-6xl mb-4"></i>
+          <p>في انتظار اتصال الدكتور...</p>
+        </div>
+        <video id="remoteVideo" autoplay playsinline class="w-full h-full object-cover hidden"></video>
+        <video id="localVideo" autoplay muted playsinline class="absolute bottom-4 right-4 w-48 h-36 border-2 border-white rounded-lg hidden"></video>
+      </div>
+      <div class="flex-1 flex flex-col bg-white border-l">
+        <div class="p-4 border-b font-bold text-gray-800">المحادثة</div>
+        <div id="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
+        <div class="p-4 border-t flex">
+          <input id="messageInput" type="text" class="flex-1 p-2 border rounded-full outline-none" placeholder="اكتب رسالتك...">
+          <button id="sendMessageBtn" class="bg-blue-600 text-white p-2 ml-2 rounded-full w-10 h-10 flex items-center justify-center">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </div>
+        <div id="errorMessage" class="text-red-500 text-center p-2 hidden"></div>
+      </div>
     </div>
   </div>
-
-  <div id="notification" class="notification hidden bg-blue-500 text-white p-4 rounded-lg shadow-lg"></div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
+    const sessionId = "<%= session._id %>";
+    const userType = "patient";
 
-    document.querySelectorAll(".join-session-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const sessionId = btn.getAttribute("data-session-id");
-        window.location.href = `/patient/session/${sessionId}`;
-      });
-    });
-
-    socket.on("sessionStarted", (data) => {
-      showNotification(`الجلسة مع د. ${data.doctorName} بدأت الآن!`, "bg-green-500");
-    });
-
-    function showNotification(message, bgColor) {
-      const notification = document.getElementById("notification");
-      notification.textContent = message;
-      notification.className = `notification ${bgColor} text-white p-4 rounded-lg shadow-lg`;
-      notification.classList.remove("hidden");
-      setTimeout(() => notification.classList.add("hidden"), 5000);
+    // تحديث حالة الاتصال
+    function updateConnectionStatus(status, isError = false) {
+      const statusDiv = document.getElementById("connectionStatus");
+      statusDiv.textContent = status;
+      statusDiv.classList.remove("hidden", "bg-green-100", "bg-red-100", "text-green-800", "text-red-800");
+      
+      if (isError) {
+        statusDiv.classList.add("bg-red-100", "text-red-800");
+      } else if (status.includes("متصلة")) {
+        statusDiv.classList.add("bg-green-100", "text-green-800");
+      }
     }
+
+    // عرض الخطأ
+    function showError(message) {
+      const errorDiv = document.getElementById("errorMessage");
+      errorDiv.textContent = message;
+      errorDiv.classList.remove("hidden");
+      setTimeout(() => errorDiv.classList.add("hidden"), 5000);
+    }
+
+    // إعداد اتصال WebRTC
+    const configuration = { 
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:global.stun.twilio.com:3478?transport=udp" }
+      ] 
+    };
+    const peerConnection = new RTCPeerConnection(configuration);
+
+    // تعقب حالة الاتصال
+    peerConnection.addEventListener('connectionstatechange', () => {
+      console.log('Connection state:', peerConnection.connectionState);
+      if (peerConnection.connectionState === 'connected') {
+        updateConnectionStatus("الاتصال نشط");
+      }
+    });
+
+    peerConnection.addEventListener('iceconnectionstatechange', () => {
+      console.log('ICE connection state:', peerConnection.iceConnectionState);
+      if (peerConnection.iceConnectionState === 'failed') {
+        updateConnectionStatus("فشل في إنشاء الاتصال", true);
+      }
+    });
+
+    // إعداد وسائط الفيديو والصوت
+    async function initMedia() {
+      try {
+        updateConnectionStatus("جاري تحضير الكاميرا والميكروفون...");
+        
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: true, 
+          audio: true 
+        }).catch(error => {
+          console.error('Error accessing media devices:', error);
+          throw error;
+        });
+        
+        document.getElementById("localVideo").srcObject = stream;
+        document.getElementById("localVideo").classList.remove("hidden");
+        
+        // إضافة تيار الوسائط إلى اتصال WebRTC
+        stream.getTracks().forEach(track => {
+          peerConnection.addTrack(track, stream);
+          console.log('Added track:', track.kind);
+        });
+        
+        // إنشاء عرض اتصال وإرساله
+        updateConnectionStatus("جاري الاتصال بالطبيب...");
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        socket.emit("offer", { sessionId, offer });
+
+        // معالجة إجابة الطبيب
+        socket.on("answer", async answer => {
+          try {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+          } catch (error) {
+            console.error('Error setting remote description:', error);
+            showError("فشل في إنشاء الاتصال: " + error.message);
+          }
+        });
+
+        // عند استقبال تيار الوسائط من الطرف الآخر
+        peerConnection.ontrack = event => {
+          console.log('Received remote stream');
+          document.getElementById("remoteVideo").srcObject = event.streams[0];
+          document.getElementById("remoteVideo").classList.remove("hidden");
+          document.getElementById("remoteVideoPlaceholder").classList.add("hidden");
+          updateConnectionStatus("الاتصال نشط");
+        };
+
+        // معالجة مرشحات ICE
+        peerConnection.onicecandidate = event => {
+          if (event.candidate) {
+            console.log('Sending ICE candidate:', event.candidate);
+            socket.emit("iceCandidate", { sessionId, candidate: event.candidate });
+          } else {
+            console.log('ICE gathering complete');
+          }
+        };
+
+        // الانضمام إلى الجلسة
+        socket.emit("joinSession", { sessionId, userType });
+
+      } catch (error) {
+        console.error('Error in initMedia:', error);
+        showError("فشل في الوصول إلى الكاميرا أو الميكروفون: " + error.message);
+        updateConnectionStatus("فشل في تحضير الأجهزة", true);
+      }
+    }
+
+    // معالجة مرشحات ICE الواردة
+    socket.on("iceCandidate", async candidate => {
+      try {
+        console.log('Received ICE candidate:', candidate);
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (error) {
+        console.error('Error adding ICE candidate:', error);
+      }
+    });
+
+    // معالجة الرسائل الجديدة
+    socket.on("newMessage", message => {
+      const messagesContainer = document.getElementById("messagesContainer");
+      const messageElement = document.createElement("div");
+      messageElement.classList.add("message", "p-3", "rounded-lg", message.sender === userType ? "sent" : "received");
+      messageElement.innerHTML = `
+        <div class="message-text">${message.text}</div>
+        <div class="message-time">${message.time}</div>
+      `;
+      messagesContainer.appendChild(messageElement);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    });
+
+    // إرسال الرسائل
+    document.getElementById("sendMessageBtn").addEventListener("click", () => {
+      const messageInput = document.getElementById("messageInput");
+      const message = messageInput.value.trim();
+      if (message) {
+        const timestamp = new Date();
+        socket.emit("sendMessage", { 
+          sessionId, 
+          message,
+          timestamp
+        });
+        messageInput.value = "";
+      }
+    });
+
+    // بدء تشغيل الوسائط
+    initMedia();
   </script>
 </body>
 </html>
-<%- include('footerpatient') %>
