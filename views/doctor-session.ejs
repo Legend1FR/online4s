@@ -1,6 +1,3 @@
-
-
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -11,7 +8,24 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     .video-container { position: relative; }
-    .video-placeholder { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    .video-placeholder { 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: rgba(0, 0, 0, 0.7);
+      z-index: 10;
+      transition: opacity 0.3s;
+    }
+    .video-placeholder.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
     .message {
       max-width: 70%;
       padding: 12px;
@@ -36,6 +50,23 @@
       color: #666;
       margin-top: 4px;
     }
+    .connection-status {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+    }
+    .spinner {
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -45,12 +76,22 @@
     </div>
     <div class="flex flex-1 overflow-hidden">
       <div class="flex-2 bg-gray-900 video-container">
-        <div id="remoteVideoPlaceholder" class="video-placeholder flex flex-col items-center justify-center text-white bg-gray-700">
-          <i class="fas fa-user-injured text-6xl mb-4"></i>
-          <p>في انتظار اتصال المريض...</p>
+        <div id="remoteVideoPlaceholder" class="video-placeholder text-white">
+          <div class="text-center">
+            <i class="fas fa-user-injured text-6xl mb-4"></i>
+            <p class="text-xl mb-2">في انتظار اتصال المريض...</p>
+            <div class="flex items-center justify-center">
+              <div class="spinner mr-2"><i class="fas fa-circle-notch text-2xl"></i></div>
+              <span>جاري الاتصال...</span>
+            </div>
+          </div>
         </div>
         <video id="remoteVideo" autoplay playsinline class="w-full h-full object-cover"></video>
         <video id="localVideo" autoplay muted playsinline class="absolute bottom-4 right-4 w-48 h-36 border-2 border-white rounded-lg"></video>
+        <div id="connectionStatus" class="connection-status hidden">
+          <i class="fas fa-circle text-xs mr-1"></i>
+          <span>جاري الاتصال...</span>
+        </div>
       </div>
       <div class="flex-1 flex flex-col bg-white border-l">
         <div class="p-4 border-b font-bold text-gray-800">المحادثة</div>
@@ -71,40 +112,104 @@
     const socket = io();
     const sessionId = "<%= session._id %>";
     const userType = "doctor";
+    let connectionTimeout;
+
+    // Improved connection status management
+    function updateConnectionStatus(status, isError = false) {
+      const statusElement = document.getElementById("connectionStatus");
+      statusElement.classList.remove("hidden");
+      statusElement.innerHTML = `
+        <i class="fas fa-circle text-xs mr-1 ${isError ? 'text-red-500' : 'text-yellow-500'}"></i>
+        <span>${status}</span>
+      `;
+      
+      if (isError) {
+        statusElement.classList.add("bg-red-500");
+        statusElement.classList.remove("bg-black");
+      } else {
+        statusElement.classList.add("bg-black");
+        statusElement.classList.remove("bg-red-500");
+      }
+    }
 
     socket.emit("joinSession", { sessionId, userType });
 
-    const configuration = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+    const configuration = { 
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+        { urls: "stun:stun2.l.google.com:19302" }
+      ] 
+    };
     const peerConnection = new RTCPeerConnection(configuration);
+
+    // Set connection timeout (30 seconds)
+    connectionTimeout = setTimeout(() => {
+      if (!peerConnection.remoteDescription) {
+        showError("تعذر الاتصال بالمريض. يرجى المحاولة مرة أخرى.");
+        updateConnectionStatus("فشل الاتصال", true);
+      }
+    }, 30000);
 
     async function initMedia() {
       try {
+        updateConnectionStatus("جاري إعداد الاتصال...");
+        
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         document.getElementById("localVideo").srcObject = stream;
         stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
 
         socket.on("offer", async offer => {
-          await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-          const answer = await peerConnection.createAnswer();
-          await peerConnection.setLocalDescription(answer);
-          socket.emit("answer", { sessionId, answer });
+          try {
+            updateConnectionStatus("جاري قبول الاتصال...");
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+            
+            const answer = await peerConnection.createAnswer({
+              offerToReceiveAudio: true,
+              offerToReceiveVideo: true
+            });
+            
+            await peerConnection.setLocalDescription(answer);
+            socket.emit("answer", { sessionId, answer });
+            
+            updateConnectionStatus("جاري إكمال الاتصال...");
+          } catch (error) {
+            showError("فشل في إعداد اتصال الفيديو: " + error.message);
+            updateConnectionStatus("فشل في الاتصال", true);
+          }
         });
       } catch (error) {
+        clearTimeout(connectionTimeout);
         showError("فشل في الوصول إلى الكاميرا أو الميكروفون: " + error.message);
+        updateConnectionStatus("فشل في الاتصال", true);
       }
     }
 
     peerConnection.ontrack = event => {
+      clearTimeout(connectionTimeout);
       document.getElementById("remoteVideo").srcObject = event.streams[0];
       document.getElementById("remoteVideoPlaceholder").classList.add("hidden");
+      document.getElementById("connectionStatus").classList.add("hidden");
     };
 
     peerConnection.onicecandidate = event => {
-      if (event.candidate) socket.emit("iceCandidate", { sessionId, candidate: event.candidate });
+      if (event.candidate) {
+        socket.emit("iceCandidate", { sessionId, candidate: event.candidate });
+      }
+    };
+
+    peerConnection.oniceconnectionstatechange = () => {
+      if (peerConnection.iceConnectionState === "disconnected") {
+        updateConnectionStatus("تم قطع الاتصال", true);
+      }
     };
 
     socket.on("iceCandidate", async candidate => {
-      await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      try {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (error) {
+        console.error("Error adding ICE candidate:", error);
+      }
     });
 
     socket.on("newMessage", message => {
@@ -140,7 +245,12 @@
       setTimeout(() => errorDiv.classList.add("hidden"), 5000);
     }
 
-    initMedia();
+    // Initialize media with error handling
+    initMedia().catch(error => {
+      console.error("Media initialization failed:", error);
+      showError("فشل في بدء الجلسة. يرجى تحديث الصفحة والمحاولة مرة أخرى.");
+      updateConnectionStatus("فشل في الاتصال", true);
+    });
   </script>
 </body>
 </html>
