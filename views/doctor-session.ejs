@@ -60,6 +60,10 @@
       padding: 8px 16px;
       border-radius: 20px;
       font-size: 14px;
+      z-index: 20;
+    }
+    .connection-status.hidden {
+      display: none;
     }
     .spinner {
       animation: spin 1s linear infinite;
@@ -116,16 +120,22 @@
 
     function updateConnectionStatus(status, isError = false) {
       const statusElement = document.getElementById("connectionStatus");
-      statusElement.classList.remove("hidden");
+      const iconClass = isError ? 'text-red-500' : 'text-yellow-500';
+      
       statusElement.innerHTML = `
-        <i class="fas fa-circle text-xs mr-1 ${isError ? 'text-red-500' : 'text-yellow-500'}"></i>
+        <i class="fas fa-circle text-xs mr-1 ${iconClass}"></i>
         <span>${status}</span>
       `;
       
       if (isError) {
+        statusElement.classList.remove("hidden");
         statusElement.classList.add("bg-red-500");
         statusElement.classList.remove("bg-black");
+      } else if (status === "connected") {
+        // إخفاء عنصر الحالة عند اكتمال الاتصال
+        statusElement.classList.add("hidden");
       } else {
+        statusElement.classList.remove("hidden");
         statusElement.classList.add("bg-black");
         statusElement.classList.remove("bg-red-500");
       }
@@ -199,20 +209,25 @@
       clearTimeout(connectionTimeout);
       const remoteVideo = document.getElementById("remoteVideo");
       remoteVideo.srcObject = event.streams[0];
-      remoteVideo.muted = false; // تأكد من أن الصوت غير مكتوم
+      remoteVideo.muted = false;
       document.getElementById("remoteVideoPlaceholder").classList.add("hidden");
-      document.getElementById("connectionStatus").classList.add("hidden");
+      updateConnectionStatus("connected"); // تحديث الحالة عند اكتمال الاتصال
+    };
+
+    peerConnection.oniceconnectionstatechange = () => {
+      const state = peerConnection.iceConnectionState;
+      console.log("ICE connection state changed to:", state);
+      
+      if (state === "connected" || state === "completed") {
+        updateConnectionStatus("connected");
+      } else if (state === "disconnected" || state === "failed") {
+        updateConnectionStatus("تم قطع الاتصال", true);
+      }
     };
 
     peerConnection.onicecandidate = event => {
       if (event.candidate) {
         socket.emit("iceCandidate", { sessionId, candidate: event.candidate });
-      }
-    };
-
-    peerConnection.oniceconnectionstatechange = () => {
-      if (peerConnection.iceConnectionState === "disconnected") {
-        updateConnectionStatus("تم قطع الاتصال", true);
       }
     };
 
