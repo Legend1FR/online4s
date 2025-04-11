@@ -1,7 +1,4 @@
 
-
-
-
 // server.js
 
 const express = require("express");
@@ -336,7 +333,7 @@ socket.on("sendMessage", async ({ sessionId, message, timestamp }) => {
     });
   });
   
-  
+
 
 app.post('/process-wallet-payment', verii, csrfProtection, async (req, res) => {
     try {
