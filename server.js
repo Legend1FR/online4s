@@ -1,7 +1,7 @@
 
 
 
-
+// 
 // server.js
 
 const express = require("express");
@@ -209,7 +209,7 @@ app.get("/doctor/sessions", doctorAuth, async (req, res) => {
       res.status(500).json({ error: "خطأ في تحميل الجلسات" });
     }
   });
-// Patient Sessions Page
+
 app.get("/patient/sessions", verii, async (req, res) => {
     try {
       const sessions = await Appointment.find({
@@ -228,7 +228,7 @@ app.get("/patient/sessions", verii, async (req, res) => {
     }
   });
   
-  // Start Session API
+ 
   app.post("/api/sessions/start", doctorAuth, async (req, res) => {
     try {
       const { sessionId } = req.body;
@@ -252,7 +252,7 @@ app.get("/patient/sessions", verii, async (req, res) => {
     }
   });
   
-  // Doctor Session Page
+ 
   app.get("/doctor/session/:id", doctorAuth, async (req, res) => {
     try {
       const session = await Appointment.findById(req.params.id).populate(
@@ -269,7 +269,7 @@ app.get("/patient/sessions", verii, async (req, res) => {
     }
   });
   
-  // Patient Session Page
+ 
   app.get("/patient/session/:id", verii, async (req, res) => {
     try {
       const session = await Appointment.findById(req.params.id).populate(
@@ -285,18 +285,18 @@ app.get("/patient/sessions", verii, async (req, res) => {
       res.status(500).json({ error: "خطأ في تحميل الجلسة" });
     }
   });
-  
-  // Socket.io Configuration
   io.on("connection", (socket) => {
     console.log("New user connected:", socket.id);
   
     socket.on("joinSession", ({ sessionId, userType }) => {
-      socket.join(sessionId);
-      socket.userType = userType;
-      socket.broadcast.to(sessionId).emit("userConnected", { userType });
+        console.log(`User ${socket.id} joining session ${sessionId} as ${userType}`);
+        socket.join(sessionId);
+        socket.userType = userType;
+        socket.broadcast.to(sessionId).emit("userConnected", { userType });
     });
   
-    // داخل حدث sendMessage في Socket.io
+
+    
 socket.on("sendMessage", async ({ sessionId, message, timestamp }) => {
     const session = await Appointment.findById(sessionId);
     if (session) {
@@ -318,23 +318,54 @@ socket.on("sendMessage", async ({ sessionId, message, timestamp }) => {
         });
     }
 });
+
+    socket.on("sendMessage", async ({ sessionId, message, timestamp }) => {
+        console.log(`New message in session ${sessionId} from ${socket.userType}`);
+        try {
+            const session = await Appointment.findById(sessionId);
+            if (session) {
+                session.chatHistory.push({
+                    sender: socket.userType,
+                    message,
+                    timestamp: new Date(timestamp),
+                    type: "text"
+                });
+                await session.save();
+                const time = new Date(timestamp).toLocaleTimeString('ar-EG', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+                io.to(sessionId).emit("newMessage", {
+                    sender: socket.userType,
+                    text: message,
+                    time: time
+                });
+            }
+        } catch (error) {
+            console.error("Error saving message:", error);
+        }
+    });
+
   
     socket.on("offer", ({ sessionId, offer }) => {
-      socket.to(sessionId).emit("offer", offer);
+        console.log(`Offer received in session ${sessionId}`);
+        socket.to(sessionId).emit("offer", offer);
     });
   
     socket.on("answer", ({ sessionId, answer }) => {
-      socket.to(sessionId).emit("answer", answer);
+        console.log(`Answer received in session ${sessionId}`);
+        socket.to(sessionId).emit("answer", answer);
     });
   
     socket.on("iceCandidate", ({ sessionId, candidate }) => {
-      socket.to(sessionId).emit("iceCandidate", candidate);
+        console.log(`ICE candidate received in session ${sessionId}`);
+        socket.to(sessionId).emit("iceCandidate", candidate);
     });
   
     socket.on("disconnect", () => {
-      console.log("User disconnected:", socket.id);
+        console.log("User disconnected:", socket.id);
     });
-  });
+});
   
   
 
