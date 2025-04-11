@@ -7,6 +7,7 @@
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
+    /* نفس الأنماط السابقة */
     .video-container { position: relative; }
     .video-placeholder { 
       position: absolute; 
@@ -67,6 +68,12 @@
     @keyframes spin {
       100% { transform: rotate(360deg); }
     }
+    .audio-controls {
+      position: absolute;
+      bottom: 70px;
+      right: 20px;
+      z-index: 20;
+    }
   </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -88,6 +95,14 @@
         </div>
         <video id="remoteVideo" autoplay playsinline class="w-full h-full object-cover"></video>
         <video id="localVideo" autoplay muted playsinline class="absolute bottom-4 right-4 w-48 h-36 border-2 border-white rounded-lg"></video>
+        <div class="audio-controls">
+          <button id="toggleMic" class="bg-white p-2 rounded-full shadow-lg">
+            <i class="fas fa-microphone text-blue-600"></i>
+          </button>
+          <button id="toggleAudio" class="bg-white p-2 rounded-full shadow-lg mt-2">
+            <i class="fas fa-volume-up text-blue-600"></i>
+          </button>
+        </div>
         <div id="connectionStatus" class="connection-status hidden">
           <i class="fas fa-circle text-xs mr-1"></i>
           <span>جاري الاتصال...</span>
@@ -113,6 +128,10 @@
     const sessionId = "<%= session._id %>";
     const userType = "patient";
     let connectionTimeout;
+    let localStream;
+    let remoteStream;
+    let isMicOn = true;
+    let isAudioOn = true;
 
     function updateConnectionStatus(status, isError = false) {
       const statusElement = document.getElementById("connectionStatus");
@@ -138,7 +157,14 @@
         { urls: "stun:stun.l.google.com:19302" },
         { urls: "stun:stun1.l.google.com:19302" },
         { urls: "stun:stun2.l.google.com:19302" }
-      ] 
+      ],
+      // تحسينات لجودة الصوت
+      audio: {
+        googEchoCancellation: true,
+        googAutoGainControl: true,
+        googNoiseSuppression: true,
+        googHighpassFilter: true
+      }
     };
     const peerConnection = new RTCPeerConnection(configuration);
 
@@ -153,19 +179,35 @@
       try {
         updateConnectionStatus("جاري إعداد الاتصال...");
         
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: true, 
-          audio: true
+        const audioConstraints = {
+          echoCancellation: { exact: true },
+          noiseSuppression: { exact: true },
+          autoGainControl: { exact: true },
+          channelCount: 1,
+          sampleRate: 48000,
+          sampleSize: 16,
+          volume: 0.7
+        };
+
+        localStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: audioConstraints
         });
-        document.getElementById("localVideo").srcObject = stream;
+
+        document.getElementById("localVideo").srcObject = localStream;
         
-        stream.getTracks().forEach(track => {
-          peerConnection.addTrack(track, stream);
+        localStream.getAudioTracks().forEach(track => {
+          track.applyConstraints(audioConstraints);
+          peerConnection.addTrack(track, localStream);
+        });
+
+        localStream.getVideoTracks().forEach(track => {
+          peerConnection.addTrack(track, localStream);
         });
 
         updateConnectionStatus("جاري إنشاء عرض الاتصال...");
         
-        const offer = await peerConnection.createOffer({
+        const offer = await peerConnection.createAnswer({
           offerToReceiveAudio: true,
           offerToReceiveVideo: true
         });
@@ -184,9 +226,12 @@
 
     peerConnection.ontrack = event => {
       clearTimeout(connectionTimeout);
-      const remoteVideo = document.getElementById("remoteVideo");
-      remoteVideo.srcObject = event.streams[0];
-      remoteVideo.muted = false; // تأكد من أن الصوت غير مكتوم
+      if (!remoteStream) {
+        remoteStream = new MediaStream();
+        document.getElementById("remoteVideo").srcObject = remoteStream;
+      }
+      remoteStream.addTrack(event.track);
+      
       document.getElementById("remoteVideoPlaceholder").classList.add("hidden");
       document.getElementById("connectionStatus").classList.add("hidden");
     };
@@ -245,6 +290,26 @@
         });
         messageInput.value = "";
       }
+    });
+
+    // التحكم في الميكروفون والصوت
+    document.getElementById("toggleMic").addEventListener("click", () => {
+      isMicOn = !isMicOn;
+      localStream.getAudioTracks().forEach(track => {
+        track.enabled = isMicOn;
+      });
+      document.getElementById("toggleMic").innerHTML = 
+        isMicOn ? '<i class="fas fa-microphone text-blue-600"></i>' : 
+                  '<i class="fas fa-microphone-slash text-red-500"></i>';
+    });
+
+    document.getElementById("toggleAudio").addEventListener("click", () => {
+      isAudioOn = !isAudioOn;
+      const remoteVideo = document.getElementById("remoteVideo");
+      remoteVideo.muted = !isAudioOn;
+      document.getElementById("toggleAudio").innerHTML = 
+        isAudioOn ? '<i class="fas fa-volume-up text-blue-600"></i>' : 
+                   '<i class="fas fa-volume-mute text-red-500"></i>';
     });
 
     function showError(message) {
