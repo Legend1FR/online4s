@@ -39,9 +39,6 @@
   <div class="flex flex-col h-screen">
     <div class="bg-blue-600 text-white p-4 text-center">
       <h2 class="text-xl font-bold">جلسة مع <%= session.patient.name %></h2>
-      <div id="connectionStatus" class="bg-yellow-100 text-yellow-800 p-2 text-center hidden">
-        جاري إنشاء الاتصال...
-      </div>
     </div>
     <div class="flex flex-1 overflow-hidden">
       <div class="flex-2 bg-gray-900 video-container">
@@ -49,8 +46,8 @@
           <i class="fas fa-user-injured text-6xl mb-4"></i>
           <p>في انتظار اتصال المريض...</p>
         </div>
-        <video id="remoteVideo" autoplay playsinline class="w-full h-full object-cover hidden"></video>
-        <video id="localVideo" autoplay muted playsinline class="absolute bottom-4 right-4 w-48 h-36 border-2 border-white rounded-lg hidden"></video>
+        <video id="remoteVideo" autoplay playsinline class="w-full h-full object-cover"></video>
+        <video id="localVideo" autoplay muted playsinline class="absolute bottom-4 right-4 w-48 h-36 border-2 border-white rounded-lg"></video>
       </div>
       <div class="flex-1 flex flex-col bg-white border-l">
         <div class="p-4 border-b font-bold text-gray-800">المحادثة</div>
@@ -72,128 +69,41 @@
     const sessionId = "<%= session._id %>";
     const userType = "doctor";
 
-    // تحديث حالة الاتصال
-    function updateConnectionStatus(status, isError = false) {
-      const statusDiv = document.getElementById("connectionStatus");
-      statusDiv.textContent = status;
-      statusDiv.classList.remove("hidden", "bg-green-100", "bg-red-100", "text-green-800", "text-red-800");
-      
-      if (isError) {
-        statusDiv.classList.add("bg-red-100", "text-red-800");
-      } else if (status.includes("متصلة")) {
-        statusDiv.classList.add("bg-green-100", "text-green-800");
-      }
-    }
+    socket.emit("joinSession", { sessionId, userType });
 
-    // عرض الخطأ
-    function showError(message) {
-      const errorDiv = document.getElementById("errorMessage");
-      errorDiv.textContent = message;
-      errorDiv.classList.remove("hidden");
-      setTimeout(() => errorDiv.classList.add("hidden"), 5000);
-    }
-
-    // إعداد اتصال WebRTC
-    const configuration = { 
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:global.stun.twilio.com:3478?transport=udp" }
-      ] 
-    };
+    const configuration = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
     const peerConnection = new RTCPeerConnection(configuration);
 
-    // تعقب حالة الاتصال
-    peerConnection.addEventListener('connectionstatechange', () => {
-      console.log('Connection state:', peerConnection.connectionState);
-      if (peerConnection.connectionState === 'connected') {
-        updateConnectionStatus("الاتصال نشط");
-      }
-    });
-
-    peerConnection.addEventListener('iceconnectionstatechange', () => {
-      console.log('ICE connection state:', peerConnection.iceConnectionState);
-      if (peerConnection.iceConnectionState === 'failed') {
-        updateConnectionStatus("فشل في إنشاء الاتصال", true);
-      }
-    });
-
-    // إعداد وسائط الفيديو والصوت
     async function initMedia() {
       try {
-        updateConnectionStatus("جاري تحضير الكاميرا والميكروفون...");
-        
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: true, 
-          audio: true 
-        }).catch(error => {
-          console.error('Error accessing media devices:', error);
-          throw error;
-        });
-        
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         document.getElementById("localVideo").srcObject = stream;
-        document.getElementById("localVideo").classList.remove("hidden");
-        
-        // إضافة تيار الوسائط إلى اتصال WebRTC
-        stream.getTracks().forEach(track => {
-          peerConnection.addTrack(track, stream);
-          console.log('Added track:', track.kind);
-        });
-        
-        // معالجة عرض الاتصال من المريض
+        stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
+
         socket.on("offer", async offer => {
-          try {
-            updateConnectionStatus("جاري إنشاء الاتصال...");
-            await peerConnection.setRemoteDescription(offer);
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
-            socket.emit("answer", { sessionId, answer });
-          } catch (error) {
-            console.error('Error handling offer:', error);
-            showError("فشل في إنشاء الاتصال: " + error.message);
-          }
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+          const answer = await peerConnection.createAnswer();
+          await peerConnection.setLocalDescription(answer);
+          socket.emit("answer", { sessionId, answer });
         });
-
-        // عند استقبال تيار الوسائط من الطرف الآخر
-        peerConnection.ontrack = event => {
-          console.log('Received remote stream');
-          document.getElementById("remoteVideo").srcObject = event.streams[0];
-          document.getElementById("remoteVideo").classList.remove("hidden");
-          document.getElementById("remoteVideoPlaceholder").classList.add("hidden");
-          updateConnectionStatus("الاتصال نشط");
-        };
-
-        // معالجة مرشحات ICE
-        peerConnection.onicecandidate = event => {
-          if (event.candidate) {
-            console.log('Sending ICE candidate:', event.candidate);
-            socket.emit("iceCandidate", { sessionId, candidate: event.candidate });
-          } else {
-            console.log('ICE gathering complete');
-          }
-        };
-
-        // الانضمام إلى الجلسة
-        socket.emit("joinSession", { sessionId, userType });
-        updateConnectionStatus("في انتظار المريض...");
-
       } catch (error) {
-        console.error('Error in initMedia:', error);
         showError("فشل في الوصول إلى الكاميرا أو الميكروفون: " + error.message);
-        updateConnectionStatus("فشل في تحضير الأجهزة", true);
       }
     }
 
-    // معالجة مرشحات ICE الواردة
+    peerConnection.ontrack = event => {
+      document.getElementById("remoteVideo").srcObject = event.streams[0];
+      document.getElementById("remoteVideoPlaceholder").classList.add("hidden");
+    };
+
+    peerConnection.onicecandidate = event => {
+      if (event.candidate) socket.emit("iceCandidate", { sessionId, candidate: event.candidate });
+    };
+
     socket.on("iceCandidate", async candidate => {
-      try {
-        console.log('Received ICE candidate:', candidate);
-        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-      } catch (error) {
-        console.error('Error adding ICE candidate:', error);
-      }
+      await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
     });
 
-    // معالجة الرسائل الجديدة
     socket.on("newMessage", message => {
       const messagesContainer = document.getElementById("messagesContainer");
       const messageElement = document.createElement("div");
@@ -206,7 +116,6 @@
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
     });
 
-    // إرسال الرسائل
     document.getElementById("sendMessageBtn").addEventListener("click", () => {
       const messageInput = document.getElementById("messageInput");
       const message = messageInput.value.trim();
@@ -221,7 +130,13 @@
       }
     });
 
-    // بدء تشغيل الوسائط
+    function showError(message) {
+      const errorDiv = document.getElementById("errorMessage");
+      errorDiv.textContent = message;
+      errorDiv.classList.remove("hidden");
+      setTimeout(() => errorDiv.classList.add("hidden"), 5000);
+    }
+
     initMedia();
   </script>
 </body>
