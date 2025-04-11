@@ -114,7 +114,6 @@
     const userType = "patient";
     let connectionTimeout;
 
-    // Improved connection status management
     function updateConnectionStatus(status, isError = false) {
       const statusElement = document.getElementById("connectionStatus");
       statusElement.classList.remove("hidden");
@@ -143,7 +142,6 @@
     };
     const peerConnection = new RTCPeerConnection(configuration);
 
-    // Set connection timeout (30 seconds)
     connectionTimeout = setTimeout(() => {
       if (!peerConnection.remoteDescription) {
         showError("تعذر الاتصال بالدكتور. يرجى المحاولة مرة أخرى.");
@@ -155,9 +153,15 @@
       try {
         updateConnectionStatus("جاري إعداد الاتصال...");
         
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: true, 
+          audio: true
+        });
         document.getElementById("localVideo").srcObject = stream;
-        stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
+        
+        stream.getTracks().forEach(track => {
+          peerConnection.addTrack(track, stream);
+        });
 
         updateConnectionStatus("جاري إنشاء عرض الاتصال...");
         
@@ -171,6 +175,7 @@
         
         updateConnectionStatus("في انتظار رد الدكتور...");
       } catch (error) {
+        console.error("Error initializing media:", error);
         clearTimeout(connectionTimeout);
         showError("فشل في الوصول إلى الكاميرا أو الميكروفون: " + error.message);
         updateConnectionStatus("فشل في الاتصال", true);
@@ -179,7 +184,9 @@
 
     peerConnection.ontrack = event => {
       clearTimeout(connectionTimeout);
-      document.getElementById("remoteVideo").srcObject = event.streams[0];
+      const remoteVideo = document.getElementById("remoteVideo");
+      remoteVideo.srcObject = event.streams[0];
+      remoteVideo.muted = false; // تأكد من أن الصوت غير مكتوم
       document.getElementById("remoteVideoPlaceholder").classList.add("hidden");
       document.getElementById("connectionStatus").classList.add("hidden");
     };
@@ -200,6 +207,7 @@
       try {
         await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
       } catch (error) {
+        console.error("Error handling answer:", error);
         showError("فشل في إعداد اتصال الفيديو: " + error.message);
         updateConnectionStatus("فشل في الاتصال", true);
       }
@@ -246,7 +254,6 @@
       setTimeout(() => errorDiv.classList.add("hidden"), 5000);
     }
 
-    // Initialize media with error handling
     initMedia().catch(error => {
       console.error("Media initialization failed:", error);
       showError("فشل في بدء الجلسة. يرجى تحديث الصفحة والمحاولة مرة أخرى.");
