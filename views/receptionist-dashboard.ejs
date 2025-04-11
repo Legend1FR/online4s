@@ -1,9 +1,230 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>جلسة مع د. <%= session.doctor.username %></title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.agora.io/sdk/web/AgoraRTC-4.17.1.js"></script>
+  <style>
+    .video-container {
+      position: relative;
+      background-color: #1f2937;
+      height: 100%;
+    }
+    .video-placeholder {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: #4b5563;
+      color: white;
+      z-index: 10;
+    }
+    .video-player {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .local-video {
+      position: absolute;
+      bottom: 1rem;
+      right: 1rem;
+      width: 12rem;
+      height: 9rem;
+      border: 2px solid white;
+      border-radius: 0.5rem;
+      z-index: 20;
+    }
+    .message {
+      max-width: 70%;
+      padding: 0.75rem;
+      border-radius: 1rem;
+      margin: 0.5rem 0;
+      transition: opacity 0.3s ease;
+    }
+    .message.sent {
+      background-color: #2563eb;
+      color: white;
+      margin-left: auto;
+      border-bottom-right-radius: 0.125rem;
+    }
+    .message.received {
+      background-color: #e5e7eb;
+      color: #1f2937;
+      margin-right: auto;
+      border-bottom-left-radius: 0.125rem;
+    }
+    .message-time {
+      font-size: 0.65rem;
+      color: #6b7280;
+      margin-top: 0.25rem;
+      text-align: right;
+    }
+    .error-message {
+      background-color: #fee2e2;
+      color: #b91c1c;
+      padding: 0.5rem;
+      border-radius: 0.5rem;
+      margin: 0.5rem;
+      text-align: center;
+      display: none;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 font-sans">
+  <div class="flex flex-col h-screen">
+    <header class="bg-blue-600 text-white p-4 text-center">
+      <h2 class="text-xl font-bold">جلسة مع د. <%= session.doctor.username %></h2>
+    </header>
+    <div class="flex flex-1 overflow-hidden">
+      <div class="flex-2 video-container">
+        <div id="remoteVideoPlaceholder" class="video-placeholder">
+          <i class="fas fa-user-doctor text-6xl mb-4"></i>
+          <p>في انتظار اتصال الدكتور...</p>
+        </div>
+        <div id="remoteVideo" class="video-player"></div>
+        <div id="localVideo" class="local-video"></div>
+      </div>
+      <div class="flex-1 flex flex-col bg-white border-l">
+        <div class="p-4 border-b font-bold text-gray-800">المحادثة</div>
+        <div id="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
+        <div class="p-4 border-t flex">
+          <input
+            id="messageInput"
+            type="text"
+            class="flex-1 p-2 border rounded-full outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="اكتب رسالتك..."
+          >
+          <button
+            id="sendMessageBtn"
+            class="bg-blue-600 text-white p-2 ml-2 rounded-full w-10 h-10 flex items-center justify-center hover:bg-blue-700"
+          >
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </div>
+        <div id="errorMessage" class="error-message"></div>
+      </div>
+    </div>
+  </div>
 
-<!-- node-project\views\receptionist-dashboard.ejs file -->
-<%- include('headerrece', { title: 'لوحة تحكم موظف الاستقبال' }) %>
-<div class="content" style="width: 600px; margin: auto; background-color: #e6e6e6; padding: 20px; border-radius: 8px; text-align: center;">
-    <h2>مرحبًا، <%= receptionist.username %>!</h2>
-    <p>هذه هي لوحة التحكم الخاصة بموظف الاستقبال.</p>
-    <a href="/receptionist/logout">تسجيل الخروج</a>
-</div>
-<%- include('footerrece') %>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    (async () => {
+      try {
+        // Initialize Socket.io
+        const socket = io();
+        const sessionId = "<%= session._id %>";
+        const userType = "patient";
+        socket.emit("joinSession", { sessionId, userType });
+
+        // Agora configuration
+        const agoraAppId = "<%= agoraAppId %>";
+        const channelName = sessionId;
+        const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+
+        // Initialize Agora client
+        await client.join(agoraAppId, channelName, null, Date.now());
+
+        // Create local tracks
+        const [localAudioTrack, localVideoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+        const localPlayer = document.createElement("div");
+        localPlayer.id = "localPlayer";
+        document.getElementById("localVideo").appendChild(localPlayer);
+        localVideoTrack.play(localPlayer);
+
+        // Publish tracks
+        await client.publish([localAudioTrack, localVideoTrack]);
+
+        // Handle remote users
+        client.on("user-published", async (user, mediaType) => {
+          try {
+            await client.subscribe(user, mediaType);
+            if (mediaType === "video") {
+              const remotePlayer = document.createElement("div");
+              remotePlayer.id = `player-${user.uid}`;
+              document.getElementById("remoteVideo").appendChild(remotePlayer);
+              user.videoTrack.play(remotePlayer);
+              document.getElementById("remoteVideoPlaceholder").style.display = "none";
+            }
+            if (mediaType === "audio") {
+              user.audioTrack.play();
+            }
+          } catch (error) {
+            showError(`فشل في الاشتراك في البث: ${error.message}`);
+          }
+        });
+
+        client.on("user-unpublished", (user) => {
+          const player = document.getElementById(`player-${user.uid}`);
+          if (player) player.remove();
+          document.getElementById("remoteVideoPlaceholder").style.display = "flex";
+        });
+
+        // Chat functionality
+        const messagesContainer = document.getElementById("messagesContainer");
+        const messageInput = document.getElementById("messageInput");
+        const sendMessageBtn = document.getElementById("sendMessageBtn");
+
+        socket.on("newMessage", ({ sender, text, time }) => {
+          const messageDiv = document.createElement("div");
+          messageDiv.className = `message p-3 rounded-lg ${
+            sender === userType ? "sent" : "received"
+          }`;
+          messageDiv.innerHTML = `
+            <div class="message-text">${text}</div>
+            <div class="message-time">${time}</div>
+          `;
+          messagesContainer.appendChild(messageDiv);
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        });
+
+        sendMessageBtn.addEventListener("click", () => {
+          const message = messageInput.value.trim();
+          if (message) {
+            const timestamp = new Date();
+            socket.emit("sendMessage", { sessionId, message, timestamp });
+            messageInput.value = "";
+          }
+        });
+
+        messageInput.addEventListener("keypress", (e) => {
+          if (e.key === "Enter") {
+            sendMessageBtn.click();
+          }
+        });
+
+        // Cleanup on page unload
+        window.addEventListener("beforeunload", async () => {
+          try {
+            await client.unpublish([localAudioTrack, localVideoTrack]);
+            localAudioTrack.close();
+            localVideoTrack.close();
+            await client.leave();
+          } catch (error) {
+            console.error("Error during cleanup:", error);
+          }
+        });
+
+      } catch (error) {
+        showError(`حدث خطأ: ${error.message}`);
+      }
+    })();
+
+    function showError(message) {
+      const errorDiv = document.getElementById("errorMessage");
+      errorDiv.textContent = message;
+      errorDiv.style.display = "block";
+      setTimeout(() => {
+        errorDiv.style.display = "none";
+      }, 5000);
+    }
+  </script>
+</body>
+</html>
