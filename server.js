@@ -209,7 +209,7 @@ app.get("/doctor/sessions", doctorAuth, async (req, res) => {
       res.status(500).json({ error: "خطأ في تحميل الجلسات" });
     }
   });
-// Patient Sessions Page
+
 app.get("/patient/sessions", verii, async (req, res) => {
     try {
       const sessions = await Appointment.find({
@@ -228,7 +228,7 @@ app.get("/patient/sessions", verii, async (req, res) => {
     }
   });
   
-  // Start Session API
+ 
   app.post("/api/sessions/start", doctorAuth, async (req, res) => {
     try {
       const { sessionId } = req.body;
@@ -252,7 +252,7 @@ app.get("/patient/sessions", verii, async (req, res) => {
     }
   });
   
-  // Doctor Session Page
+ 
   app.get("/doctor/session/:id", doctorAuth, async (req, res) => {
     try {
       const session = await Appointment.findById(req.params.id).populate(
@@ -269,7 +269,7 @@ app.get("/patient/sessions", verii, async (req, res) => {
     }
   });
   
-  // Patient Session Page
+ 
   app.get("/patient/session/:id", verii, async (req, res) => {
     try {
       const session = await Appointment.findById(req.params.id).populate(
@@ -296,7 +296,7 @@ app.get("/patient/sessions", verii, async (req, res) => {
       socket.broadcast.to(sessionId).emit("userConnected", { userType });
     });
   
-    // داخل حدث sendMessage في Socket.io
+    
 socket.on("sendMessage", async ({ sessionId, message, timestamp }) => {
     const session = await Appointment.findById(sessionId);
     if (session) {
