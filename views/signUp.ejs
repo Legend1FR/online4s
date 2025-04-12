@@ -1,51 +1,186 @@
-<%- include('header', { title: 'تسجيل' }) %>
-    <div class="content" style="width: 500px; height: 500px; background-color: rgb(211, 205, 204); border-radius:14px;margin: auto; color: white; box-shadow: 2px 3px 4px navajowhite;">
-        <form action="/signUp" method="post" onsubmit="return validateForm()">
-            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <!-- تغيير "اسم المريض" إلى "اسم المستخدم" -->
-            <input type="text" placeholder="اسم المستخدم" name="name" style="border: none; background-color: rgb(17, 197, 234); width: inherit; display: block; color: white;">
-            <input type="email" placeholder="الايميل" name="email" style="border: none; background-color:  rgb(17, 197, 234); width: inherit;display: block; color: white;">
-            <input type="password" placeholder="كلمة المرور" name="password" style="border: none; background-color: rgb(17, 197, 234); width: inherit;display: block;color: white;">
-            <!-- إضافة نص توضيحي لمتطلبات كلمة المرور -->
-            
-            <button type="submit" id="submitButton" style="border: none; background-color: navy;  background-color:  rgb(17, 197, 234); display: block; color: white; cursor: pointer; width:70%; margin: auto; height: 20px;">تسجيل</button>
-            <div id="loadingSpinner" style="display: none; text-align: center; margin-top: 10px;">جاري التحميل...</div>
-        </form>
-        <% if (error) { %>
-            <div style="color: red; text-align: center; margin-top: 20px;">
-                <%= error %>
+<%- include('header', { title: 'تسجيل جديد' }) %>
+<div class="content" style="width: 500px; margin: 50px auto; background-color: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); text-align: center;">
+    <h2 style="margin-bottom: 20px; color: #333;">
+        <i class="fas fa-user-plus" style="margin-left: 10px;"></i>
+        إنشاء حساب جديد
+    </h2>
+    
+    <form action="/signUp" method="post" class="auth-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        
+        <div class="form-group">
+            <i class="fas fa-user input-icon"></i>
+            <input type="text" name="name" placeholder="اسم المستخدم" dir="rtl" required>
+        </div>
+        
+        <div class="form-group">
+            <i class="fas fa-envelope input-icon"></i>
+            <input type="email" name="email" placeholder="البريد الإلكتروني" dir="rtl" required>
+        </div>
+        
+        <div class="form-group">
+            <i class="fas fa-lock input-icon"></i>
+            <input type="password" name="password" placeholder="كلمة المرور" dir="rtl" required>
+            <small style="display: block; text-align: right; color: #666; margin-top: 5px;">
+                يجب أن تحتوي كلمة المرور على 8 أحرف على الأقل، حرف كبير، حرف صغير، رقم وحرف خاص
+            </small>
+        </div>
+        
+        <button type="submit" class="submit-btn">
+            <span id="submitText">إنشاء حساب</span>
+            <div id="loadingSpinner" class="spinner" style="display: none;">
+                <i class="fas fa-spinner fa-spin"></i>
             </div>
-        <% } %>
-        <% if (success) { %>
-            <div style="color: green; text-align: center; margin-top: 20px;">
-                <%= success %>
-            </div>
-        <% } %>
-    </div>
-    <script>
-        function validateForm() {
-            const name = document.querySelector('input[name="name"]').value;
-            const email = document.querySelector('input[name="email"]').value;
-            const password = document.querySelector('input[name="password"]').value;
+        </button>
+        
+        <div class="form-footer">
+            لديك حساب بالفعل؟ <a href="/login" style="color: #007bff; text-decoration: none;">سجل الدخول</a>
+        </div>
+    </form>
+    
+    <% if (error) { %>
+        <div class="alert alert-error">
+            <i class="fas fa-exclamation-circle"></i>
+            <%= error %>
+        </div>
+    <% } %>
+    
+    <% if (success) { %>
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle"></i>
+            <%= success %>
+            يمكنك الآن <a href="/login" style="color: #28a745; text-decoration: none;">تسجيل الدخول</a>
+        </div>
+    <% } %>
+</div>
 
-            if (!name || !email || !password) {
-                alert("جميع الحقول مطلوبة");
-                return false;
-            }
+<style>
+    .content {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    .form-group {
+        position: relative;
+        margin: 20px 40px;
+    }
+    
+    .form-group input {
+        width: 100%;
+        padding: 12px 40px 12px 15px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 16px;
+        transition: border 0.3s;
+    }
+    
+    .form-group input:focus {
+        border-color: #007bff;
+        outline: none;
+    }
+    
+    .input-icon {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #777;
+    }
+    
+    .submit-btn {
+        width: 100%;
+        padding: 12px;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        position: relative;
+        height: 45px;
+    }
+    
+    .submit-btn:hover {
+        background-color: #218838;
+    }
+    
+    .spinner {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+    
+    .alert-error {
+        margin-top: 20px;
+        padding: 10px 15px;
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+        border-radius: 5px;
+        text-align: right;
+    }
+    
+    .alert-success {
+        margin-top: 20px;
+        padding: 10px 15px;
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+        border-radius: 5px;
+        text-align: right;
+    }
+    
+    .form-footer {
+        margin-top: 15px;
+        color: #666;
+    }
+</style>
 
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                alert("البريد الإلكتروني غير صحيح");
-                return false;
-            }
-
-            if (!/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*]).{8,}$/.test(password)) {
-                alert("كلمة المرور يجب أن تحتوي على الأقل على 8 أحرف، حرف كبير، حرف صغير، رقم، وحرف خاص");
-                return false;
-            }
-
-            document.getElementById('submitButton').style.display = 'none';
-            document.getElementById('loadingSpinner').style.display = 'block';
-            return true;
+<script>
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const form = e.target;
+        const name = form.elements['name'].value.trim();
+        const email = form.elements['email'].value.trim();
+        const password = form.elements['password'].value.trim();
+        
+        // التحقق من الحقول الفارغة
+        if (!name || !email || !password) {
+            e.preventDefault();
+            showError('جميع الحقول مطلوبة');
+            return;
         }
-    </script>
+        
+        // التحقق من صحة البريد الإلكتروني
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            e.preventDefault();
+            showError('البريد الإلكتروني غير صحيح');
+            return;
+        }
+        
+        // التحقق من قوة كلمة المرور
+        const passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*]).{8,}$/;
+        if (!passwordRegex.test(password)) {
+            e.preventDefault();
+            showError('كلمة المرور يجب أن تحتوي على الأقل على 8 أحرف، حرف كبير، حرف صغير، رقم، وحرف خاص');
+            return;
+        }
+        
+        document.getElementById('submitText').style.visibility = 'hidden';
+        document.getElementById('loadingSpinner').style.display = 'block';
+    });
+    
+    function showError(message) {
+        const errorDiv = document.querySelector('.alert-error') || document.createElement('div');
+        errorDiv.className = 'alert-error';
+        errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+        
+        if (!document.querySelector('.alert-error')) {
+            const form = document.querySelector('form');
+            form.parentNode.insertBefore(errorDiv, form.nextSibling);
+        }
+    }
+</script>
+
 <%- include('footer') %>
