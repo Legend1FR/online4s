@@ -36,14 +36,39 @@ app.use(express.json());
 app.use(cookeparser());
 app.use(express.urlencoded({ extended: false }));
 app.set("view engine", "ejs");
-app.use(csrf({ cookie: true }));
+const csrfMiddleware = csrf({ cookie: true });
+app.use((req, res, next) => {
+  if (req.path === '/api/sessions/upload-file') {
+    return next();
+  }
+  csrfMiddleware(req, res, next);
+})
 app.use(express.static('public')); 
 
-
-
-
-const storage = multer.diskStorage({
+const sessionFileStorage = multer.diskStorage({
     destination: (req, file, cb) => {
+      const uploadDir = path.join(__dirname, 'public/session-files');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const ext = path.extname(file.originalname);
+      cb(null, 'session-file-' + uniqueSuffix + ext);
+    }
+  });
+  
+  const uploadSessionFile = multer({ 
+    storage: sessionFileStorage,
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+  });
+const storage = multer.diskStorage({
+    destination: (req, file, cb
+
+
+    ) => {
         const dir = './public/images/doctors';
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
@@ -195,6 +220,76 @@ const receptionistAuth = async (req, res, next) => {
         res.redirect("/receptionist/login");
     }
 };
+app.post('/api/sessions/upload-file', uploadSessionFile.single('sessionFile'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'لم يتم رفع أي ملف' });
+      }
+  
+      const { sessionId, senderType } = req.body;
+      const session = await Appointment.findById(sessionId);
+      if (!session) {
+        fs.unlinkSync(req.file.path);
+        return res.status(404).json({ error: 'الجلسة غير موجودة' });
+      }
+  
+      const fileData = {
+        fileName: req.file.originalname,
+        fileSize: req.file.size,
+        fileType: req.file.mimetype,
+        fileUrl: `/session-files/${req.file.filename}`,
+        timestamp: new Date()
+      };
+  
+      // حفظ الملف في سجل المحادثة
+      session.chatHistory.push({
+        sender: senderType,
+        message: fileData.fileName,
+        timestamp: new Date(),
+        type: "file",
+        fileData: fileData
+      });
+  
+      await session.save();
+  
+      // إرسال الملف لجميع المشاركين في الجلسة
+      io.to(sessionId).emit('newFileMessage', {
+        ...fileData,
+        sender: senderType,
+        time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+      });
+  
+      res.json({
+        success: true,
+        fileData: fileData
+      });
+  
+    } catch (error) {
+      console.error('Error uploading session file:', error);
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      res.status(500).json({ error: 'حدث خطأ أثناء رفع الملف' });
+    }
+  });
+  
+  // مسار لتحميل ملفات الجلسات
+  app.use('/session-files', express.static(path.join(__dirname, 'public/session-files')));
+  
+  // مسار لجلب سجل المحادثة
+  app.get('/api/sessions/:sessionId/messages', async (req, res) => {
+    try {
+      const session = await Appointment.findById(req.params.sessionId);
+      if (!session) {
+        return res.status(404).json({ error: 'الجلسة غير موجودة' });
+      }
+  
+      res.json(session.chatHistory);
+    } catch (error) {
+      console.error('Error fetching session messages:', error);
+      res.status(500).json({ error: 'حدث خطأ أثناء جلب سجل المحادثة' });
+    }
+  });
 app.get("/doctor/sessions", doctorAuth, async (req, res) => {
     try {
       const sessions = await Appointment.find({ doctor: req.doctor._id })
