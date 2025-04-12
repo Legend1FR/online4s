@@ -1,30 +1,137 @@
-m<%- include('header', { title: 'تسجيل الدخول' }) %>
+<%- include('header', { title: 'تسجيل الدخول' }) %>
 <div class="content" style="width: 500px; margin: 50px auto; background-color: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); text-align: center;">
-    <h2 style="margin-bottom: 20px;">تسجيل الدخول</h2>
-    <form action="/login" method="post" onsubmit="return validateLoginForm()">
+    <h2 style="margin-bottom: 20px; color: #333;">
+        <i class="fas fa-sign-in-alt" style="margin-left: 10px;"></i>
+        تسجيل الدخول
+    </h2>
+    
+    <form action="/login" method="post" class="auth-form">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-        <input type="text" name="name" placeholder="اسم المستخدم" dir="rtl" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px;" required>
-        <input type="password" name="password" placeholder="كلمة المرور" dir="rtl" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px;" required>
+        
+        <div class="form-group">
+            <i class="fas fa-user input-icon"></i>
+            <input type="text" name="name" placeholder="اسم المستخدم" dir="rtl" required>
+        </div>
+        
+        <div class="form-group">
+            <i class="fas fa-lock input-icon"></i>
+            <input type="password" name="password" placeholder="كلمة المرور" dir="rtl" required>
+        </div>
        
-        <button type="submit" id="submitButton" style="width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">تسجيل الدخول</button>
-        <div id="loadingSpinner" style="display: none; margin-top: 10px;">جاري التحميل...</div>
+        <button type="submit" class="submit-btn">
+            <span id="submitText">تسجيل الدخول</span>
+            <div id="loadingSpinner" class="spinner" style="display: none;">
+                <i class="fas fa-spinner fa-spin"></i>
+            </div>
+        </button>
+        
+        <div class="form-footer">
+            ليس لديك حساب؟ <a href="/signup" style="color: #007bff; text-decoration: none;">سجل الآن</a>
+        </div>
     </form>
+    
     <% if (error) { %>
-        <p style="color: red; margin-top: 10px;"><%= error %></p>
+        <div class="alert alert-error">
+            <i class="fas fa-exclamation-circle"></i>
+            <%= error %>
+        </div>
     <% } %>
 </div>
 
-<script>
-    function validateLoginForm() {
-        const name = document.querySelector('input[name="name"]').value;
-        const password = document.querySelector('input[name="password"]').value;
-        if (!name || !password) {
-            alert("اسم المستخدم وكلمة المرور مطلوبان");
-            return false;
-        }
-        document.getElementById('submitButton').style.display = 'none';
-        document.getElementById('loadingSpinner').style.display = 'block';
-        return true;
+<style>
+    .content {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
+    
+    .form-group {
+        position: relative;
+        margin: 20px 40px;
+    }
+    
+    .form-group input {
+        width: 100%;
+        padding: 12px 40px 12px 15px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 16px;
+        transition: border 0.3s;
+    }
+    
+    .form-group input:focus {
+        border-color: #007bff;
+        outline: none;
+    }
+    
+    .input-icon {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #777;
+    }
+    
+    .submit-btn {
+        width: 100%;
+        padding: 12px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        position: relative;
+        height: 45px;
+    }
+    
+    .submit-btn:hover {
+        background-color: #0056b3;
+    }
+    
+    .spinner {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+    
+    .alert-error {
+        margin-top: 20px;
+        padding: 10px 15px;
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+        border-radius: 5px;
+        text-align: right;
+    }
+    
+    .form-footer {
+        margin-top: 15px;
+        color: #666;
+    }
+</style>
+
+<script>
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const form = e.target;
+        const name = form.elements['name'].value.trim();
+        const password = form.elements['password'].value.trim();
+        
+        if (!name || !password) {
+            e.preventDefault();
+            const errorDiv = document.querySelector('.alert-error') || document.createElement('div');
+            errorDiv.className = 'alert-error';
+            errorDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> اسم المستخدم وكلمة المرور مطلوبان';
+            
+            if (!document.querySelector('.alert-error')) {
+                form.parentNode.insertBefore(errorDiv, form.nextSibling);
+            }
+            return;
+        }
+        
+        document.getElementById('submitText').style.visibility = 'hidden';
+        document.getElementById('loadingSpinner').style.display = 'block';
+    });
 </script>
+
 <%- include('footer') %>
