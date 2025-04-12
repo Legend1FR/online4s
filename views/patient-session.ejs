@@ -86,6 +86,83 @@
       transform: translateY(0);
       opacity: 1;
     }
+    .file-message {
+      max-width: 70%;
+      padding: 12px;
+      border-radius: 12px;
+      margin: 8px 0;
+      background: #f0f9ff;
+      border: 1px solid #e0e0e0;
+    }
+    .file-message.sent {
+      margin-left: auto;
+      background: #007bff10;
+      border: 1px solid #007bff30;
+    }
+    .file-message.received {
+      margin-right: auto;
+    }
+    .file-icon {
+      font-size: 2rem;
+      color: #007bff;
+      margin-bottom: 8px;
+    }
+    .file-name {
+      font-weight: 500;
+      margin-bottom: 4px;
+      word-break: break-all;
+    }
+    .file-size {
+      font-size: 0.75rem;
+      color: #666;
+    }
+    .file-download {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 4px 12px;
+      background: #007bff;
+      color: white;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      text-decoration: none;
+    }
+    .file-preview {
+      max-width: 100%;
+      max-height: 200px;
+      border-radius: 8px;
+      margin-top: 8px;
+    }
+    .chat-actions {
+      display: flex;
+      gap: 8px;
+      margin-left: 8px;
+    }
+    .file-upload-btn {
+      background: #007bff;
+      color: white;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border: none;
+    }
+    .upload-progress {
+      width: 100%;
+      height: 4px;
+      background: #e0e0e0;
+      border-radius: 2px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+    .upload-progress-bar {
+      height: 100%;
+      background: #007bff;
+      width: 0%;
+      transition: width 0.3s;
+    }
   </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -115,7 +192,13 @@
       <div class="flex-1 flex flex-col bg-white border-l">
         <div class="p-4 border-b font-bold text-gray-800">المحادثة</div>
         <div id="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
-        <div class="p-4 border-t flex">
+        <div class="p-4 border-t flex items-center">
+          <div class="chat-actions">
+            <button id="fileUploadBtn" class="file-upload-btn" title="إرسال ملف">
+              <i class="fas fa-paperclip"></i>
+            </button>
+            <input id="fileInput" type="file" class="hidden" multiple>
+          </div>
           <input id="messageInput" type="text" class="flex-1 p-2 border rounded-full outline-none" placeholder="اكتب رسالتك...">
           <button id="sendMessageBtn" class="bg-blue-600 text-white p-2 ml-2 rounded-full w-10 h-10 flex items-center justify-center">
             <i class="fas fa-paper-plane"></i>
@@ -143,7 +226,7 @@
         let peerConnection;
         let localStream;
 
-        // إنشاء عناصر DOM باستخدام createElement
+        // إنشاء عناصر DOM للرسائل
         const createMessageElement = (messageData) => {
           const messageDiv = document.createElement('div');
           messageDiv.className = `message p-3 rounded-lg ${messageData.sender === userType ? 'sent' : 'received'}`;
@@ -162,6 +245,67 @@
           return messageDiv;
         };
 
+        // إنشاء عناصر DOM لملفات الرسائل
+        const createFileMessageElement = (fileData) => {
+          const fileDiv = document.createElement('div');
+          fileDiv.className = `file-message p-3 ${fileData.sender === userType ? 'sent' : 'received'}`;
+          
+          const fileContent = document.createElement('div');
+          
+          // تحديد أيقونة حسب نوع الملف
+          const fileType = fileData.fileType || 'application/octet-stream';
+          let iconClass = 'fa-file';
+          
+          if (fileType.startsWith('image/')) iconClass = 'fa-file-image';
+          else if (fileType.includes('pdf')) iconClass = 'fa-file-pdf';
+          else if (fileType.includes('word')) iconClass = 'fa-file-word';
+          else if (fileType.includes('excel')) iconClass = 'fa-file-excel';
+          else if (fileType.includes('video')) iconClass = 'fa-file-video';
+          else if (fileType.includes('audio')) iconClass = 'fa-file-audio';
+          else if (fileType.includes('zip')) iconClass = 'fa-file-archive';
+          
+          fileContent.innerHTML = `
+            <div class="file-icon">
+              <i class="fas ${iconClass}"></i>
+            </div>
+            <div class="file-name">${fileData.fileName}</div>
+            <div class="file-size">${formatFileSize(fileData.fileSize)}</div>
+            <a href="${fileData.fileUrl}" target="_blank" class="file-download">
+              <i class="fas fa-download mr-1"></i> تحميل
+            </a>
+          `;
+          
+          // إذا كان الملف صورة، أضف معاينة
+          if (fileType.startsWith('image/')) {
+            const imgPreview = document.createElement('img');
+            imgPreview.src = fileData.fileUrl;
+            imgPreview.className = 'file-preview mt-2';
+            imgPreview.alt = 'معاينة الصورة';
+            fileContent.appendChild(imgPreview);
+          }
+          
+          // إذا كانت حالة التحميل، أضف شريط التقدم
+          if (fileData.uploading) {
+            const progressDiv = document.createElement('div');
+            progressDiv.className = 'upload-progress mt-2';
+            progressDiv.innerHTML = '<div class="upload-progress-bar"></div>';
+            fileContent.appendChild(progressDiv);
+          }
+          
+          fileDiv.appendChild(fileContent);
+          return fileDiv;
+        };
+
+        // تنسيق حجم الملف
+        const formatFileSize = (bytes) => {
+          if (bytes === 0) return '0 بايت';
+          const k = 1024;
+          const sizes = ['بايت', 'كيلوبايت', 'ميجابايت', 'جيجابايت'];
+          const i = Math.floor(Math.log(bytes) / Math.log(k));
+          return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        };
+
+        // عرض رسائل الخطأ
         const showErrorToast = (message, duration = 5000) => {
           const errorToast = document.getElementById('errorToast');
           const errorMessage = document.getElementById('errorMessage');
@@ -176,6 +320,7 @@
           }, duration);
         };
 
+        // تحديث حالة الاتصال
         const updateConnectionStatus = (status, isError = false) => {
           const statusElement = document.getElementById("connectionStatus");
           if (!statusElement) return;
@@ -195,6 +340,7 @@
           }
         };
 
+        // تنظيف الموارد
         const cleanupResources = () => {
           if (peerConnection) {
             peerConnection.close();
@@ -207,6 +353,86 @@
           clearTimeout(connectionTimeout);
         };
 
+        // رفع الملفات إلى السيرفر
+        const uploadFile = (file) => {
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append('sessionFile', file);
+    formData.append('sessionId', sessionId);
+    formData.append('senderType', userType);
+    
+    // إضافة CSRF token من الكوكيز
+    const csrfToken = document.cookie.split('; ').find(row => row.startsWith('XSRF-TOKEN='))?.split('=')[1];
+    if (csrfToken) {
+      formData.append('_csrf', csrfToken);
+    }
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/sessions/upload-file', true);
+
+            // إنشاء رسالة تحميل مؤقتة
+            const tempMessage = {
+              sender: userType,
+              fileName: file.name,
+              fileSize: file.size,
+              fileType: file.type,
+              fileUrl: '#',
+              uploading: true
+            };
+            
+            const tempElement = createFileMessageElement(tempMessage);
+            document.getElementById('messagesContainer').appendChild(tempElement);
+            document.getElementById('messagesContainer').scrollTop = 
+              document.getElementById('messagesContainer').scrollHeight;
+
+            // تحديث شريط التقدم
+            xhr.upload.onprogress = (event) => {
+              if (event.lengthComputable) {
+                const percentComplete = (event.loaded / event.total) * 100;
+                const progressBar = tempElement.querySelector('.upload-progress-bar');
+                if (progressBar) {
+                  progressBar.style.width = percentComplete + '%';
+                }
+              }
+            };
+
+            xhr.onload = () => {
+              if (xhr.status === 200) {
+                const response = JSON.parse(xhr.responseText);
+                resolve(response);
+                
+                // استبدال الرسالة المؤقتة بالرسالة النهائية
+                tempElement.remove();
+                const finalMessage = {
+                  sender: userType,
+                  fileName: response.fileData.fileName,
+                  fileSize: response.fileData.fileSize,
+                  fileType: response.fileData.fileType,
+                  fileUrl: response.fileData.fileUrl,
+                  time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+                };
+                const finalElement = createFileMessageElement(finalMessage);
+                document.getElementById('messagesContainer').appendChild(finalElement);
+                document.getElementById('messagesContainer').scrollTop = 
+                  document.getElementById('messagesContainer').scrollHeight;
+              } else {
+                reject(new Error('فشل في رفع الملف'));
+                tempElement.remove();
+                showErrorToast('فشل في رفع الملف');
+              }
+            };
+
+            xhr.onerror = () => {
+              reject(new Error('حدث خطأ في الاتصال'));
+              tempElement.remove();
+              showErrorToast('حدث خطأ أثناء رفع الملف');
+            };
+
+            xhr.send(formData);
+          });
+        };
+
+        // تهيئة اتصال الفيديو
         const initMedia = async () => {
           try {
             updateConnectionStatus("جاري إعداد الاتصال...");
@@ -302,6 +528,15 @@
               }
             });
 
+            socket.on("newFileMessage", (fileData) => {
+              const messagesContainer = document.getElementById("messagesContainer");
+              if (messagesContainer) {
+                const fileElement = createFileMessageElement(fileData);
+                messagesContainer.appendChild(fileElement);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+              }
+            });
+
             const offer = await peerConnection.createOffer({
               offerToReceiveAudio: true,
               offerToReceiveVideo: true
@@ -320,10 +555,10 @@
           }
         };
 
-        // Initialize socket connection
+        // تهيئة اتصال السوكيت
         socket.emit("joinSession", { sessionId, userType });
 
-        // Set up message sending
+        // إعداد إرسال الرسائل النصية
         const sendMessageBtn = document.getElementById("sendMessageBtn");
         const messageInput = document.getElementById("messageInput");
         
@@ -348,10 +583,70 @@
           });
         }
 
-        // Initialize media
-        initMedia();
+        // إعداد رفع الملفات
+        const fileUploadBtn = document.getElementById("fileUploadBtn");
+        const fileInput = document.getElementById("fileInput");
+        
+        if (fileUploadBtn && fileInput) {
+          fileUploadBtn.addEventListener("click", () => {
+            fileInput.click();
+          });
+          
+          fileInput.addEventListener("change", async (e) => {
+            const files = e.target.files;
+            if (files && files.length > 0) {
+              for (let i = 0; i < files.length; i++) {
+                try {
+                  await uploadFile(files[i]);
+                } catch (error) {
+                  console.error("Error uploading file:", error);
+                  showErrorToast("حدث خطأ أثناء رفع الملف");
+                }
+              }
+              fileInput.value = "";
+            }
+          });
+        }
 
-        // Cleanup on page unload
+        // تحميل سجل المحادثة السابق
+        const loadChatHistory = async () => {
+          try {
+            const response = await fetch(`/api/sessions/${sessionId}/messages`);
+            if (response.ok) {
+              const messages = await response.json();
+              const container = document.getElementById('messagesContainer');
+              
+              messages.forEach(msg => {
+                if (msg.type === 'text') {
+                  container.appendChild(createMessageElement({
+                    sender: msg.sender,
+                    text: msg.message,
+                    time: new Date(msg.timestamp).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+                  }));
+                } else if (msg.type === 'file') {
+                  container.appendChild(createFileMessageElement({
+                    sender: msg.sender,
+                    fileName: msg.fileData.fileName,
+                    fileSize: msg.fileData.fileSize,
+                    fileType: msg.fileData.fileType,
+                    fileUrl: msg.fileData.fileUrl,
+                    time: new Date(msg.timestamp).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+                  }));
+                }
+              });
+              
+              container.scrollTop = container.scrollHeight;
+            }
+          } catch (error) {
+            console.error('Error loading chat history:', error);
+          }
+        };
+
+        // تهيئة الوسائط وتحميل سجل المحادثة
+        initMedia();
+        loadChatHistory();
+
+        // تنظيف الموارد عند إغلاق الصفحة
         window.addEventListener('beforeunload', cleanupResources);
 
       } catch (error) {
