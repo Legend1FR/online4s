@@ -31,7 +31,7 @@
       padding: 12px;
       border-radius: 20px;
       margin: 8px 0;
-      transition: opacity 0.3s;
+      transition: all 0.3s;
     }
     .message.sent {
       background: #007bff;
@@ -60,12 +60,31 @@
       padding: 8px 16px;
       border-radius: 20px;
       font-size: 14px;
+      z-index: 20;
     }
     .spinner {
       animation: spin 1s linear infinite;
     }
     @keyframes spin {
       100% { transform: rotate(360deg); }
+    }
+    .error-toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: #ef4444;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+    .error-toast.show {
+      transform: translateY(0);
+      opacity: 1;
     }
   </style>
 </head>
@@ -102,162 +121,243 @@
             <i class="fas fa-paper-plane"></i>
           </button>
         </div>
-        <div id="errorMessage" class="text-red-500 text-center p-2 hidden"></div>
       </div>
+    </div>
+  </div>
+
+  <div id="errorToast" class="error-toast hidden">
+    <div class="flex items-center">
+      <i class="fas fa-exclamation-circle mr-2"></i>
+      <span id="errorMessage"></span>
     </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io();
-    const sessionId = "<%= session._id %>";
-    const userType = "patient";
-    let connectionTimeout;
-
-    function updateConnectionStatus(status, isError = false) {
-      const statusElement = document.getElementById("connectionStatus");
-      statusElement.classList.remove("hidden");
-      statusElement.innerHTML = `
-        <i class="fas fa-circle text-xs mr-1 ${isError ? 'text-red-500' : 'text-yellow-500'}"></i>
-        <span>${status}</span>
-      `;
-      
-      if (isError) {
-        statusElement.classList.add("bg-red-500");
-        statusElement.classList.remove("bg-black");
-      } else {
-        statusElement.classList.add("bg-black");
-        statusElement.classList.remove("bg-red-500");
-      }
-    }
-
-    socket.emit("joinSession", { sessionId, userType });
-
-    const configuration = { 
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" },
-        { urls: "stun:stun2.l.google.com:19302" }
-      ] 
-    };
-    const peerConnection = new RTCPeerConnection(configuration);
-
-    connectionTimeout = setTimeout(() => {
-      if (!peerConnection.remoteDescription) {
-        showError("تعذر الاتصال بالدكتور. يرجى المحاولة مرة أخرى.");
-        updateConnectionStatus("فشل الاتصال", true);
-      }
-    }, 30000);
-
-    async function initMedia() {
+    document.addEventListener('DOMContentLoaded', () => {
       try {
-        updateConnectionStatus("جاري إعداد الاتصال...");
-        
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: true, 
-          audio: true
-        });
-        document.getElementById("localVideo").srcObject = stream;
-        
-        stream.getTracks().forEach(track => {
-          peerConnection.addTrack(track, stream);
-        });
+        const socket = io();
+        const sessionId = "<%= session._id %>";
+        const userType = "patient";
+        let connectionTimeout;
+        let peerConnection;
+        let localStream;
 
-        updateConnectionStatus("جاري إنشاء عرض الاتصال...");
+        // إنشاء عناصر DOM باستخدام createElement
+        const createMessageElement = (messageData) => {
+          const messageDiv = document.createElement('div');
+          messageDiv.className = `message p-3 rounded-lg ${messageData.sender === userType ? 'sent' : 'received'}`;
+          
+          const textDiv = document.createElement('div');
+          textDiv.className = 'message-text';
+          textDiv.textContent = messageData.text;
+          
+          const timeDiv = document.createElement('div');
+          timeDiv.className = 'message-time';
+          timeDiv.textContent = messageData.time;
+          
+          messageDiv.appendChild(textDiv);
+          messageDiv.appendChild(timeDiv);
+          
+          return messageDiv;
+        };
+
+        const showErrorToast = (message, duration = 5000) => {
+          const errorToast = document.getElementById('errorToast');
+          const errorMessage = document.getElementById('errorMessage');
+          
+          errorMessage.textContent = message;
+          errorToast.classList.remove('hidden');
+          errorToast.classList.add('show');
+          
+          setTimeout(() => {
+            errorToast.classList.remove('show');
+            setTimeout(() => errorToast.classList.add('hidden'), 300);
+          }, duration);
+        };
+
+        const updateConnectionStatus = (status, isError = false) => {
+          const statusElement = document.getElementById("connectionStatus");
+          if (!statusElement) return;
+          
+          statusElement.innerHTML = `
+            <i class="fas fa-circle text-xs mr-1 ${isError ? 'text-red-500' : 'text-yellow-500'}"></i>
+            <span>${status}</span>
+          `;
+          
+          statusElement.classList.remove("hidden");
+          if (isError) {
+            statusElement.classList.add("bg-red-500");
+            statusElement.classList.remove("bg-black");
+          } else {
+            statusElement.classList.add("bg-black");
+            statusElement.classList.remove("bg-red-500");
+          }
+        };
+
+        const cleanupResources = () => {
+          if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+          }
+          if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+            localStream = null;
+          }
+          clearTimeout(connectionTimeout);
+        };
+
+        const initMedia = async () => {
+          try {
+            updateConnectionStatus("جاري إعداد الاتصال...");
+            
+            const constraints = {
+              video: true,
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+                channelCount: 1
+              }
+            };
+            
+            localStream = await navigator.mediaDevices.getUserMedia(constraints);
+            document.getElementById("localVideo").srcObject = localStream;
+            
+            const configuration = { 
+              iceServers: [
+                { urls: "stun:stun.l.google.com:19302" },
+                { urls: "stun:stun1.l.google.com:19302" },
+                { urls: "stun:stun2.l.google.com:19302" }
+              ] 
+            };
+            
+            peerConnection = new RTCPeerConnection(configuration);
+            
+            localStream.getTracks().forEach(track => {
+              peerConnection.addTrack(track, localStream);
+            });
+
+            connectionTimeout = setTimeout(() => {
+              if (!peerConnection.remoteDescription) {
+                showErrorToast("تعذر الاتصال بالدكتور. يرجى المحاولة مرة أخرى.");
+                updateConnectionStatus("فشل الاتصال", true);
+                cleanupResources();
+              }
+            }, 30000);
+
+            peerConnection.ontrack = (event) => {
+              clearTimeout(connectionTimeout);
+              const remoteVideo = document.getElementById("remoteVideo");
+              if (remoteVideo) {
+                remoteVideo.srcObject = event.streams[0];
+                remoteVideo.muted = false;
+              }
+              const placeholder = document.getElementById("remoteVideoPlaceholder");
+              if (placeholder) placeholder.classList.add("hidden");
+              updateConnectionStatus("متصل", false);
+            };
+
+            peerConnection.onicecandidate = (event) => {
+              if (event.candidate) {
+                socket.emit("iceCandidate", { sessionId, candidate: event.candidate });
+              }
+            };
+
+            peerConnection.oniceconnectionstatechange = () => {
+              if (peerConnection.iceConnectionState === "disconnected") {
+                updateConnectionStatus("تم قطع الاتصال", true);
+                showErrorToast("تم قطع الاتصال بالدكتور");
+                cleanupResources();
+              }
+            };
+
+            socket.on("answer", async (answer) => {
+              try {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+              } catch (error) {
+                console.error("Error handling answer:", error);
+                showErrorToast("فشل في إعداد اتصال الفيديو");
+                updateConnectionStatus("فشل في الاتصال", true);
+                cleanupResources();
+              }
+            });
+
+            socket.on("iceCandidate", async (candidate) => {
+              try {
+                if (peerConnection && candidate) {
+                  await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                }
+              } catch (error) {
+                console.error("Error adding ICE candidate:", error);
+              }
+            });
+
+            socket.on("newMessage", (message) => {
+              const messagesContainer = document.getElementById("messagesContainer");
+              if (messagesContainer) {
+                const messageElement = createMessageElement(message);
+                messagesContainer.appendChild(messageElement);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+              }
+            });
+
+            const offer = await peerConnection.createOffer({
+              offerToReceiveAudio: true,
+              offerToReceiveVideo: true
+            });
+            
+            await peerConnection.setLocalDescription(offer);
+            socket.emit("offer", { sessionId, offer });
+            
+            updateConnectionStatus("في انتظار رد الدكتور...");
+
+          } catch (error) {
+            console.error("Error initializing media:", error);
+            showErrorToast("فشل في بدء الجلسة: " + error.message);
+            updateConnectionStatus("فشل في الاتصال", true);
+            cleanupResources();
+          }
+        };
+
+        // Initialize socket connection
+        socket.emit("joinSession", { sessionId, userType });
+
+        // Set up message sending
+        const sendMessageBtn = document.getElementById("sendMessageBtn");
+        const messageInput = document.getElementById("messageInput");
         
-        const offer = await peerConnection.createOffer({
-          offerToReceiveAudio: true,
-          offerToReceiveVideo: true
-        });
-        
-        await peerConnection.setLocalDescription(offer);
-        socket.emit("offer", { sessionId, offer });
-        
-        updateConnectionStatus("في انتظار رد الدكتور...");
+        if (sendMessageBtn && messageInput) {
+          sendMessageBtn.addEventListener("click", () => {
+            const message = messageInput.value.trim();
+            if (message) {
+              const timestamp = new Date();
+              socket.emit("sendMessage", { 
+                sessionId, 
+                message,
+                timestamp
+              });
+              messageInput.value = "";
+            }
+          });
+          
+          messageInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+              sendMessageBtn.click();
+            }
+          });
+        }
+
+        // Initialize media
+        initMedia();
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', cleanupResources);
+
       } catch (error) {
-        console.error("Error initializing media:", error);
-        clearTimeout(connectionTimeout);
-        showError("فشل في الوصول إلى الكاميرا أو الميكروفون: " + error.message);
-        updateConnectionStatus("فشل في الاتصال", true);
+        console.error("Initialization error:", error);
+        showErrorToast("حدث خطأ غير متوقع أثناء تحميل الجلسة");
       }
-    }
-
-    peerConnection.ontrack = event => {
-      clearTimeout(connectionTimeout);
-      const remoteVideo = document.getElementById("remoteVideo");
-      remoteVideo.srcObject = event.streams[0];
-      remoteVideo.muted = false; // تأكد من أن الصوت غير مكتوم
-      document.getElementById("remoteVideoPlaceholder").classList.add("hidden");
-      document.getElementById("connectionStatus").classList.add("hidden");
-    };
-
-    peerConnection.onicecandidate = event => {
-      if (event.candidate) {
-        socket.emit("iceCandidate", { sessionId, candidate: event.candidate });
-      }
-    };
-
-    peerConnection.oniceconnectionstatechange = () => {
-      if (peerConnection.iceConnectionState === "disconnected") {
-        updateConnectionStatus("تم قطع الاتصال", true);
-      }
-    };
-
-    socket.on("answer", async answer => {
-      try {
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-      } catch (error) {
-        console.error("Error handling answer:", error);
-        showError("فشل في إعداد اتصال الفيديو: " + error.message);
-        updateConnectionStatus("فشل في الاتصال", true);
-      }
-    });
-
-    socket.on("iceCandidate", async candidate => {
-      try {
-        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-      } catch (error) {
-        console.error("Error adding ICE candidate:", error);
-      }
-    });
-
-    socket.on("newMessage", message => {
-      const messagesContainer = document.getElementById("messagesContainer");
-      const messageElement = document.createElement("div");
-      messageElement.classList.add("message", "p-3", "rounded-lg", message.sender === userType ? "sent" : "received");
-      messageElement.innerHTML = `
-        <div class="message-text">${message.text}</div>
-        <div class="message-time">${message.time}</div>
-      `;
-      messagesContainer.appendChild(messageElement);
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    });
-
-    document.getElementById("sendMessageBtn").addEventListener("click", () => {
-      const messageInput = document.getElementById("messageInput");
-      const message = messageInput.value.trim();
-      if (message) {
-        const timestamp = new Date();
-        socket.emit("sendMessage", { 
-          sessionId, 
-          message,
-          timestamp
-        });
-        messageInput.value = "";
-      }
-    });
-
-    function showError(message) {
-      const errorDiv = document.getElementById("errorMessage");
-      errorDiv.textContent = message;
-      errorDiv.classList.remove("hidden");
-      setTimeout(() => errorDiv.classList.add("hidden"), 5000);
-    }
-
-    initMedia().catch(error => {
-      console.error("Media initialization failed:", error);
-      showError("فشل في بدء الجلسة. يرجى تحديث الصفحة والمحاولة مرة أخرى.");
-      updateConnectionStatus("فشل في الاتصال", true);
     });
   </script>
 </body>
