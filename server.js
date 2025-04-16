@@ -25,7 +25,9 @@ const path = require('path');
 const exceljs = require('exceljs');
 const pdfmake = require('pdfmake');
 const multer = require('multer');
-
+const flash = require('connect-flash');
+const session = require('express-session');
+    
 const secret = "fgrpekrfg";
 const app = express();
 const server = http.createServer(app);
@@ -140,25 +142,6 @@ server.listen('8000', () => {
     console.log("server is running");
 });
 
-app.get("/", async (req, res) => {
-    try {
-        const token = req.cookies.token;
-        if (token) {
-            const decoded = jwt.verify(token, "fgrpekrfg");
-            const patient = await Patient.findOne({ _id: decoded._id });
-            if (patient) {
-                res.render("index", { patient: patient, csrfToken: req.csrfToken() });
-            } else {
-                res.render("index", { patient: null, csrfToken: req.csrfToken() });
-            }
-        } else {
-            res.render("index", { patient: null, csrfToken: req.csrfToken() });
-        }
-    } catch (error) {
-        console.error(error);
-        res.render("index", { patient: null, csrfToken: req.csrfToken() });
-    }
-});
 const doctorAuth = async (req, res, next) => {
     try {
         const token = req.cookies.doctor_token;
@@ -220,6 +203,211 @@ const receptionistAuth = async (req, res, next) => {
         res.redirect("/receptionist/login");
     }
 };
+app.get("/", async (req, res) => {
+    try {
+        const token = req.cookies.token;
+        let patient = null;
+        
+        if (token) {
+            try {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET || "fgrpekrfg");
+                patient = await Patient.findOne({ _id: decoded._id }).lean();
+            } catch (authError) {
+                console.error("Authentication error:", authError);
+                res.clearCookie('token');
+                // تمرير رسالة الخطأ كمتغير error
+                return res.render("index", { 
+                    error: {
+                        message: "انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى"
+                    },
+                    patient: null,
+                    doctors: [],
+                    csrfToken: req.csrfToken()
+                });
+            }
+        }
+
+        let doctors = [];
+        try {
+            doctors = await Doctor.aggregate([
+                { $match: { isActive: true, isVerified: true } },
+                { $sample: { size: 10 } },
+                { $project: { 
+                    username: 1, 
+                    specialization: 1, 
+                    profileImage: 1,
+                    _id: 1
+                }}
+            ]);
+        } catch (dbError) {
+            console.error("Database error:", dbError);
+            // تمرير رسالة الخطأ كمتغير error
+            return res.render("index", { 
+                error: {
+                    message: "حدث خطأ في جلب بيانات الأطباء"
+                },
+                patient: patient,
+                doctors: [],
+                csrfToken: req.csrfToken()
+            });
+        }
+
+        res.render("index", {
+            patient: patient,
+            doctors: doctors,
+            csrfToken: req.csrfToken(),
+            error: null // تمرير null كقيمة افتراضية
+        });
+
+    } catch (error) {
+        console.error("Unexpected error in home route:", error);
+        res.status(500).render("index", {
+            error: {
+                message: "نواجه بعض الصعوبات التقنية. يرجى المحاولة لاحقاً."
+            },
+            patient: null,
+            doctors: [],
+            csrfToken: req.csrfToken()
+        });
+    }
+});
+// Add this route to your server.js
+app.get("/api/doctors/random", async (req, res) => {
+    try {
+        const doctors = await Doctor.aggregate([
+            { $match: { isActive: true, isVerified: true } },
+            { $sample: { size: 10 } }, // Get 10 random doctors
+            { $project: { 
+                username: 1,
+                specialization: 1,
+                profileImage: 1,
+                _id: 1
+            }}
+        ]);
+        
+        res.json(doctors);
+    } catch (error) {
+        console.error('Error fetching random doctors:', error);
+        res.status(500).json({ error: 'Failed to fetch doctors' });
+    }
+});
+app.get('/api/sessions/check-completed', async (req, res) => {
+    try {
+      const result = await Appointment.updateMany(
+        { 
+          date: { $lte: new Date() },
+          status: { $ne: 'مكتمل' }
+        },
+        { 
+          $set: { 
+            status: 'مكتمل',
+            sessionEndedAt: new Date(),
+            sessionDuration: 30
+          } 
+        }
+      );
+      
+      res.json({ updated: result.nModified > 0 });
+    } catch (error) {
+      console.error('Error checking completed sessions:', error);
+      res.status(500).json({ error: 'حدث خطأ أثناء التحقق من الجلسات' });
+    }
+  });
+
+app.get('/doctor/reports', doctorAuth, async (req, res) => {
+    try {
+        const reports = await Appointment.find({ 
+            doctor: req.doctor._id,
+            status: 'مكتمل'
+        })
+        .populate('patient', 'name profileImage')
+        .sort({ sessionEndedAt: -1 });
+
+        res.render('doctor-reports', {
+            doctor: req.doctor,
+            reports,
+            csrfToken: req.csrfToken()
+        });
+    } catch (error) {
+        console.error('Error fetching reports:', error);
+        res.status(500).render('error', { 
+            message: "حدث خطأ أثناء جلب التقارير",
+            doctor: req.doctor
+        });
+    }
+});
+app.post('/api/sessions/request-end', async (req, res) => {
+    try {
+      const { sessionId, userType } = req.body;
+      const session = await Appointment.findById(sessionId);
+      
+      if (!session) {
+        return res.status(404).json({ error: 'الجلسة غير موجودة' });
+      }
+  
+      const result = await session.requestEndSession(userType);
+      io.to(sessionId).emit('endSessionRequested', { requestedBy: userType });
+  
+      res.json(result);
+    } catch (error) {
+      console.error('Error requesting session end:', error);
+      res.status(500).json({ error: 'حدث خطأ أثناء طلب إنهاء الجلسة' });
+    }
+  });
+
+  app.post('/api/sessions/approve-end', async (req, res) => {
+    try {
+      const { sessionId } = req.body;
+      const session = await Appointment.findById(sessionId);
+      
+      if (!session) {
+        return res.status(404).json({ error: 'الجلسة غير موجودة' });
+      }
+  
+      const result = await session.approveEndSession();
+      io.to(sessionId).emit('sessionEnded', result);
+  
+      res.json(result);
+    } catch (error) {
+      console.error('Error approving session end:', error);
+      res.status(500).json({ error: 'حدث خطأ أثناء إنهاء الجلسة' });
+    }
+  });
+  
+// مسار لطلب جلسة جديدة من الطبيب
+app.post('/api/sessions/request-new', doctorAuth, async (req, res) => {
+    try {
+        const { patientId, date, time, notes } = req.body;
+        const doctorId = req.doctor._id;
+
+        const newAppointment = new Appointment({
+            doctor: doctorId,
+            patient: patientId,
+            date: new Date(date),
+            time: time,
+            notes: notes || '',
+            status: 'مؤكد',
+            paymentMethod: 'لاحقا',
+            paymentStatus: 'غير مدفوع'
+        });
+
+        await newAppointment.save();
+        io.to(patientId.toString()).emit('newSessionRequested', {
+            doctor: req.doctor.username,
+            date: newAppointment.formattedDate,
+            time: newAppointment.time
+        });
+
+        res.json({ 
+            success: true, 
+            message: "تم طلب الجلسة بنجاح",
+            appointment: newAppointment
+        });
+    } catch (error) {
+        console.error('Error requesting new session:', error);
+        res.status(500).json({ error: 'حدث خطأ أثناء طلب الجلسة' });
+    }
+});
 app.post('/api/sessions/upload-file', uploadSessionFile.single('sessionFile'), async (req, res) => {
     try {
       if (!req.file) {
@@ -289,64 +477,129 @@ app.post('/api/sessions/upload-file', uploadSessionFile.single('sessionFile'), a
       console.error('Error fetching session messages:', error);
       res.status(500).json({ error: 'حدث خطأ أثناء جلب سجل المحادثة' });
     }
-  });
-app.get("/doctor/sessions", doctorAuth, async (req, res) => {
-    try {
-      const sessions = await Appointment.find({ doctor: req.doctor._id })
-        .populate("patient", "name profileImage")
-        .sort({ date: 1, time: 1 });
-      res.render("doctor-sessions", {
-        doctor: req.doctor,
-        sessions,
-        csrfToken: req.csrfToken(),
-      });
-    } catch (error) {
-      res.status(500).json({ error: "خطأ في تحميل الجلسات" });
-    }
-  });
-
-app.get("/patient/sessions", verii, async (req, res) => {
-    try {
-      const sessions = await Appointment.find({
-        patient: req.patient._id,
-        date: { $gte: new Date() },
-      })
-        .populate("doctor", "username profileImage specialization")
-        .sort({ date: 1, time: 1 });
-      res.render("patient-sessions", {
-        patient: req.patient,
-        sessions,
-        csrfToken: req.csrfToken(),
-      });
-    } catch (error) {
-      res.status(500).json({ error: "خطأ في تحميل الجلسات" });
-    }
-  });
+  });// تحديث مسار جلسات الطبيب
+  app.get("/doctor/sessions", doctorAuth, async (req, res) => {
+      try {
+          // فحص وتحديث الجلسات المنتهية
+          await Appointment.updateMany(
+              { 
+                  doctor: req.doctor._id,
+                  date: { $lte: new Date() },
+                  status: { $ne: 'مكتمل' }
+              },
+              { 
+                  $set: { 
+                      status: 'مكتمل',
+                      sessionEndedAt: new Date(),
+                      sessionDuration: 30
+                  } 
+              }
+          );
   
- 
-  app.post("/api/sessions/start", doctorAuth, async (req, res) => {
-    try {
-      const { sessionId } = req.body;
-      if (!sessionId) return res.status(400).json({ error: "معرف الجلسة مفقود" });
+          const sessions = await Appointment.find({ 
+              doctor: req.doctor._id,
+              status: { $ne: 'مكتمل' }
+          })
+          .populate("patient", "name profileImage")
+          .sort({ date: 1, time: 1 });
   
-      const session = await Appointment.findById(sessionId).populate("patient");
-      if (!session) return res.status(404).json({ error: "الجلسة غير موجودة" });
-      if (session.doctor.toString() !== req.doctor._id.toString()) {
-        return res.status(403).json({ error: "غير مصرح" });
+          res.render("doctor-sessions", {
+              doctor: req.doctor,
+              sessions,
+              csrfToken: req.csrfToken(),
+          });
+      } catch (error) {
+          console.error('Error loading doctor sessions:', error);
+          res.render("doctor-sessions", {
+              doctor: req.doctor,
+              sessions: [],
+              error: "حدث خطأ أثناء تحميل الجلسات",
+              csrfToken: req.csrfToken()
+          });
       }
-  
-      await session.startSession();
-      io.to(sessionId).emit("sessionStarted", {
-        sessionId,
-        doctorName: req.doctor.username,
-      });
-  
-      res.json({ success: true, redirectUrl: `/doctor/session/${sessionId}` });
-    } catch (error) {
-      res.status(500).json({ error: "فشل في بدء الجلسة" });
-    }
   });
   
+  // تحديث مسار الجلسات للمريض
+  app.get("/patient/sessions", verii, async (req, res) => {
+      try {
+          // فحص وتحديث الجلسات المنتهية
+          await Appointment.updateMany(
+              { 
+                  patient: req.patient._id,
+                  date: { $lte: new Date() },
+                  status: { $ne: 'مكتمل' }
+              },
+              { 
+                  $set: { 
+                      status: 'مكتمل',
+                      sessionEndedAt: new Date(),
+                      sessionDuration: 30
+                  } 
+              }
+          );
+  
+          const sessions = await Appointment.find({
+              patient: req.patient._id,
+              status: { $ne: 'مكتمل' }
+          })
+          .populate("doctor", "username profileImage specialization")
+          .sort({ date: 1, time: 1 });
+  
+          const completedSessions = await Appointment.find({
+              patient: req.patient._id,
+              status: 'مكتمل'
+          })
+          .populate("doctor", "username profileImage specialization")
+          .sort({ date: -1, time: -1 });
+  
+          res.render("patient-sessions", {
+              patient: req.patient,
+              sessions,
+              completedSessions,
+              csrfToken: req.csrfToken(),
+          });
+      } catch (error) {
+          console.error('Error loading patient sessions:', error);
+          res.render("patient-sessions", {
+              patient: req.patient,
+              sessions: [],
+              completedSessions: [],
+              error: "حدث خطأ أثناء تحميل الجلسات",
+              csrfToken: req.csrfToken()
+          });
+      }
+  });
+  
+  // مسار بدء الجلسة
+  app.post("/api/sessions/start", doctorAuth, async (req, res) => {
+      try {
+          const { sessionId } = req.body;
+          if (!sessionId) return res.status(400).json({ error: "معرف الجلسة مفقود" });
+  
+          const session = await Appointment.findById(sessionId).populate("patient");
+          if (!session) return res.status(404).json({ error: "الجلسة غير موجودة" });
+          if (session.doctor.toString() !== req.doctor._id.toString()) {
+              return res.status(403).json({ error: "غير مصرح" });
+          }
+  
+          await session.startSession();
+          io.to(sessionId).emit("sessionStarted", {
+              sessionId,
+              doctorName: req.doctor.username,
+          });
+  
+          res.json({ 
+              success: true, 
+              redirectUrl: `/doctor/session/${sessionId}` 
+          });
+      } catch (error) {
+          console.error('Error starting session:', error);
+          res.status(500).json({ 
+              error: "فشل في بدء الجلسة",
+              details: error.message 
+          });
+      }
+  });
  
   app.get("/doctor/session/:id", doctorAuth, async (req, res) => {
     try {
@@ -381,57 +634,95 @@ app.get("/patient/sessions", verii, async (req, res) => {
     }
   });
   
-  // Socket.io Configuration
-  io.on("connection", (socket) => {
+io.on("connection", (socket) => {
     console.log("New user connected:", socket.id);
-  
+
     socket.on("joinSession", ({ sessionId, userType }) => {
-      socket.join(sessionId);
-      socket.userType = userType;
-      socket.broadcast.to(sessionId).emit("userConnected", { userType });
+        socket.join(sessionId);
+        socket.userType = userType;
+        socket.broadcast.to(sessionId).emit("userConnected", { userType });
     });
-  
-    
-socket.on("sendMessage", async ({ sessionId, message, timestamp }) => {
-    const session = await Appointment.findById(sessionId);
-    if (session) {
-        session.chatHistory.push({
-            sender: socket.userType,
-            message,
-            timestamp: new Date(timestamp),
-            type: "text"
-        });
-        await session.save();
-        const time = new Date(timestamp).toLocaleTimeString('ar-EG', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-        });
-        io.to(sessionId).emit("newMessage", {
-            sender: socket.userType,
-            text: message,
-            time: time
-        });
-    }
-});
-  
+
+    socket.on("sendMessage", async ({ sessionId, message, timestamp }) => {
+        try {
+            const session = await Appointment.findById(sessionId);
+            if (session && session.status !== 'مكتمل') {
+                session.chatHistory.push({
+                    sender: socket.userType,
+                    message,
+                    timestamp: new Date(timestamp),
+                    type: "text"
+                });
+                await session.save();
+                
+                const time = new Date(timestamp).toLocaleTimeString('ar-EG', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+                
+                io.to(sessionId).emit("newMessage", {
+                    sender: socket.userType,
+                    text: message,
+                    time: time
+                });
+            }
+        } catch (error) {
+            console.error('Error saving message:', error);
+        }
+    });
+
     socket.on("offer", ({ sessionId, offer }) => {
-      socket.to(sessionId).emit("offer", offer);
+        socket.to(sessionId).emit("offer", offer);
     });
-  
+
     socket.on("answer", ({ sessionId, answer }) => {
-      socket.to(sessionId).emit("answer", answer);
+        socket.to(sessionId).emit("answer", answer);
     });
-  
+
     socket.on("iceCandidate", ({ sessionId, candidate }) => {
-      socket.to(sessionId).emit("iceCandidate", candidate);
+        socket.to(sessionId).emit("iceCandidate", candidate);
     });
-  
+
+    socket.on("requestEndSession", async ({ sessionId }) => {
+        try {
+            const session = await Appointment.findById(sessionId);
+            if (session) {
+                io.to(sessionId).emit("endSessionRequested", { 
+                    requestedBy: socket.userType 
+                });
+            }
+        } catch (error) {
+            console.error('Error handling end session request:', error);
+        }
+    });
+
+    socket.on("approveEndSession", async ({ sessionId }) => {
+        try {
+            const session = await Appointment.findById(sessionId);
+            if (session) {
+                session.sessionEndedAt = new Date();
+                session.status = 'مكتمل';
+                session.sessionDuration = Math.floor(
+                    (new Date() - session.sessionStartedAt) / 1000 / 60
+                );
+                await session.save();
+                
+                io.to(sessionId).emit("sessionEnded", { 
+                    success: true,
+                    message: "تم إنهاء الجلسة بنجاح"
+                });
+            }
+        } catch (error) {
+            console.error('Error approving session end:', error);
+        }
+    });
+
     socket.on("disconnect", () => {
-      console.log("User disconnected:", socket.id);
+        console.log("User disconnected:", socket.id);
     });
-  });
-  
-  
+});
+
+
 
 app.post('/process-wallet-payment', verii, csrfProtection, async (req, res) => {
     try {
@@ -499,22 +790,6 @@ app.get('/admin/payments-management', adminAuth, (req, res) => {
     } catch (error) {
         console.error('Render error:', error);
         res.status(500).send('حدث خطأ في تحميل الصفحة');
-    }
-});
-
-app.get("/admin/search-patients", adminAuth, async (req, res) => {
-    try {
-        const email = req.query.email;
-        const patients = await Patient.find({ 
-            email: { $regex: email, $options: 'i' } 
-        })
-        .limit(5)
-        .select('name email wallet.balance');
-        
-        res.json(patients);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'حدث خطأ أثناء البحث' });
     }
 });
 
@@ -669,7 +944,6 @@ app.post("/doctor/toggle-appointments", doctorAuth, async (req, res) => {
         });
     }
 });
-
 app.get("/get-available-slots", async (req, res) => {
     try {
         const { doctorId, date, patientId } = req.query;
@@ -691,7 +965,7 @@ app.get("/get-available-slots", async (req, res) => {
                 doctor: doctorId,
                 patient: patientId,
                 date: { $gte: new Date() },
-                status: { $ne: 'ملغي' }
+                status: { $nin: ['ملغي', 'مكتمل'] }
             });
 
             if (existingAppointment) {
@@ -703,6 +977,9 @@ app.get("/get-available-slots", async (req, res) => {
         }
 
         const selectedDate = new Date(date);
+        const now = new Date();
+        const isToday = selectedDate.toDateString() === now.toDateString();
+        
         const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
         const dayName = days[selectedDate.getDay()];
 
@@ -736,6 +1013,22 @@ app.get("/get-available-slots", async (req, res) => {
             while (currentHour < endHour || (currentHour === endHour && currentMinute < endMinute)) {
                 const timeStr = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
                 
+                // تخطي الأوقات التي مضى أكثر من ساعة على وقتها الحالي إذا كان اليوم هو اليوم الحالي
+                if (isToday) {
+                    const slotTime = new Date(now);
+                    slotTime.setHours(currentHour, currentMinute, 0, 0);
+                    const diffInHours = (slotTime - now) / (1000 * 60 * 60);
+                    
+                    if (diffInHours < 1) {
+                        currentMinute += 30;
+                        if (currentMinute >= 60) {
+                            currentMinute = 0;
+                            currentHour++;
+                        }
+                        continue;
+                    }
+                }
+                
                 let displayHour = currentHour;
                 const period = displayHour >= 12 ? 'م' : 'ص';
                 displayHour = displayHour % 12 || 12;
@@ -762,80 +1055,447 @@ app.get("/get-available-slots", async (req, res) => {
         res.status(500).json({ message: "حدث خطأ أثناء جلب الأوقات المتاحة" });
     }
 });
+// استيراد نموذج الدفع الجديد
+const Payment = require('./models/payment');
+
+// إعداد سعر الحجز الموحد
+const APPOINTMENT_PRICE = 100; // يمكن تغيير هذه القيمة من لوحة التحكم
+
+// إضافة مسار جديد لصفحة الدفع
+app.get('/payment/:appointmentId', verii, csrfProtection, async (req, res) => {
+    try {
+        const appointment = await Appointment.findById(req.params.appointmentId)
+            .populate('doctor')
+            .populate('patient');
+        
+        if (!appointment) {
+            return res.status(404).render('error', { message: "الموعد غير موجود" });
+        }
+        
+        // تأكد أن الموعد يخص المريض الحالي
+        if (appointment.patient._id.toString() !== req.patient._id.toString()) {
+            return res.status(403).render('error', { message: "غير مسموح بالوصول لهذا الموعد" });
+        }
+        
+        // تحديث سعر الحجز إذا لم يكن محدداً
+        if (!appointment.amountPaid || appointment.amountPaid === 0) {
+            appointment.amountPaid = APPOINTMENT_PRICE;
+            await appointment.save();
+        }
+        
+        res.render('payment', {
+            appointment,
+            patient: req.patient,
+            csrfToken: req.csrfToken()
+        });
+    } catch (error) {
+        console.error("Error loading payment page:", error);
+        res.status(500).render('error', { message: "حدث خطأ أثناء تحميل صفحة الدفع" });
+    }
+});
+
+// معالجة الدفع
+app.post('/process-payment', verii, csrfProtection, async (req, res) => {
+    try {
+        const { appointmentId, paymentMethod } = req.body;
+        const patientId = req.patient._id;
+        
+        if (!appointmentId || !paymentMethod) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "بيانات الدفع غير مكتملة" 
+            });
+        }
+        
+        const appointment = await Appointment.findById(appointmentId)
+            .populate('doctor')
+            .populate('patient');
+        
+        if (!appointment) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "الموعد غير موجود" 
+            });
+        }
+        
+        // تأكد أن الموعد يخص المريض الحالي
+        if (appointment.patient._id.toString() !== patientId.toString()) {
+            return res.status(403).json({ 
+                success: false, 
+                message: "غير مسموح بالوصول لهذا الموعد" 
+            });
+        }
+        
+        // إذا كان الدفع عبر المحفظة
+        if (paymentMethod === 'wallet') {
+            const patient = await Patient.findById(patientId);
+            
+            if (patient.wallet.balance < appointment.amountPaid) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: "رصيد المحفظة غير كافٍ" 
+                });
+            }
+            
+            // خصم المبلغ من المحفظة
+            patient.wallet.balance -= appointment.amountPaid;
+            patient.wallet.transactions.push({
+                amount: -appointment.amountPaid,
+                date: new Date(),
+                description: `دفع حجز موعد مع الطبيب ${appointment.doctor.username}`,
+                transactionType: 'payment'
+            });
+            
+            // تحديث حالة الموعد
+            appointment.paymentMethod = 'محفظة';
+            appointment.paymentStatus = 'مدفوع';
+            appointment.status = 'مؤكد';
+            
+            // إنشاء سجل الدفع
+            const payment = new Payment({
+                appointment: appointment._id,
+                patient: patient._id,
+                doctor: appointment.doctor._id,
+                amount: appointment.amountPaid,
+                paymentMethod: 'محفظة',
+                status: 'مكتمل'
+            });
+            
+            await Promise.all([
+                patient.save(),
+                appointment.save(),
+                payment.save()
+            ]);
+            
+            return res.json({ 
+                success: true, 
+                message: "تم الدفع وتأكيد الحجز بنجاح"
+            });
+        }
+        
+        // إذا كان الدفع الإلكتروني (بطاقة ائتمان)
+        if (paymentMethod === 'creditCard') {
+            // هنا يمكنك إضافة تكامل مع بوابة الدفع
+            // في هذا المثال سنفترض أن الدفع تم بنجاح
+            
+            // تحديث حالة الموعد
+            appointment.paymentMethod = 'إلكتروني';
+            appointment.paymentStatus = 'مدفوع';
+            appointment.status = 'مؤكد';
+            
+            // إنشاء سجل الدفع
+            const payment = new Payment({
+                appointment: appointment._id,
+                patient: patientId,
+                doctor: appointment.doctor._id,
+                amount: appointment.amountPaid,
+                paymentMethod: 'إلكتروني',
+                status: 'مكتمل',
+                paymentDetails: {
+                    method: 'MasterCard',
+                    transactionId: `tx_${Math.random().toString(36).substr(2, 9)}`
+                }
+            });
+            
+            await Promise.all([
+                appointment.save(),
+                payment.save()
+            ]);
+            
+            return res.json({ 
+                success: true, 
+                message: "تم الدفع وتأكيد الحجز بنجاح"
+            });
+        }
+        
+        return res.status(400).json({ 
+            success: false, 
+            message: "طريقة الدفع غير معروفة" 
+        });
+        
+    } catch (error) {
+        console.error("Error processing payment:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: "حدث خطأ أثناء عملية الدفع",
+            error: error.message 
+        });
+    }
+});
+
+// مسار لجلب سجل المدفوعات للإدارة
+app.get('/admin/payments', adminAuth, async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const filter = req.query.filter || 'all';
+        const date = req.query.date || '';
+        
+        let query = {};
+        
+        // تطبيق الفلتر حسب طريقة الدفع
+        if (filter !== 'all') {
+            query.paymentMethod = filter === 'electronic' ? 'إلكتروني' : 'محفظة';
+        }
+        
+        // تطبيق الفلتر حسب التاريخ
+        if (date) {
+            const startDate = new Date(date);
+            startDate.setHours(0, 0, 0, 0);
+            
+            const endDate = new Date(date);
+            endDate.setHours(23, 59, 59, 999);
+            
+            query.createdAt = { $gte: startDate, $lte: endDate };
+        }
+        
+        const totalPayments = await Payment.countDocuments(query);
+        const totalPages = Math.ceil(totalPayments / limit);
+        
+        const payments = await Payment.find(query)
+            .populate('patient', 'name email')
+            .populate('doctor', 'username specialization')
+            .sort({ createdAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(limit);
+        
+        res.json({
+            payments,
+            totalPages,
+            currentPage: page
+        });
+        
+    } catch (error) {
+        console.error("Error fetching payments:", error);
+        res.status(500).json({ 
+            message: "حدث خطأ أثناء جلب سجل المدفوعات",
+            error: error.message 
+        });
+    }
+});
+
+// تحديث مسار حجز الموعد
 app.post("/book-appointment", verii, csrfProtection, async (req, res) => {
     try {
-        if (!req.patient) {
-            return res.status(401).json({ success: false, message: "يجب تسجيل الدخول كـ مريض" });
-        }
-
         const { doctorId, date, time, notes, paymentMethod } = req.body;
         const patientId = req.patient._id;
         
-        if (!doctorId || !date || !time) {
-            return res.status(400).json({ success: false, message: "جميع الحقول مطلوبة" });
+        // التحقق من البيانات المطلوبة
+        if (!doctorId || !date || !time || !paymentMethod) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "جميع الحقول مطلوبة",
+                details: "يجب إدخال بيانات الطبيب والتاريخ والوقت وطريقة الدفع",
+                missingFields: {
+                    doctorId: !doctorId,
+                    date: !date,
+                    time: !time,
+                    paymentMethod: !paymentMethod
+                }
+            });
         }
 
+        // البحث عن الطبيب
         const doctor = await Doctor.findById(doctorId);
         if (!doctor) {
-            return res.status(404).json({ success: false, message: "الطبيب غير موجود" });
+            return res.status(404).json({ 
+                success: false, 
+                message: "الطبيب غير موجود",
+                details: "معرف الطبيب غير صحيح"
+            });
         }
 
+        // التحقق من قبول الطبيب للحجوزات
         if (!doctor.acceptingAppointments) {
-            return res.status(400).json({ success: false, message: "الطبيب لا يقبل الحجوزات حالياً" });
+            return res.status(400).json({ 
+                success: false, 
+                message: "الطبيب لا يقبل الحجوزات حالياً",
+                details: "حالة الطبيب لا تسمح بقبول حجوزات جديدة"
+            });
         }
 
+        const selectedDate = new Date(date);
+        const now = new Date();
+        const isToday = selectedDate.toDateString() === now.toDateString();
+
+        // التحقق من صحة التاريخ
+        if (isNaN(selectedDate.getTime())) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "تاريخ غير صالح",
+                details: "تنسيق التاريخ غير صحيح"
+            });
+        }
+
+        // التحقق من أن التاريخ ليس في الماضي
+        if (selectedDate < new Date().setHours(0, 0, 0, 0)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "لا يمكن حجز موعد في تاريخ قديم",
+                details: "التاريخ المحدد قد مضى"
+            });
+        }
+
+        // التحقق من صحة الوقت
+        if (!/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "تنسيق الوقت غير صحيح",
+                details: "يجب أن يكون الوقت بتنسيق 24 ساعة (HH:MM)"
+            });
+        }
+
+        // التحقق من وجود موعد سابق للمريض (تجاهل المواعيد المكتملة)
         const existingAppointment = await Appointment.findOne({
             doctor: doctorId,
             patient: patientId,
             date: { $gte: new Date() },
-            status: { $ne: 'ملغي' }
+            status: { $nin: ['ملغي', 'مكتمل'] }
         });
 
         if (existingAppointment) {
             return res.status(400).json({ 
                 success: false, 
                 message: "لديك موعد محجز مسبقاً مع هذا الطبيب",
+                details: "يوجد موعد نشط آخر للمريض مع نفس الطبيب",
                 existingAppointment 
             });
         }
 
-        const selectedDate = new Date(date);
-        if (isNaN(selectedDate.getTime())) {
-            return res.status(400).json({ success: false, message: "تاريخ غير صالح" });
+        // التحقق من أن وقت الحجز ليس في الماضي
+        const appointmentTime = new Date(`${selectedDate.toISOString().split('T')[0]}T${time}`);
+        if (appointmentTime < now) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "لا يمكن حجز موعد في وقت مضى",
+                details: "الوقت المحدد قد مضى"
+            });
         }
 
-        if (!/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
-            return res.status(400).json({ success: false, message: "تنسيق الوقت غير صحيح" });
+        // إذا كان الحجز في نفس اليوم، التحقق من أن الوقت الحالي أقل من وقت الحجز بساعة على الأقل
+        if (isToday) {
+            const timeDiff = appointmentTime - now;
+            if (timeDiff < 60 * 60 * 1000) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: "يجب حجز الموعد قبل ساعة على الأقل من الوقت الحالي",
+                    details: "الفرق بين الوقت الحالي ووقت الحجز أقل من ساعة"
+                });
+            }
         }
 
+        // التحقق من أن الوقت المحدد متاح للطبيب
+        const availableSlots = await doctor.getAvailableSlots(selectedDate, patientId);
+        if (!availableSlots.includes(time)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "الوقت المحدد غير متاح",
+                details: "الوقت محجوز مسبقاً أو خارج أوقات عمل الطبيب",
+                availableSlots
+            });
+        }
+
+        // إنشاء الموعد الجديد
         const newAppointment = new Appointment({
             doctor: doctorId,
             patient: patientId,
             date: selectedDate,
             time: time,
             notes: notes || '',
-            status: paymentMethod === 'إلكتروني' ? 'مؤكد' : 'غير مؤكد',
+            status: paymentMethod === 'محفظة' ? 'مؤكد' : 'قيد الانتظار',
             paymentMethod: paymentMethod,
-            paymentStatus: paymentMethod === 'إلكتروني' ? 'مدفوع' : 'غير مدفوع'
+            paymentStatus: paymentMethod === 'محفظة' ? 'مدفوع' : 'معلق',
+            amountPaid: APPOINTMENT_PRICE
         });
 
+        // حفظ الموعد في قاعدة البيانات
         await newAppointment.save();
+
+        // إذا كان الدفع عبر المحفظة، معالجة الدفع
+        if (paymentMethod === 'محفظة') {
+            const patient = await Patient.findById(patientId);
+            
+            if (patient.wallet.balance < APPOINTMENT_PRICE) {
+                // إذا لم يكن هناك رصيد كافي، تحديث حالة الموعد
+                newAppointment.paymentStatus = 'غير مدفوع';
+                newAppointment.status = 'ملغي';
+                await newAppointment.save();
+                
+                return res.json({ 
+                    success: false, 
+                    message: "رصيد المحفظة غير كافٍ",
+                    appointment: {
+                        id: newAppointment._id,
+                        status: newAppointment.status,
+                        paymentStatus: newAppointment.paymentStatus
+                    }
+                });
+            }
+            
+            // خصم المبلغ من المحفظة
+            patient.wallet.balance -= APPOINTMENT_PRICE;
+            patient.wallet.transactions.push({
+                amount: -APPOINTMENT_PRICE,
+                date: new Date(),
+                description: `دفع حجز موعد مع الطبيب ${doctor.username}`,
+                transactionType: 'payment'
+            });
+            
+            // إنشاء سجل الدفع
+            const payment = new Payment({
+                appointment: newAppointment._id,
+                patient: patientId,
+                doctor: doctorId,
+                amount: APPOINTMENT_PRICE,
+                paymentMethod: 'محفظة',
+                status: 'مكتمل'
+            });
+            
+            await Promise.all([
+                patient.save(),
+                payment.save()
+            ]);
+        }
 
         res.json({ 
             success: true, 
             message: "تم حجز الموعد بنجاح",
-            appointment: newAppointment
+            appointment: {
+                id: newAppointment._id,
+                date: newAppointment.date,
+                time: newAppointment.time,
+                status: newAppointment.status,
+                paymentStatus: newAppointment.paymentStatus
+            },
+            nextSteps: paymentMethod === 'إلكتروني' ? 
+                "سيتم تحويلك لصفحة الدفع" : 
+                "تم تأكيد الحجز بنجاح"
         });
+
     } catch (error) {
         console.error("Error booking appointment:", error);
+        
+        // تحديد نوع الخطأ لإرسال رسالة مناسبة
+        let errorMessage = "حدث خطأ أثناء حجز الموعد";
+        let errorDetails = error.message;
+        
+        if (error.name === 'ValidationError') {
+            errorMessage = "بيانات الحجز غير صالحة";
+            errorDetails = Object.values(error.errors).map(e => e.message).join(', ');
+        } else if (error.name === 'MongoError' && error.code === 11000) {
+            errorMessage = "هذا الموعد محجوز مسبقاً";
+            errorDetails = "يوجد تعارض في المواعيد";
+        }
+
         res.status(500).json({ 
             success: false, 
-            message: "حدث خطأ أثناء حجز الموعد",
-            error: error.message 
+            message: errorMessage,
+            details: errorDetails,
+            errorType: error.name,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 });
-
 app.get("/doctor/get-appointments", doctorAuth, async (req, res) => {
     try {
         const appointments = await Appointment.find({ doctor: req.doctor._id })
@@ -918,7 +1578,51 @@ app.post("/doctor/save-availability", doctorAuth, async (req, res) => {
         res.status(500).json({ success: false, message: "حدث خطأ أثناء حفظ أوقات التوفر" });
     }
 });
-
+app.get("/check-existing-appointment", verii, async (req, res) => {
+    try {
+        const { doctorId, patientId } = req.query;
+        
+        const existingAppointment = await Appointment.findOne({
+            doctor: doctorId,
+            patient: patientId,
+            status: { $nin: ['ملغي', 'مكتمل'] }
+        });
+        
+        res.json({ 
+            hasExisting: !!existingAppointment,
+            existingAppointment: existingAppointment || null
+        });
+    } catch (error) {
+        console.error("Error checking existing appointment:", error);
+        res.status(500).json({ 
+            message: "حدث خطأ أثناء التحقق من المواعيد",
+            error: error.message
+        });
+    }
+});
+app.get("/api/sessions/check-status", verii, async (req, res) => {
+    try {
+        const now = new Date();
+        const updatedSessions = await Appointment.updateMany({
+            patient: req.patient._id,
+            status: 'مؤكد',
+            date: { $lte: now },
+            time: { $lte: now.toLocaleTimeString('en-US', { hour12: false }) }
+        }, {
+            $set: { status: 'مكتمل' }
+        });
+        
+        res.json({ 
+            updated: updatedSessions.modifiedCount > 0
+        });
+    } catch (error) {
+        console.error("Error checking sessions status:", error);
+        res.status(500).json({ 
+            message: "حدث خطأ أثناء التحقق من حالة الجلسات",
+            error: error.message
+        });
+    }
+});
 app.get("/doctor/get-availability", doctorAuth, async (req, res) => {
     try {
         const doctor = await Doctor.findById(req.doctor._id);
