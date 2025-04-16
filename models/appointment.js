@@ -1,13 +1,8 @@
-
 const mongoose = require('mongoose');
 const Doctor = require('./doctor');
 const Patient = require('./patient');
 
 const appointmentSchema = new mongoose.Schema({
-    amountPaid: {
-        type: Number,
-        default: 100
-    },
     doctor: { 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'Doctor', 
@@ -40,7 +35,11 @@ const appointmentSchema = new mongoose.Schema({
         trim: true,
         maxlength: [500, 'الملاحظات يجب ألا تتجاوز 500 حرف']
     },
-   
+    status: {
+        type: String,
+        enum: ['قيد الانتظار', 'مؤكد', 'ملغي', 'مكتمل'],
+        default: 'قيد الانتظار'
+    },
     paymentStatus: {
         type: String,
         enum: ['مدفوع', 'غير مدفوع', 'معلق'],
@@ -48,26 +47,41 @@ const appointmentSchema = new mongoose.Schema({
     },
     paymentMethod: {
         type: String,
-        enum: ['لاحقا', 'إلكتروني', null],
+        enum: ['إلكتروني', 'محفظة', null],
         default: null
+    },
+    amountPaid: {
+        type: Number,
+        default: 0
     },
     cancellationReason: {
         type: String,
         trim: true,
-        maxlength: [200, 'سبب الإلغاء يجب ألا يتجاوز 200 حرف'],
-        required: function() {
-            return this.status === 'ملغي';
-        }
+        maxlength: [200, 'سبب الإلغاء يجب ألا يتجاوز 200 حرف']
     },
     chatHistory: [{
         sender: String,
         message: String,
         timestamp: Date,
-        type: { type: String, enum: ['text', 'file'] }
+        type: { type: String, enum: ['text', 'file'] },
+        fileData: {
+            fileName: String,
+            fileSize: Number,
+            fileType: String,
+            fileUrl: String
+        }
     }],
     sessionStartedAt: Date,
     sessionEndedAt: Date,
     sessionDuration: Number,
+    doctorRequestedEnd: {
+        type: Boolean,
+        default: false
+    },
+    patientRequestedEnd: {
+        type: Boolean,
+        default: false
+    },
     createdAt: { 
         type: Date, 
         default: Date.now,
@@ -104,70 +118,68 @@ appointmentSchema.pre('save', async function(next) {
         throw new Error('الطبيب غير متاح في هذا اليوم');
     }
     
-    // Check time slot
-    const [hours, minutes] = this.time.split(':').map(Number);
-    const appointmentMinutes = hours * 60 + minutes;
-    
-    const [morningStartH, morningStartM] = doctor.morningStart.split(':').map(Number);
-    const [morningEndH, morningEndM] = doctor.morningEnd.split(':').map(Number);
-    const morningStart = morningStartH * 60 + morningStartM;
-    const morningEnd = morningEndH * 60 + morningEndM;
-    
-    const [eveningStartH, eveningStartM] = doctor.eveningStart.split(':').map(Number);
-    const [eveningEndH, eveningEndM] = doctor.eveningEnd.split(':').map(Number);
-    const eveningStart = eveningStartH * 60 + eveningStartM;
-    const eveningEnd = eveningEndH * 60 + eveningEndM;
-    
-    const isInMorning = appointmentMinutes >= morningStart && appointmentMinutes < morningEnd;
-    const isInEvening = appointmentMinutes >= eveningStart && appointmentMinutes < eveningEnd;
-    
-    if (!isInMorning && !isInEvening) {
-        throw new Error('الموعد خارج أوقات عمل الطبيب');
-    }
-    
-    if (minutes !== 0 && minutes !== 30) {
-        throw new Error('يجب أن يبدأ الموعد عند الساعة أو النصف ساعة');
-    }
-    
     // Handle payment status
     if (this.paymentMethod === 'إلكتروني' && this.isNew) {
-        this.status = 'مؤكد';
-        this.paymentStatus = 'مدفوع';
-    } else if (this.paymentMethod === 'لاحقا' && this.isNew) {
-        this.status = 'غير مؤكد';
-        this.paymentStatus = 'غير مدفوع';
+        this.status = 'قيد الانتظار'; // سيتم التأكيد بعد اكتمال الدفع
+        this.paymentStatus = 'معلق';
+    } else if (this.paymentMethod === 'محفظة' && this.isNew) {
+        this.status = 'قيد الانتظار';
+        this.paymentStatus = 'معلق';
     }
     
     this.updatedAt = Date.now();
     next();
 });
 
-
-appointmentSchema.post('save', async function(doc) {
-    if (doc.status === 'مؤكد' && doc.isNew) {
-      
-        console.log(`New appointment confirmed for patient ${doc.patient}`);
-    }
-});
-
-
-appointmentSchema.methods.startSession = async function() {
-    this.sessionStartedAt = new Date();
-    this.status = 'مكتمل';
-    await this.save();
-};
-
-
-appointmentSchema.methods.endSession = async function() {
-    this.sessionEndedAt = new Date();
-    this.sessionDuration = Math.floor((this.sessionEndedAt - this.sessionStartedAt) / 1000 / 60);
-    await this.save();
-};
-
 // Virtual for formatted date
 appointmentSchema.virtual('formattedDate').get(function() {
     return this.date.toLocaleDateString('ar-EG');
 });
+
+// Method to start session
+appointmentSchema.methods.startSession = async function() {
+    this.sessionStartedAt = new Date();
+    this.status = 'قيد الانتظار';
+    await this.save();
+};
+
+// Method to request session end
+appointmentSchema.methods.requestEndSession = async function(userType) {
+    if (this.status === 'مكتمل') {
+        return { success: false, error: 'الجلسة منتهية بالفعل' };
+    }
+
+    if (userType === 'doctor') {
+        this.doctorRequestedEnd = true;
+    } else if (userType === 'patient') {
+        this.patientRequestedEnd = true;
+    }
+
+    await this.save();
+    
+    return { 
+        success: true, 
+        message: 'تم إرسال طلب إنهاء الجلسة',
+        requestedBy: userType
+    };
+};
+
+// Method to approve session end
+appointmentSchema.methods.approveEndSession = async function() {
+    this.sessionEndedAt = new Date();
+    this.status = 'مكتمل';
+    this.sessionDuration = Math.floor(
+        (this.sessionEndedAt - this.sessionStartedAt) / 1000 / 60
+    );
+    
+    await this.save();
+    
+    return { 
+        success: true, 
+        message: 'تم إنهاء الجلسة بنجاح',
+        sessionId: this._id
+    };
+};
 
 const Appointment = mongoose.model('Appointment', appointmentSchema);
 
