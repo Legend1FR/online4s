@@ -86,19 +86,19 @@ const doctorSchema = new mongoose.Schema({
         default: '13:00',
         validate: {
             validator: function(time) {
-                return /^(1[3-7]):(00|30)$/.test(time);
+                return /^(1[3-9]|2[0-2]):(00|30)$/.test(time);
             },
-            message: 'يجب أن تكون الفترة المسائية بين 1 ظهراً و6 مساءً بفاصل 30 دقيقة'
+            message: 'يجب أن تكون الفترة المسائية بين 1 ظهراً و10 مساءً بفاصل 30 دقيقة'
         }
     },
     eveningEnd: { 
         type: String,
-        default: '18:00',
+        default: '22:00',
         validate: {
             validator: function(time) {
-                return /^(1[3-7]):(00|30)$/.test(time);
+                return /^(1[3-9]|2[0-2]):(00|30)$/.test(time);
             },
-            message: 'يجب أن تكون الفترة المسائية بين 1 ظهراً و6 مساءً بفاصل 30 دقيقة'
+            message: 'يجب أن تكون الفترة المسائية بين 1 ظهراً و10 مساءً بفاصل 30 دقيقة'
         }
     },
     appointmentDuration: {
@@ -106,6 +106,12 @@ const doctorSchema = new mongoose.Schema({
         default: 30,
         enum: [30],
         message: 'مدة الموعد يجب أن تكون 30 دقيقة'
+    },
+    sessionPrice: {
+        type: Number,
+        default: 100,
+        min: [50, 'لا يمكن أن يكون سعر الجلسة أقل من 50 ريال'],
+        max: [1000, 'لا يمكن أن يكون سعر الجلسة أكثر من 1000 ريال']
     },
     acceptingAppointments: {
         type: Boolean,
@@ -158,67 +164,133 @@ doctorSchema.pre('save', function(next) {
 });
 
 // Method to get available time slots
-doctorSchema.methods.getAvailableSlots = async function(date) {
-    const dayNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-    const dayName = dayNames[date.getDay()];
-    
-    if (!this.availableDays.includes(dayName)) {
-        return [];
-    }
-    
-    // Get existing appointments for this date
-    const appointments = await Appointment.find({
-        doctor: this._id,
-        date: date,
-        status: { $ne: 'ملغي' }
-    });
-    
-    const bookedSlots = appointments.map(app => app.time);
-    
-    // Generate all possible slots
-    const allSlots = [];
-    
-    // Morning slots
-    const [morningStartH, morningStartM] = this.morningStart.split(':').map(Number);
-    const [morningEndH, morningEndM] = this.morningEnd.split(':').map(Number);
-    
-    let currentH = morningStartH;
-    let currentM = morningStartM;
-    
-    while (currentH < morningEndH || (currentH === morningEndH && currentM < morningEndM)) {
-        const slot = `${currentH.toString().padStart(2, '0')}:${currentM.toString().padStart(2, '0')}`;
-        if (!bookedSlots.includes(slot)) {
-            allSlots.push(slot);
+doctorSchema.methods.getAvailableSlots = async function(date, patientId = null) {
+    try {
+        const AppointmentModel = mongoose.model('Appointment');
+        const dayNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+        const dayName = dayNames[date.getDay()];
+        
+        if (!this.availableDays || !this.availableDays.includes(dayName)) {
+            return [];
         }
         
-        currentM += this.appointmentDuration;
-        if (currentM >= 60) {
-            currentM = 0;
-            currentH++;
-        }
-    }
-    
-    // Evening slots
-    const [eveningStartH, eveningStartM] = this.eveningStart.split(':').map(Number);
-    const [eveningEndH, eveningEndM] = this.eveningEnd.split(':').map(Number);
-    
-    currentH = eveningStartH;
-    currentM = eveningStartM;
-    
-    while (currentH < eveningEndH || (currentH === eveningEndH && currentM < eveningEndM)) {
-        const slot = `${currentH.toString().padStart(2, '0')}:${currentM.toString().padStart(2, '0')}`;
-        if (!bookedSlots.includes(slot)) {
-            allSlots.push(slot);
+        // Check for existing appointment if patientId is provided
+        if (patientId) {
+            const existingAppointment = await AppointmentModel.findOne({
+                doctor: this._id,
+                patient: patientId,
+                status: { $nin: ['ملغي', 'مكتمل'] }
+            });
+            
+            if (existingAppointment) {
+                throw new Error('لديك موعد محجز مسبقاً مع هذا الطبيب');
+            }
         }
         
-        currentM += this.appointmentDuration;
-        if (currentM >= 60) {
-            currentM = 0;
-            currentH++;
+        // Get existing appointments for this date
+        const appointments = await AppointmentModel.find({
+            doctor: this._id,
+            date: date,
+            status: { $ne: 'ملغي' }
+        });
+        
+        const bookedSlots = appointments.map(app => app.time);
+        const allSlots = [];
+        
+        // Generate morning slots
+        const [morningStartH, morningStartM] = this.morningStart.split(':').map(Number);
+        const [morningEndH, morningEndM] = this.morningEnd.split(':').map(Number);
+        
+        let currentH = morningStartH;
+        let currentM = morningStartM;
+        
+        while (currentH < morningEndH || (currentH === morningEndH && currentM < morningEndM)) {
+            const slot = `${currentH.toString().padStart(2, '0')}:${currentM.toString().padStart(2, '0')}`;
+            if (!bookedSlots.includes(slot)) {
+                allSlots.push(slot);
+            }
+            
+            currentM += this.appointmentDuration;
+            if (currentM >= 60) {
+                currentM = 0;
+                currentH++;
+            }
         }
+        
+        // Generate evening slots
+        const [eveningStartH, eveningStartM] = this.eveningStart.split(':').map(Number);
+        const [eveningEndH, eveningEndM] = this.eveningEnd.split(':').map(Number);
+        
+        currentH = eveningStartH;
+        currentM = eveningStartM;
+        
+        while (currentH < eveningEndH || (currentH === eveningEndH && currentM < eveningEndM)) {
+            const slot = `${currentH.toString().padStart(2, '0')}:${currentM.toString().padStart(2, '0')}`;
+            if (!bookedSlots.includes(slot)) {
+                allSlots.push(slot);
+            }
+            
+            currentM += this.appointmentDuration;
+            if (currentM >= 60) {
+                currentM = 0;
+                currentH++;
+            }
+        }
+        
+        return allSlots;
+    } catch (error) {
+        console.error('Error in getAvailableSlots:', error);
+        throw error;
     }
-    
-    return allSlots;
+};
+
+// Method to check if doctor is available at specific time
+doctorSchema.methods.isAvailable = async function(date, time) {
+    try {
+        const slots = await this.getAvailableSlots(date);
+        return slots.includes(time);
+    } catch (error) {
+        console.error('Error in isAvailable:', error);
+        return false;
+    }
+};
+
+// Method to get upcoming appointments
+doctorSchema.methods.getUpcomingAppointments = async function() {
+    try {
+        const AppointmentModel = mongoose.model('Appointment');
+        return await AppointmentModel.find({
+            doctor: this._id,
+            date: { $gte: new Date() },
+            status: { $in: ['مؤكد', 'قيد الانتظار'] }
+        }).populate('patient', 'name email')
+          .sort({ date: 1, time: 1 });
+    } catch (error) {
+        console.error('Error in getUpcomingAppointments:', error);
+        throw error;
+    }
+};
+
+// Method to get today's appointments
+doctorSchema.methods.getTodaysAppointments = async function() {
+    try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        const AppointmentModel = mongoose.model('Appointment');
+        return await AppointmentModel.find({
+            doctor: this._id,
+            date: { $gte: today, $lt: tomorrow },
+            status: { $in: ['مؤكد', 'قيد الانتظار'] }
+        }).populate('patient', 'name email profileImage')
+          .sort({ time: 1 });
+    } catch (error) {
+        console.error('Error in getTodaysAppointments:', error);
+        throw error;
+    }
 };
 
 const Doctor = mongoose.model('Doctor', doctorSchema);
