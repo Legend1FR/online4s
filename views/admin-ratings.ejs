@@ -1,0 +1,383 @@
+<%- include('headeradmin') %>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة التقييمات</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .rating-item { transition: all 0.3s ease; }
+        .rating-item:hover { transform: translateY(-3px); box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .star-active { color: #f59e0b; }
+        .star-inactive { color: #d1d5db; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen">
+        <%- include('admin-header') %>
+        
+        <div class="container mx-auto px-4 py-8">
+            <div class="flex justify-between items-center mb-8">
+                <h1 class="text-2xl font-bold text-gray-800">إدارة تقييمات المرضى</h1>
+                
+                <div class="flex space-x-2">
+                    <select id="filterRating" class="bg-white border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="all">جميع التقييمات</option>
+                        <option value="5">5 نجوم</option>
+                        <option value="4">4 نجوم</option>
+                        <option value="3">3 نجوم</option>
+                        <option value="2">2 نجوم</option>
+                        <option value="1">1 نجمة</option>
+                    </select>
+                    
+                    <select id="filterStatus" class="bg-white border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="all">جميع الحالات</option>
+                        <option value="approved">معتمدة فقط</option>
+                        <option value="pending">قيد الانتظار</option>
+                    </select>
+                    
+                    <button id="applyFilters" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition duration-300">
+                        تطبيق
+                    </button>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    المريض
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    الطبيب
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    التقييم
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    التعليق
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    الحالة
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    التاريخ
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    إجراءات
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="ratingsTableBody" class="bg-white divide-y divide-gray-200">
+                            <% if (ratings && ratings.length > 0) { %>
+                                <% ratings.forEach(rating => { %>
+                                    <tr class="rating-item">
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex items-center">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    <%= rating.patient.name %>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900"><%= rating.doctor.username %></div>
+                                            <div class="text-sm text-gray-500"><%= rating.doctor.specialization %></div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex">
+                                                <% for (let i = 1; i <= 5; i++) { %>
+                                                    <% if (i <= rating.rating) { %>
+                                                        <svg class="h-5 w-5 star-active" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                        </svg>
+                                                    <% } else { %>
+                                                        <svg class="h-5 w-5 star-inactive" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                        </svg>
+                                                    <% } %>
+                                                <% } %>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <div class="text-sm text-gray-900 max-w-xs truncate"><%= rating.comment || 'لا يوجد تعليق' %></div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <% if (rating.isApproved) { %>
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                    معتمد
+                                                </span>
+                                            <% } else { %>
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                                    قيد المراجعة
+                                                </span>
+                                            <% } %>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            <%= new Date(rating.createdAt).toLocaleDateString('ar-EG') %>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            <% if (!rating.isApproved) { %>
+                                                <button class="approve-rating text-green-600 hover:text-green-900 mr-3" data-rating-id="<%= rating._id %>">
+                                                    اعتماد
+                                                </button>
+                                            <% } %>
+                                            <button class="delete-rating text-red-600 hover:text-red-900" data-rating-id="<%= rating._id %>">
+                                                حذف
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
+                                        لا توجد تقييمات متاحة
+                                    </td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="mt-4 flex justify-between items-center">
+                <div class="text-sm text-gray-500">
+                    عرض <span id="startItem">1</span> إلى <span id="endItem"><%= ratings.length %></span> من <span id="totalItems"><%= ratings.length %></span> تقييم
+                </div>
+                <div class="flex space-x-2">
+                    <button id="prevPage" class="bg-white border border-gray-300 px-3 py-1 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        السابق
+                    </button>
+                    <button id="nextPage" class="bg-white border border-gray-300 px-3 py-1 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" <%= ratings.length > 10 ? '' : 'disabled' %>>
+                        التالي
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" class="fixed top-4 right-4 z-50 hidden">
+        <div class="bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center">
+            <span id="notificationMessage"></span>
+            <button class="ml-2" onclick="document.getElementById('notification').classList.add('hidden')">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let currentPage = 1;
+            const itemsPerPage = 10;
+            let filteredRatings = [];
+            
+            // Apply filters
+            document.getElementById('applyFilters').addEventListener('click', function() {
+                const ratingValue = document.getElementById('filterRating').value;
+                const statusValue = document.getElementById('filterStatus').value;
+                
+                fetch(`/api/admin/ratings/filter?rating=${ratingValue}&status=${statusValue}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            filteredRatings = data.ratings;
+                            renderRatingsTable(filteredRatings.slice(0, itemsPerPage));
+                            updatePagination();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error filtering ratings:', error);
+                        showNotification('حدث خطأ أثناء التصفية', 'error');
+                    });
+            });
+            
+            // Approve rating
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('approve-rating')) {
+                    const ratingId = e.target.getAttribute('data-rating-id');
+                    
+                    fetch(`/api/admin/ratings/${ratingId}/approve`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'CSRF-Token': '<%= csrfToken %>'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotification('تم اعتماد التقييم بنجاح');
+                            e.target.closest('tr').querySelector('td:nth-child(5) span').className = 
+                                'px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800';
+                            e.target.closest('tr').querySelector('td:nth-child(5) span').textContent = 'معتمد';
+                            e.target.remove();
+                        } else {
+                            showNotification(data.error || 'حدث خطأ أثناء اعتماد التقييم', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error approving rating:', error);
+                        showNotification('حدث خطأ أثناء اعتماد التقييم', 'error');
+                    });
+                }
+                
+                // Delete rating
+                if (e.target.classList.contains('delete-rating')) {
+                    if (!confirm('هل أنت متأكد من حذف هذا التقييم؟')) return;
+                    
+                    const ratingId = e.target.getAttribute('data-rating-id');
+                    
+                    fetch(`/api/admin/ratings/${ratingId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'CSRF-Token': '<%= csrfToken %>'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotification('تم حذف التقييم بنجاح');
+                            e.target.closest('tr').remove();
+                            
+                            // Check if table is empty now
+                            if (document.querySelectorAll('#ratingsTableBody tr').length === 1) {
+                                document.querySelector('#ratingsTableBody tr').style.display = '';
+                            }
+                        } else {
+                            showNotification(data.error || 'حدث خطأ أثناء حذف التقييم', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error deleting rating:', error);
+                        showNotification('حدث خطأ أثناء حذف التقييم', 'error');
+                    });
+                }
+            });
+            
+            // Pagination
+            document.getElementById('nextPage').addEventListener('click', function() {
+                currentPage++;
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const endIndex = startIndex + itemsPerPage;
+                renderRatingsTable(filteredRatings.slice(startIndex, endIndex));
+                updatePagination();
+            });
+            
+            document.getElementById('prevPage').addEventListener('click', function() {
+                currentPage--;
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const endIndex = startIndex + itemsPerPage;
+                renderRatingsTable(filteredRatings.slice(startIndex, endIndex));
+                updatePagination();
+            });
+            
+            function renderRatingsTable(ratings) {
+                const tbody = document.getElementById('ratingsTableBody');
+                tbody.innerHTML = '';
+                
+                if (ratings.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
+                                لا توجد تقييمات متطابقة مع معايير البحث
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                ratings.forEach(rating => {
+                    const row = document.createElement('tr');
+                    row.className = 'rating-item';
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="text-sm font-medium text-gray-900">
+                                    ${rating.patient.name}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">${rating.doctor.username}</div>
+                            <div class="text-sm text-gray-500">${rating.doctor.specialization}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex">
+                                ${Array(5).fill().map((_, i) => `
+                                    <svg class="h-5 w-5 ${i < rating.rating ? 'star-active' : 'star-inactive'}" 
+                                         xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                `).join('')}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-900 max-w-xs truncate">${rating.comment || 'لا يوجد تعليق'}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            ${rating.isApproved ? `
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                    معتمد
+                                </span>
+                            ` : `
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                    قيد المراجعة
+                                </span>
+                            `}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${new Date(rating.createdAt).toLocaleDateString('ar-EG')}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            ${!rating.isApproved ? `
+                                <button class="approve-rating text-green-600 hover:text-green-900 mr-3" data-rating-id="${rating._id}">
+                                    اعتماد
+                                </button>
+                            ` : ''}
+                            <button class="delete-rating text-red-600 hover:text-red-900" data-rating-id="${rating._id}">
+                                حذف
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+            
+            function updatePagination() {
+                const startItem = (currentPage - 1) * itemsPerPage + 1;
+                const endItem = Math.min(currentPage * itemsPerPage, filteredRatings.length);
+                
+                document.getElementById('startItem').textContent = startItem;
+                document.getElementById('endItem').textContent = endItem;
+                document.getElementById('totalItems').textContent = filteredRatings.length;
+                
+                document.getElementById('prevPage').disabled = currentPage === 1;
+                document.getElementById('nextPage').disabled = currentPage * itemsPerPage >= filteredRatings.length;
+            }
+            
+            function showNotification(message, type = 'success') {
+                const notification = document.getElementById('notification');
+                const notificationMessage = document.getElementById('notificationMessage');
+                
+                notification.className = `fixed top-4 right-4 z-50 flex items-center bg-${type === 'success' ? 'green' : 'red'}-500 text-white px-4 py-2 rounded-lg shadow-lg`;
+                notificationMessage.textContent = message;
+                
+                setTimeout(() => {
+                    notification.classList.add('hidden');
+                }, 5000);
+            }
+            
+            // Initialize
+            filteredRatings = <%= JSON.stringify(ratings) %>;
+            renderRatingsTable(filteredRatings.slice(0, itemsPerPage));
+            updatePagination();
+        });
+    </script>
+</body>
+</html>
