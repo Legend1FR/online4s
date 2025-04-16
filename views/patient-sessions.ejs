@@ -6,39 +6,195 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>جلساتي</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
     .session-card { transition: transform 0.3s, box-shadow 0.3s; }
     .session-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
     .notification { position: fixed; top: 20px; right: 20px; z-index: 1000; }
+    .tab-button { transition: all 0.3s ease; }
+    .tab-button.active { border-bottom: 3px solid #3B82F6; color: #3B82F6; font-weight: bold; }
+    .loading-spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-radius: 50%;
+      border-top: 4px solid #3B82F6;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-upcoming {
+      background-color: #3B82F6;
+      color: white;
+    }
+    .badge-completed {
+      background-color: #10B981;
+      color: white;
+    }
+    .rating-stars {
+      direction: ltr;
+      unicode-bidi: bidi-override;
+    }
+    .rating-stars input {
+      display: none;
+    }
+    .rating-stars label {
+      color: #ddd;
+      font-size: 1.5rem;
+      padding: 0 0.1rem;
+      cursor: pointer;
+    }
+    .rating-stars input:checked ~ label {
+      color: #ffc107;
+    }
+    .rating-stars label:hover,
+    .rating-stars label:hover ~ label {
+      color: #ffc107;
+    }
   </style>
 </head>
 <body class="bg-gray-100 font-sans">
   <div class="container mx-auto p-6">
     <div class="text-center mb-6">
-      <h1 class="text-2xl font-bold text-gray-800">جلساتي المحجوزة</h1>
-      <p class="text-gray-600">عرض جميع الجلسات مع الأطباء</p>
+      <h1 class="text-2xl font-bold text-gray-800">جلساتي</h1>
+      <p class="text-gray-600">إدارة الجلسات مع الأطباء</p>
     </div>
-    <div id="sessionsList" class="space-y-4 max-w-lg mx-auto">
-      <% if (sessions.length === 0) { %>
-        <p class="text-gray-600">لا توجد لديك جلسات محجوزة حالياً</p>
-      <% } else { %>
-        <% sessions.forEach(session => { %>
-          <div class="session-card bg-white rounded-lg p-4 shadow-lg flex items-center justify-between">
-            <div class="flex items-center">
-              <img src="<%= session.doctor.profileImage || '/images/default-doctor.jpg' %>" alt="<%= session.doctor.username %>" class="w-16 h-16 rounded-full mr-4">
-              <div>
-                <p class="font-bold text-gray-800"><%= session.doctor.username %></p>
-                <p class="text-gray-600"><%= session.doctor.specialization %></p>
-                <p class="text-gray-600">
-                  <i class="far fa-calendar-alt"></i> <%= new Date(session.date).toLocaleDateString('ar-EG') %> |
-                  <i class="far fa-clock"></i> <%= session.time %>
-                </p>
+
+    <div class="flex justify-center mb-8">
+      <div class="flex bg-white rounded-lg shadow-md overflow-hidden">
+        <button id="upcomingTab" class="tab-button active px-6 py-3 focus:outline-none">
+          الجلسات المحجوزة
+        </button>
+        <button id="completedTab" class="tab-button px-6 py-3 focus:outline-none">
+          الجلسات المنجزة
+        </button>
+      </div>
+    </div>
+
+    <div id="loadingIndicator" class="flex justify-center my-8 hidden">
+      <div class="loading-spinner"></div>
+    </div>
+
+    <div id="errorMessage" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 hidden" role="alert">
+      <p id="errorText"></p>
+    </div>
+
+    <div id="sessionsContainer">
+      <div id="upcomingSessions">
+        <% if (sessions && sessions.length > 0) { %>
+          <div class="space-y-4 max-w-lg mx-auto">
+            <% sessions.forEach(session => { %>
+              <div class="session-card bg-white rounded-lg p-4 shadow-lg flex items-center justify-between">
+                <div class="flex items-center">
+                  <img src="<%= session.doctor.profileImage || '/images/default-doctor.jpg' %>" alt="<%= session.doctor.username %>" class="w-16 h-16 rounded-full mr-4">
+                  <div>
+                    <p class="font-bold text-gray-800"><%= session.doctor.username %></p>
+                    <p class="text-gray-600"><%= session.doctor.specialization %></p>
+                    <p class="text-gray-600">
+                      <i class="far fa-calendar-alt"></i> <%= new Date(session.date).toLocaleDateString('ar-EG') %> |
+                      <i class="far fa-clock"></i> <%= session.time %>
+                    </p>
+                    <span class="badge badge-upcoming mt-1">محجوزة</span>
+                  </div>
+                </div>
+                <button class="join-session-btn bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600" data-session-id="<%= session._id %>">
+                  انضم إلى الجلسة
+                </button>
               </div>
-            </div>
-            <button class="join-session-btn bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600" data-session-id="<%= session._id %>">انضم إلى الجلسة</button>
+            <% }); %>
           </div>
-        <% }); %>
-      <% } %>
+        <% } else { %>
+          <p class="text-gray-600 text-center">لا توجد لديك جلسات محجوزة حالياً</p>
+        <% } %>
+      </div>
+
+      <div id="completedSessions" class="hidden">
+        <% if (completedSessions && completedSessions.length > 0) { %>
+          <div class="space-y-4 max-w-lg mx-auto">
+            <% completedSessions.forEach(session => { %>
+              <div class="session-card bg-white rounded-lg p-4 shadow-lg">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="flex items-center">
+                    <img src="<%= session.doctor.profileImage || '/images/default-doctor.jpg' %>" alt="<%= session.doctor.username %>" class="w-16 h-16 rounded-full mr-4">
+                    <div>
+                      <p class="font-bold text-gray-800"><%= session.doctor.username %></p>
+                      <p class="text-gray-600"><%= session.doctor.specialization %></p>
+                      <p class="text-gray-600">
+                        <i class="far fa-calendar-alt"></i> <%= new Date(session.date).toLocaleDateString('ar-EG') %> |
+                        <i class="far fa-clock"></i> <%= session.time %>
+                      </p>
+                    </div>
+                  </div>
+                  <span class="badge badge-completed">منجزة</span>
+                </div>
+                
+                <% if (session.notes) { %>
+                  <div class="bg-blue-50 p-3 rounded-lg mb-3">
+                    <p class="text-gray-700"><i class="fas fa-file-medical mr-2"></i> ملاحظات الطبيب: <%= session.notes %></p>
+                  </div>
+                <% } %>
+                
+                <div class="text-sm text-gray-500 mb-3">
+                  مدة الجلسة: <%= session.sessionDuration || 30 %> دقيقة
+                </div>
+                
+                <% if (!session.rating) { %>
+                  <div class="border-t pt-3">
+                    <h4 class="font-medium mb-2">تقييم الجلسة:</h4>
+                    <form class="rate-form" data-session-id="<%= session._id %>" data-doctor-id="<%= session.doctor._id %>">
+                      <div class="rating-stars flex justify-center mb-2">
+                        <input type="radio" id="star5-<%= session._id %>" name="rating" value="5">
+                        <label for="star5-<%= session._id %>">★</label>
+                        <input type="radio" id="star4-<%= session._id %>" name="rating" value="4">
+                        <label for="star4-<%= session._id %>">★</label>
+                        <input type="radio" id="star3-<%= session._id %>" name="rating" value="3">
+                        <label for="star3-<%= session._id %>">★</label>
+                        <input type="radio" id="star2-<%= session._id %>" name="rating" value="2">
+                        <label for="star2-<%= session._id %>">★</label>
+                        <input type="radio" id="star1-<%= session._id %>" name="rating" value="1">
+                        <label for="star1-<%= session._id %>">★</label>
+                      </div>
+                      <textarea name="comment" class="w-full border rounded-lg p-2 mb-2" placeholder="تعليقك (اختياري)"></textarea>
+                      <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 w-full">
+                        إرسال التقييم
+                      </button>
+                    </form>
+                  </div>
+                <% } else { %>
+                  <div class="bg-gray-50 p-3 rounded-lg">
+                    <div class="flex items-center mb-1">
+                      <div class="text-yellow-400">
+                        <% for (let i = 1; i <= 5; i++) { %>
+                          <% if (i <= session.rating.rating) { %>
+                            ★
+                          <% } else { %>
+                            ☆
+                          <% } %>
+                        <% } %>
+                      </div>
+                      <span class="text-sm text-gray-500 mr-2"><%= session.rating.rating %>/5</span>
+                    </div>
+                    <% if (session.rating.comment) { %>
+                      <p class="text-gray-700"><%= session.rating.comment %></p>
+                    <% } %>
+                  </div>
+                <% } %>
+              </div>
+            <% }); %>
+          </div>
+        <% } else { %>
+          <p class="text-gray-600 text-center">ليس هناك جلسات منجزة</p>
+        <% } %>
+      </div>
     </div>
   </div>
 
@@ -46,26 +202,109 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io();
+    document.addEventListener('DOMContentLoaded', function() {
+      const socket = io();
+      const upcomingTab = document.getElementById('upcomingTab');
+      const completedTab = document.getElementById('completedTab');
+      const upcomingSessionsDiv = document.getElementById('upcomingSessions');
+      const completedSessionsDiv = document.getElementById('completedSessions');
+      const loadingIndicator = document.getElementById('loadingIndicator');
+      const errorMessage = document.getElementById('errorMessage');
+      const errorText = document.getElementById('errorText');
 
-    document.querySelectorAll(".join-session-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const sessionId = btn.getAttribute("data-session-id");
-        window.location.href = `/patient/session/${sessionId}`;
+      
+      function switchTab(tab) {
+        upcomingTab.classList.remove('active');
+        completedTab.classList.remove('active');
+        
+        if (tab === 'upcoming') {
+          upcomingTab.classList.add('active');
+          upcomingSessionsDiv.classList.remove('hidden');
+          completedSessionsDiv.classList.add('hidden');
+        } else {
+          completedTab.classList.add('active');
+          upcomingSessionsDiv.classList.add('hidden');
+          completedSessionsDiv.classList.remove('hidden');
+        }
+      }
+
+      upcomingTab.addEventListener('click', () => switchTab('upcoming'));
+      completedTab.addEventListener('click', () => switchTab('completed'));
+
+      
+      document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('join-session-btn')) {
+          const sessionId = e.target.getAttribute('data-session-id');
+          window.location.href = `/patient/session/${sessionId}`;
+        }
       });
-    });
 
-    socket.on("sessionStarted", (data) => {
-      showNotification(`الجلسة مع د. ${data.doctorName} بدأت الآن!`, "bg-green-500");
-    });
+      
+      document.querySelectorAll('.rate-form').forEach(form => {
+        form.addEventListener('submit', async function(e) {
+          e.preventDefault();
+          const sessionId = this.getAttribute('data-session-id');
+          const doctorId = this.getAttribute('data-doctor-id');
+          const rating = this.querySelector('input[name="rating"]:checked')?.value;
+          const comment = this.querySelector('textarea[name="comment"]').value;
+          
+          if (!rating) {
+            showError('الرجاء اختيار تقييم');
+            return;
+          }
 
-    function showNotification(message, bgColor) {
-      const notification = document.getElementById("notification");
-      notification.textContent = message;
-      notification.className = `notification ${bgColor} text-white p-4 rounded-lg shadow-lg`;
-      notification.classList.remove("hidden");
-      setTimeout(() => notification.classList.add("hidden"), 5000);
-    }
+          try {
+            loadingIndicator.classList.remove('hidden');
+            const response = await fetch('/api/sessions/rate', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'CSRF-Token': '<%= csrfToken %>'
+              },
+              body: JSON.stringify({ sessionId, doctorId, rating, comment })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+              showNotification('تم إرسال التقييم بنجاح');
+              setTimeout(() => window.location.reload(), 1500);
+            } else {
+              showError(data.error || 'حدث خطأ أثناء إرسال التقييم');
+            }
+          } catch (error) {
+            showError('حدث خطأ أثناء إرسال التقييم');
+            console.error('Error submitting rating:', error);
+          } finally {
+            loadingIndicator.classList.add('hidden');
+          }
+        });
+      });
+
+      
+      function showNotification(message) {
+        const notification = document.getElementById('notification');
+        notification.textContent = message;
+        notification.classList.remove('hidden');
+        setTimeout(() => notification.classList.add('hidden'), 5000);
+      }
+
+     
+      function showError(message) {
+        errorText.textContent = message;
+        errorMessage.classList.remove('hidden');
+        setTimeout(() => errorMessage.classList.add('hidden'), 5000);
+      }
+      setInterval(() => {
+  fetch('/api/sessions/check-completed')
+    .then(response => response.json())
+    .then(data => {
+      if (data.updated) {
+        window.location.reload();
+      }
+    })
+    .catch(error => console.error('Error checking sessions:', error));
+}, 60000);
+    });
   </script>
 </body>
 </html>
