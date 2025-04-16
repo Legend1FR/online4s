@@ -1,131 +1,592 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>عيادتي الافتراضية - الصفحة الرئيسية</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .btn-outline-light {
+            border: 1px solid white;
+            color: white;
+            background: transparent;
+        }
+        
+        .btn-outline-light:hover {
+            background: white;
+            color: #3498db;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .my-5 {
+            margin-top: 3rem;
+            margin-bottom: 3rem;
+        }
+        
+        .py-5 {
+            padding-top: 3rem;
+            padding-bottom: 3rem;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        /* Navigation Styles */
+        .main-nav {
+            background-color: #fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 15px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .nav-container {
+            display: flex;
+            justify-content: space-around;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            padding: 10px 20px;
+            border-radius: 8px;
+        }
+        
+        .nav-item:hover {
+            background-color: #f0f7ff;
+            transform: translateY(-3px);
+        }
+        
+        .nav-item i {
+            font-size: 1.5rem;
+            color: #3498db;
+            margin-bottom: 5px;
+        }
+        
+        .nav-item span {
+            font-size: 1.1rem;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+        
+        /* Hero Section */
+        .hero-section {
+            background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('/images/medical-bg.jpg');
+            background-size: cover;
+            background-position: center;
+            height: 60vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+        }
+        
+        .hero-section h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .hero-section p {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        /* Doctors Slider Styles */
+        .doctors-slider {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            margin: 0 auto;
+            max-width: 1200px;
+        }
+        
+        .slider-container {
+            width: 90%;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .slider-track {
+            display: flex;
+            transition: transform 0.5s ease;
+            gap: 20px;
+            padding: 10px 0;
+        }
+        
+        .doctor-card {
+            min-width: calc(33.333% - 14px);
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .doctor-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+        }
+        
+        .doctor-img-container {
+            position: relative;
+            height: 250px;
+            overflow: hidden;
+        }
+        
+        .doctor-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s;
+        }
+        
+        .doctor-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .doctor-card:hover .doctor-overlay {
+            opacity: 1;
+        }
+        
+        .doctor-card:hover .doctor-img {
+            transform: scale(1.1);
+        }
+        
+        .doctor-info {
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .doctor-info h3 {
+            color: #2c3e50;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        
+        .specialization {
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+        
+        .slider-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 10;
+        }
+        
+        .slider-btn:hover {
+            background: #2980b9;
+            transform: translateY(-50%) scale(1.1);
+        }
+        
+        .prev-btn {
+            right: -20px;
+        }
+        
+        .next-btn {
+            left: -20px;
+        }
+        
+        .slider-dots {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 10px;
+        }
+        
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #bdc3c7;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .dot.active {
+            background: #3498db;
+            transform: scale(1.2);
+        }
+        
+        /* Features Styles */
+        .features-section {
+            background-color: #f8f9fa;
+        }
+        
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 0 -15px;
+        }
+        
+        .col-md-4 {
+            width: 33.333%;
+            padding: 0 15px;
+        }
+        
+        .feature-icon {
+            font-size: 3rem;
+            color: #3498db;
+            margin-bottom: 20px;
+        }
+        
+        .feature-item {
+            padding: 30px 15px;
+        }
+        
+        .feature-item h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        
+        /* Responsive Styles */
+        @media (max-width: 992px) {
+            .doctor-card {
+                min-width: calc(50% - 10px);
+            }
+            
+            .col-md-4 {
+                width: 50%;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .doctor-card {
+                min-width: 100%;
+            }
+            
+            .nav-container {
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            }
+            
+            .nav-item {
+                width: 80%;
+            }
+            
+            .hero-section h1 {
+                font-size: 2rem;
+            }
+            
+            .hero-section p {
+                font-size: 1.2rem;
+            }
+            
+            .col-md-4 {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header Include -->
+    <%- include('headerpatient.ejs') %>
 
-<!-- index.ejs -->
-
-<%- include('headerpatient.ejs') %>
-
-<div id="bigimg">
-    <div class="gui"><img src="1/55.jpg"></div>
-</div>
-<div style="display: flex; flex-wrap: row wrap; justify-content: right;"></div>
-<br>
-<<nav style="width: 100%; background-color: rgb(255, 245, 245); height:80px; padding: 10px 10px; box-shadow: 2px 2px 2px 2px rgb(94, 90, 81); border: none;">
-    <div style="display: flex; flex-flow: row wrap; justify-content: space-around;">
-        <div class="information"> الطبية</div>
-        <div class="information">الاقسام النفسية</div>
-        <div class="information">علاج </div>
-        <div class="information" onclick="window.location.href='<%= patient ? "/patient/sessions" : "/signUp" %>'">جلساتي</div>
-        <div class="information" onclick="window.location.href='/community'">المجتمع</div>
-    </div>
-</nav>
-
-<div id="tbody">
-    <section id="3453">
-        <img src="1/11.jpg" alt="">
-        <p style="font-size: 40px; text-align: end;margin: 0;"> ghh </p>
-        <div class="bigarrow" style="display: flex;">
-            <div onclick="arr2()" id="prev" class="arrow" style="font-size: 25px;">&#10094</div>
-            <div id="next" onclick="arr1()" class="arrow" style="font-size:25px;">&#10095</div>
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div>
+            <h1>مرحباً بكم في عيادتنا الافتراضية</h1>
+            <p>أفضل الأطباء متاحون لرعايتك في أي وقت</p>
+            <% if (patient) { %>
+                <a href="/request-session" class="btn btn-primary">احجز موعدك الآن</a>
+            <% } else { %>
+                <a href="/signUp" class="btn btn-primary">سجل الآن للبدء</a>
+            <% } %>
         </div>
-        <div id="bigJlst">
-            <a href="<%= patient ? '/request-session' : '/signUp' %>">
-                <div id="jlst" style="background-color: green;" onclick="index2()"> طلب جلسة </div>
-            </a>
-            <div class="bigaccount" id="bigaccount">
-                <div class="account" id="account"></div>
+    </section>
+
+    <!-- Navigation Bar -->
+    <nav class="main-nav">
+        <div class="nav-container">
+            <div class="nav-item" onclick="window.location.href='<%= patient ? "/patient/sessions" : "/signUp" %>'">
+                <i class="fas fa-calendar-alt"></i>
+                <span>جلساتي</span>
+            </div>
+            <div class="nav-item" onclick="window.location.href='<%= patient ? "/patient/sessions" : "/signUp" %>'">
+                <i class="fas fa-history"></i>
+                <span>مراجعاتي</span>
+            </div>
+            <div class="nav-item" onclick="window.location.href='<%= patient ? "/request-session" : "/signUp" %>'">
+                <i class="fas fa-user-md"></i>
+                <span>الأطباء</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Doctors Slider Section -->
+    <div class="container my-5">
+        <h2 class="text-center mb-5" style="color: #2c3e50; font-weight: bold;">أطباؤنا المتخصصون</h2>
+        
+        <% if (error) { %>
+            <div class="alert alert-danger text-center">
+                <i class="fas fa-exclamation-triangle"></i> <%= error %>
+            </div>
+        <% } %>
+
+        <% if (doctors && doctors.length > 0) { %>
+            <div class="doctors-slider">
+                <button class="slider-btn prev-btn" aria-label="السابق">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+                
+                <div class="slider-container">
+                    <div class="slider-track">
+                        <% doctors.forEach(doctor => { %>
+                            <div class="doctor-card">
+                                <div class="doctor-img-container">
+                                    <img src="<%= doctor.profileImage || '/images/default-doctor.jpg' %>" alt="<%= doctor.username %>" class="doctor-img">
+                                    <div class="doctor-overlay">
+                                        <% if (patient) { %>
+                                            <a href="/request-session?doctor=<%= doctor._id %>" class="btn btn-outline-light">حجز موعد</a>
+                                        <% } else { %>
+                                            <a href="/signUp" class="btn btn-outline-light">سجل للبدء</a>
+                                        <% } %>
+                                    </div>
+                                </div>
+                                <div class="doctor-info">
+                                    <h3><%= doctor.username %></h3>
+                                    <p class="specialization"><%= doctor.specialization %></p>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                </div>
+                
+                <button class="slider-btn next-btn" aria-label="التالي">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+            </div>
+            
+            <div class="slider-dots">
+                <% for(let i = 0; i < Math.ceil(doctors.length / 3); i++) { %>
+                    <button class="dot <%= i === 0 ? 'active' : '' %>" data-index="<%= i %>"></button>
+                <% } %>
+            </div>
+        <% } else { %>
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle"></i> لا يوجد أطباء متاحين حالياً
+            </div>
+        <% } %>
+    </div>
+
+    <!-- Features Section -->
+    <section class="features-section py-5">
+        <div class="container">
+            <div class="row text-center">
+                <div class="col-md-4 feature-item">
+                    <i class="fas fa-clock feature-icon"></i>
+                    <h3>مواعيد مرنة</h3>
+                    <p>احجز في الوقت الذي يناسبك مع أفضل الأطباء</p>
+                </div>
+                <div class="col-md-4 feature-item">
+                    <i class="fas fa-stethoscope feature-icon"></i>
+                    <h3>أطباء متخصصون</h3>
+                    <p>طاقم طبي مؤهل وذو خبرة عالية</p>
+                </div>
+                <div class="col-md-4 feature-item">
+                    <i class="fas fa-headset feature-icon"></i>
+                    <h3>دعم فني</h3>
+                    <p>متاح على مدار الساعة لمساعدتك</p>
+                </div>
             </div>
         </div>
     </section>
-</div>
 
-<%- include('footer.ejs') %>
-
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const socket = io();
-        
-        const token = document.cookie.split('; ').find(row => row.startsWith('token='));
-        if (token) {
-            try {
-                const payload = JSON.parse(atob(token.split('.')[1]));
-                const patientId = payload._id;
-                
-                socket.emit('patientLogin', patientId);
-                
-                window.addEventListener('beforeunload', () => {
-                    socket.emit('patientLogout', patientId);
-                });
-                
-                socket.on('disconnect', () => {
-                    socket.emit('patientLogout', patientId);
-                });
-            } catch (error) {
-                console.error('Error processing token:', error);
+    <!-- JavaScript for Slider -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Socket.IO if patient is logged in
+            const token = document.cookie.split('; ').find(row => row.startsWith('token='));
+            if (token) {
+                try {
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    const patientId = payload._id;
+                    const socket = io();
+                    
+                    socket.emit('patientLogin', patientId);
+                    
+                    window.addEventListener('beforeunload', () => {
+                        socket.emit('patientLogout', patientId);
+                    });
+                    
+                    socket.on('disconnect', () => {
+                        socket.emit('patientLogout', patientId);
+                    });
+                } catch (error) {
+                    console.error('Error processing token:', error);
+                }
             }
-        }
-    });
 
-    let arrimgb = ["1/55.jpg", "1/66.jpg", "1/77.jpg"];
-    let i = 0;
-    let arr = ["سونيك", "سوبر ماريو", "رزدنت", "محمد علي", "محمد العجيلي"];
-    let arr3 = ["1/22.jpg", "1/33.jpg", "1/44.jpg"];
-    let section1 = document.getElementById("tbody");
+            // Slider functionality
+            const sliderTrack = document.querySelector('.slider-track');
+            const slides = document.querySelectorAll('.doctor-card');
+            const prevBtn = document.querySelector('.prev-btn');
+            const nextBtn = document.querySelector('.next-btn');
+            const dots = document.querySelectorAll('.dot');
+            
+            if (sliderTrack && slides.length > 0) {
+                let currentIndex = 0;
+                const slideWidth = slides[0].offsetWidth + 20; // Including gap
+                
+                function updateSlider() {
+                    sliderTrack.style.transform = `translateX(-${currentIndex * slideWidth}px)`;
+                    
+                    // Update dots
+                    dots.forEach((dot, index) => {
+                        dot.classList.toggle('active', index === Math.floor(currentIndex / 3));
+                    });
+                }
+                
+                // Next button
+                nextBtn?.addEventListener('click', () => {
+                    if (currentIndex < slides.length - 3) {
+                        currentIndex++;
+                        updateSlider();
+                    }
+                });
+                
+                // Previous button
+                prevBtn?.addEventListener('click', () => {
+                    if (currentIndex > 0) {
+                        currentIndex--;
+                        updateSlider();
+                    }
+                });
+                
+                // Dot navigation
+                dots.forEach(dot => {
+                    dot.addEventListener('click', () => {
+                        currentIndex = parseInt(dot.dataset.index) * 3;
+                        updateSlider();
+                    });
+                });
+                
+                // Auto slide (optional)
+                let autoSlideInterval = setInterval(() => {
+                    if (currentIndex < slides.length - 3) {
+                        currentIndex++;
+                    } else {
+                        currentIndex = 0;
+                    }
+                    updateSlider();
+                }, 5000);
+                
+                // Pause on hover
+                sliderTrack.addEventListener('mouseenter', () => {
+                    clearInterval(autoSlideInterval);
+                });
+                
+                sliderTrack.addEventListener('mouseleave', () => {
+                    autoSlideInterval = setInterval(() => {
+                        if (currentIndex < slides.length - 3) {
+                            currentIndex++;
+                        } else {
+                            currentIndex = 0;
+                        }
+                        updateSlider();
+                    }, 5000);
+                });
+            }
+        });
+    </script>
 
-    function arr1() {
-        i = (i + 1) % arr.length;
-        updateSection();
-    }
-
-    function arr2() {
-        i = (i - 1 + arr.length) % arr.length;
-        updateSection();
-    }
-
-    function updateSection() {
-        section1.innerHTML = 
-            <section id="3453">
-                <img src="${arr3[i]}" alt="">
-                <p style="font-size: 40px; text-align: end;margin: 0;"> ${arr[i]}</p>
-                <div class="bigarrow" style="display: flex;">
-                    <div onclick="arr2()" id="prev" class="arrow" style="font-size: 25px;">&#10094</div>
-                    <div id="next" onclick="arr1()" class="arrow" style="font-size:25px;">&#10095</div>
-                </div>
-                <div id="bigJlst">
-                    <div id="jlst" style="background-color: green;" onclick="index2()"> طلب جلسة </div>
-                    <div class="bigaccount" id="bigaccount">
-                        <div class="account" id="account">
-                            <p> هل ترغب في المتابعة مع </p>
-                            <h1> ${arr[i]} </h1>
-                        </div>
-                    </div>
-                </div>
-            </section>;z
-    }
-
-    function index2() {
-        let account = document.getElementById("account");
-        let bigaccount = document.getElementById("bigaccount");
-        bigaccount.style.display = "flex";
-        setTimeout(() => {
-            account.style.display = "flex";
-        }, 500);
-    }
-
-    let n = 0;
-    let bigbody = document.getElementById("bigimg");
-    setInterval(() => {
-        n = (n + 1) % arrimgb.length;
-        bigbody.innerHTML = <div class="gui"> <img src="${arrimgb[n]}"> </div>;
-    }, 2500);
-
-    document.getElementById('patientname')?.addEventListener('click', function () {
-        var logoutMenu = document.getElementById('logoutMenu');
-        if (logoutMenu.style.display === 'none') {
-            logoutMenu.style.display = 'block';
-        } else {
-            logoutMenu.style.display = 'none';
-        }
-    });
-</script>
-<%- include('footerpatient') %>
-
-
+    <!-- Footer Include -->
+    <%- include('footerpatient.ejs') %>
+</body>
+</html>
