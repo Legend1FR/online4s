@@ -1,113 +1,57 @@
+<%- include('headerpatient') %>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>عيادتي الافتراضية - الصفحة الرئيسية</title>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        /* Reset and Base Styles */
+        /* Reset & Base Styles */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Tajawal', sans-serif;
         }
         
         body {
-            background-color: #f5f7fa;
-            color: #333;
+            background-color: #f8fafc;
+            color: #1e293b;
             line-height: 1.6;
         }
         
-        a {
-            text-decoration: none;
-            color: inherit;
-        }
-        
-        .btn {
-            display: inline-block;
-            padding: 10px 20px;
-            border-radius: 5px;
-            font-weight: 500;
-            transition: all 0.3s;
-        }
-        
-        .btn-primary {
-            background-color: #3498db;
+        /* Header Styles */
+        .header {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
             color: white;
+            padding: 1.5rem 0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
         
-        .btn-primary:hover {
-            background-color: #2980b9;
-            transform: translateY(-2px);
-        }
-        
-        .btn-outline-light {
-            border: 1px solid white;
-            color: white;
-            background: transparent;
-        }
-        
-        .btn-outline-light:hover {
-            background: white;
-            color: #3498db;
-        }
-        
-        .container {
-            width: 100%;
+        .header-container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 0 15px;
-        }
-        
-        .text-center {
-            text-align: center;
-        }
-        
-        .my-5 {
-            margin-top: 3rem;
-            margin-bottom: 3rem;
-        }
-        
-        .py-5 {
-            padding-top: 3rem;
-            padding-bottom: 3rem;
-        }
-        
-        .alert {
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        
-        .alert-danger {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .alert-info {
-            background-color: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-        
-        /* Navigation Styles */
-        .main-nav {
-            background-color: #fff;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            padding: 15px 0;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-        
-        .nav-container {
+            padding: 0 1rem;
             display: flex;
-            justify-content: space-around;
-            max-width: 1200px;
-            margin: 0 auto;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .logo i {
+            color: #93c5fd;
+        }
+        
+        /* Navigation */
+        .nav-menu {
+            display: flex;
+            gap: 1.5rem;
         }
         
         .nav-item {
@@ -116,93 +60,122 @@
             align-items: center;
             cursor: pointer;
             transition: all 0.3s;
-            padding: 10px 20px;
-            border-radius: 8px;
-        }
-        
-        .nav-item:hover {
-            background-color: #f0f7ff;
-            transform: translateY(-3px);
         }
         
         .nav-item i {
-            font-size: 1.5rem;
-            color: #3498db;
-            margin-bottom: 5px;
+            font-size: 1.2rem;
+            margin-bottom: 0.3rem;
         }
         
-        .nav-item span {
-            font-size: 1.1rem;
-            color: #2c3e50;
-            font-weight: 500;
+        .nav-item:hover {
+            transform: translateY(-3px);
+            opacity: 0.9;
         }
         
         /* Hero Section */
-        .hero-section {
-            background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('/images/medical-bg.jpg');
-            background-size: cover;
-            background-position: center;
+        .hero {
+            background: linear-gradient(rgba(30, 41, 59, 0.85), rgba(30, 41, 59, 0.85)), 
+                        url('/images/medical-bg.jpg') center/cover;
             height: 60vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
             text-align: center;
+            color: white;
+            padding: 0 1rem;
         }
         
-        .hero-section h1 {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        .hero-content {
+            max-width: 800px;
         }
         
-        .hero-section p {
-            font-size: 1.5rem;
+        .hero h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+        }
+        
+        .hero p {
+            font-size: 1.2rem;
             margin-bottom: 2rem;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            opacity: 0.9;
         }
         
-        /* Doctors Slider Styles */
-        .doctors-slider {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            margin: 0 auto;
+        .btn {
+            display: inline-block;
+            padding: 0.8rem 2rem;
+            border-radius: 0.375rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+        
+        .btn-primary {
+            background-color: #f59e0b;
+            color: #1e293b;
+        }
+        
+        .btn-primary:hover {
+            background-color: #fbbf24;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Doctors Section */
+        .doctors-section {
+            padding: 4rem 1rem;
             max-width: 1200px;
+            margin: 0 auto;
         }
         
-        .slider-container {
-            width: 90%;
-            overflow: hidden;
+        .section-title {
+            text-align: center;
+            margin-bottom: 3rem;
             position: relative;
         }
         
-        .slider-track {
-            display: flex;
-            transition: transform 0.5s ease;
-            gap: 20px;
-            padding: 10px 0;
+        .section-title h2 {
+            font-size: 2rem;
+            color: #1e293b;
+            display: inline-block;
+            padding-bottom: 0.5rem;
+        }
+        
+        .section-title h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 3px;
+            background-color: #3b82f6;
+        }
+        
+        /* Doctors Grid */
+        .doctors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2rem;
         }
         
         .doctor-card {
-            min-width: calc(33.333% - 14px);
             background: white;
-            border-radius: 10px;
+            border-radius: 0.5rem;
             overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
         }
         
         .doctor-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
         
         .doctor-img-container {
-            position: relative;
             height: 250px;
             overflow: hidden;
+            position: relative;
         }
         
         .doctor-img {
@@ -212,286 +185,309 @@
             transition: transform 0.5s;
         }
         
-        .doctor-overlay {
-            position: absolute;
+        .doctor-card:hover .doctor-img {
+            transform: scale(1.05);
+        }
+        
+        .doctor-info {
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        .doctor-name {
+            font-size: 1.3rem;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+        }
+        
+        .doctor-specialty {
+            color: #64748b;
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+        }
+        
+        .btn-book {
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.6rem 1.5rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: inline-block;
+        }
+        
+        .btn-book:hover {
+            background-color: #2563eb;
+        }
+        
+        /* Features Section */
+        .features {
+            background-color: #f1f5f9;
+            padding: 4rem 1rem;
+        }
+        
+        .features-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+        
+        .feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .feature-icon {
+            font-size: 2.5rem;
+            color: #3b82f6;
+            margin-bottom: 1.5rem;
+        }
+        
+        .feature-title {
+            font-size: 1.2rem;
+            color: #1e293b;
+            margin-bottom: 1rem;
+        }
+        
+        /* Footer */
+        .footer {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            padding: 3rem 1rem;
+            text-align: center;
+        }
+        
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .footer-link {
+            color: #93c5fd;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        
+        .footer-link:hover {
+            color: #3b82f6;
+        }
+        
+        .copyright {
+            margin-top: 2rem;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header-container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .nav-menu {
+                width: 100%;
+                justify-content: space-around;
+            }
+            
+            .hero h1 {
+                font-size: 2rem;
+            }
+            
+            .hero p {
+                font-size: 1rem;
+            }
+            
+            .doctors-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* Loading & Error States */
+        .loading-overlay {
+            position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,0.5);
+            background: rgba(255, 255, 255, 0.9);
             display: flex;
+            justify-content: center;
             align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: opacity 0.3s;
+            z-index: 1000;
+            flex-direction: column;
         }
         
-        .doctor-card:hover .doctor-overlay {
-            opacity: 1;
-        }
-        
-        .doctor-card:hover .doctor-img {
-            transform: scale(1.1);
-        }
-        
-        .doctor-info {
-            padding: 20px;
-            text-align: center;
-        }
-        
-        .doctor-info h3 {
-            color: #2c3e50;
-            margin-bottom: 5px;
-            font-weight: 600;
-        }
-        
-        .specialization {
-            color: #7f8c8d;
-            margin-bottom: 10px;
-        }
-        
-        .slider-btn {
-            background: #3498db;
-            color: white;
-            border: none;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            z-index: 10;
-        }
-        
-        .slider-btn:hover {
-            background: #2980b9;
-            transform: translateY(-50%) scale(1.1);
-        }
-        
-        .prev-btn {
-            right: -20px;
-        }
-        
-        .next-btn {
-            left: -20px;
-        }
-        
-        .slider-dots {
-            display: flex;
-            justify-content: center;
-            margin-top: 20px;
-            gap: 10px;
-        }
-        
-        .dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #bdc3c7;
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .dot.active {
-            background: #3498db;
-            transform: scale(1.2);
-        }
-        
-        /* Features Styles */
-        .features-section {
-            background-color: #f8f9fa;
-        }
-        
-        .row {
-            display: flex;
-            flex-wrap: wrap;
-            margin: 0 -15px;
-        }
-        
-        .col-md-4 {
-            width: 33.333%;
-            padding: 0 15px;
-        }
-        
-        .feature-icon {
+        .spinner {
             font-size: 3rem;
-            color: #3498db;
-            margin-bottom: 20px;
+            color: #3b82f6;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
         }
         
-        .feature-item {
-            padding: 30px 15px;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
         
-        .feature-item h3 {
-            color: #2c3e50;
-            margin-bottom: 15px;
+        .error-message {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            margin: 1rem auto;
+            max-width: 800px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
         }
         
-        /* Responsive Styles */
-        @media (max-width: 992px) {
-            .doctor-card {
-                min-width: calc(50% - 10px);
-            }
-            
-            .col-md-4 {
-                width: 50%;
-            }
+        .error-icon {
+            font-size: 1.5rem;
         }
         
-        @media (max-width: 768px) {
-            .doctor-card {
-                min-width: 100%;
-            }
-            
-            .nav-container {
-                flex-direction: column;
-                align-items: center;
-                gap: 10px;
-            }
-            
-            .nav-item {
-                width: 80%;
-            }
-            
-            .hero-section h1 {
-                font-size: 2rem;
-            }
-            
-            .hero-section p {
-                font-size: 1.2rem;
-            }
-            
-            .col-md-4 {
-                width: 100%;
-            }
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #64748b;
         }
     </style>
-</head>
-<body>
-    <!-- Header Include -->
-    <%- include('headerpatient.ejs') %>
+
 
     <!-- Hero Section -->
-    <section class="hero-section">
-        <div>
-            <h1>مرحباً بكم في عيادتنا الافتراضية</h1>
-            <p>أفضل الأطباء متاحون لرعايتك في أي وقت</p>
+    <section class="hero">
+        <div class="hero-content">
+            <h1>رعاية طبية متكاملة في أي وقت ومن أي مكان</h1>
+            <p>تواصل مع أفضل الأطباء المتخصصين واحصل على الاستشارات الطبية بكل سهولة ويسر</p>
             <% if (patient) { %>
-                <a href="/request-session" class="btn btn-primary">احجز موعدك الآن</a>
+                <a href="/request-session" class="btn btn-primary">احجز موعد الآن</a>
             <% } else { %>
-                <a href="/signUp" class="btn btn-primary">سجل الآن للبدء</a>
+                <a href="/signUp" class="btn btn-primary">انضم إلينا الآن</a>
             <% } %>
         </div>
     </section>
 
-    <!-- Navigation Bar -->
-    <nav class="main-nav">
-        <div class="nav-container">
-            <div class="nav-item" onclick="window.location.href='<%= patient ? "/patient/sessions" : "/signUp" %>'">
-                <i class="fas fa-calendar-alt"></i>
-                <span>جلساتي</span>
-            </div>
-            <div class="nav-item" onclick="window.location.href='<%= patient ? "/patient/sessions" : "/signUp" %>'">
-                <i class="fas fa-history"></i>
-                <span>مراجعاتي</span>
-            </div>
-            <div class="nav-item" onclick="window.location.href='<%= patient ? "/request-session" : "/signUp" %>'">
-                <i class="fas fa-user-md"></i>
-                <span>الأطباء</span>
-            </div>
+    <!-- Main Content -->
+    <main>
+        <!-- Loading Indicator -->
+        <div class="loading-overlay" id="loadingIndicator">
+            <i class="fas fa-spinner spinner"></i>
+            <p>جاري تحميل البيانات...</p>
         </div>
-    </nav>
 
-    <!-- Doctors Slider Section -->
-    <div class="container my-5">
-        <h2 class="text-center mb-5" style="color: #2c3e50; font-weight: bold;">أطباؤنا المتخصصون</h2>
-        
+        <!-- Error Message -->
         <% if (error) { %>
-            <div class="alert alert-danger text-center">
-                <i class="fas fa-exclamation-triangle"></i> <%= error %>
+            <div class="error-message">
+                <i class="fas fa-exclamation-circle error-icon"></i>
+                <div>
+                    <h3><%= error.title || 'حدث خطأ' %></h3>
+                    <p><%= error.message || 'حدث خطأ أثناء جلب بيانات الأطباء' %></p>
+                </div>
             </div>
         <% } %>
 
-        <% if (doctors && doctors.length > 0) { %>
-            <div class="doctors-slider">
-                <button class="slider-btn prev-btn" aria-label="السابق">
-                    <i class="fas fa-chevron-right"></i>
-                </button>
-                
-                <div class="slider-container">
-                    <div class="slider-track">
-                        <% doctors.forEach(doctor => { %>
-                            <div class="doctor-card">
-                                <div class="doctor-img-container">
-                                    <img src="<%= doctor.profileImage || '/images/default-doctor.jpg' %>" alt="<%= doctor.username %>" class="doctor-img">
-                                    <div class="doctor-overlay">
-                                        <% if (patient) { %>
-                                            <a href="/request-session?doctor=<%= doctor._id %>" class="btn btn-outline-light">حجز موعد</a>
-                                        <% } else { %>
-                                            <a href="/signUp" class="btn btn-outline-light">سجل للبدء</a>
-                                        <% } %>
-                                    </div>
-                                </div>
-                                <div class="doctor-info">
-                                    <h3><%= doctor.username %></h3>
-                                    <p class="specialization"><%= doctor.specialization %></p>
-                                </div>
+        <!-- Doctors Section -->
+        <section class="doctors-section">
+            <div class="section-title">
+                <h2>أطباؤنا المتخصصون</h2>
+            </div>
+
+            <% if (doctors && doctors.length > 0) { %>
+                <div class="doctors-grid">
+                    <% doctors.forEach(doctor => { %>
+                        <div class="doctor-card">
+                            <div class="doctor-img-container">
+                                <img src="<%= doctor.profileImage || '/images/default-doctor.jpg' %>" alt="<%= doctor.username %>" class="doctor-img">
                             </div>
-                        <% }); %>
+                            <div class="doctor-info">
+                                <h3 class="doctor-name"><%= doctor.username %></h3>
+                                <p class="doctor-specialty"><%= doctor.specialization %></p>
+                                <% if (patient) { %>
+                                    <a href="/request-session?doctor=<%= doctor._id %>" class="btn-book">حجز موعد</a>
+                                <% } else { %>
+                                    <a href="/signUp" class="btn-book">سجل للبدء</a>
+                                <% } %>
+                            </div>
+                        </div>
+                    <% }); %>
+                </div>
+            <% } else if (!error) { %>
+                <div class="empty-state">
+                    <i class="fas fa-user-md" style="font-size: 3rem; color: #94a3b8; margin-bottom: 1rem;"></i>
+                    <h3>لا يوجد أطباء متاحين حالياً</h3>
+                    <p>سنقوم بإضافة أطباء جدد قريباً</p>
+                </div>
+            <% } %>
+        </section>
+
+        <!-- Features Section -->
+        <section class="features">
+            <div class="features-container">
+                <div class="section-title">
+                    <h2>لماذا تختار عيادتي؟</h2>
+                </div>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <h3 class="feature-title">مواعيد مرنة</h3>
+                        <p>احجز في الوقت الذي يناسبك مع أفضل الأطباء</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-stethoscope"></i>
+                        </div>
+                        <h3 class="feature-title">أطباء متخصصون</h3>
+                        <p>طاقم طبي مؤهل وذو خبرة عالية</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-headset"></i>
+                        </div>
+                        <h3 class="feature-title">دعم فني</h3>
+                        <p>متاح على مدار الساعة لمساعدتك</p>
                     </div>
                 </div>
-                
-                <button class="slider-btn next-btn" aria-label="التالي">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
             </div>
-            
-            <div class="slider-dots">
-                <% for(let i = 0; i < Math.ceil(doctors.length / 3); i++) { %>
-                    <button class="dot <%= i === 0 ? 'active' : '' %>" data-index="<%= i %>"></button>
-                <% } %>
-            </div>
-        <% } else { %>
-            <div class="alert alert-info text-center">
-                <i class="fas fa-info-circle"></i> لا يوجد أطباء متاحين حالياً
-            </div>
-        <% } %>
-    </div>
+        </section>
+    </main>
 
-    <!-- Features Section -->
-    <section class="features-section py-5">
-        <div class="container">
-            <div class="row text-center">
-                <div class="col-md-4 feature-item">
-                    <i class="fas fa-clock feature-icon"></i>
-                    <h3>مواعيد مرنة</h3>
-                    <p>احجز في الوقت الذي يناسبك مع أفضل الأطباء</p>
-                </div>
-                <div class="col-md-4 feature-item">
-                    <i class="fas fa-stethoscope feature-icon"></i>
-                    <h3>أطباء متخصصون</h3>
-                    <p>طاقم طبي مؤهل وذو خبرة عالية</p>
-                </div>
-                <div class="col-md-4 feature-item">
-                    <i class="fas fa-headset feature-icon"></i>
-                    <h3>دعم فني</h3>
-                    <p>متاح على مدار الساعة لمساعدتك</p>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- JavaScript for Slider -->
     <script>
+        // Hide loading indicator when page is fully loaded
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                document.getElementById('loadingIndicator').style.opacity = '0';
+                setTimeout(function() {
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                }, 500);
+            }, 1000);
+        });
+
+        // Socket.io initialization for real-time updates
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize Socket.IO if patient is logged in
             const token = document.cookie.split('; ').find(row => row.startsWith('token='));
             if (token) {
                 try {
@@ -501,92 +497,21 @@
                     
                     socket.emit('patientLogin', patientId);
                     
+                    socket.on('doctorAvailabilityUpdate', (data) => {
+                        // Handle real-time updates about doctor availability
+                        console.log('Doctor availability update:', data);
+                        // You could implement UI updates here
+                    });
+                    
                     window.addEventListener('beforeunload', () => {
                         socket.emit('patientLogout', patientId);
                     });
-                    
-                    socket.on('disconnect', () => {
-                        socket.emit('patientLogout', patientId);
-                    });
                 } catch (error) {
-                    console.error('Error processing token:', error);
+                    console.error('Socket initialization error:', error);
                 }
-            }
-
-            // Slider functionality
-            const sliderTrack = document.querySelector('.slider-track');
-            const slides = document.querySelectorAll('.doctor-card');
-            const prevBtn = document.querySelector('.prev-btn');
-            const nextBtn = document.querySelector('.next-btn');
-            const dots = document.querySelectorAll('.dot');
-            
-            if (sliderTrack && slides.length > 0) {
-                let currentIndex = 0;
-                const slideWidth = slides[0].offsetWidth + 20; // Including gap
-                
-                function updateSlider() {
-                    sliderTrack.style.transform = `translateX(-${currentIndex * slideWidth}px)`;
-                    
-                    // Update dots
-                    dots.forEach((dot, index) => {
-                        dot.classList.toggle('active', index === Math.floor(currentIndex / 3));
-                    });
-                }
-                
-                // Next button
-                nextBtn?.addEventListener('click', () => {
-                    if (currentIndex < slides.length - 3) {
-                        currentIndex++;
-                        updateSlider();
-                    }
-                });
-                
-                // Previous button
-                prevBtn?.addEventListener('click', () => {
-                    if (currentIndex > 0) {
-                        currentIndex--;
-                        updateSlider();
-                    }
-                });
-                
-                // Dot navigation
-                dots.forEach(dot => {
-                    dot.addEventListener('click', () => {
-                        currentIndex = parseInt(dot.dataset.index) * 3;
-                        updateSlider();
-                    });
-                });
-                
-                // Auto slide (optional)
-                let autoSlideInterval = setInterval(() => {
-                    if (currentIndex < slides.length - 3) {
-                        currentIndex++;
-                    } else {
-                        currentIndex = 0;
-                    }
-                    updateSlider();
-                }, 5000);
-                
-                // Pause on hover
-                sliderTrack.addEventListener('mouseenter', () => {
-                    clearInterval(autoSlideInterval);
-                });
-                
-                sliderTrack.addEventListener('mouseleave', () => {
-                    autoSlideInterval = setInterval(() => {
-                        if (currentIndex < slides.length - 3) {
-                            currentIndex++;
-                        } else {
-                            currentIndex = 0;
-                        }
-                        updateSlider();
-                    }, 5000);
-                });
             }
         });
     </script>
-
-    <!-- Footer Include -->
-    <%- include('footerpatient.ejs') %>
 </body>
 </html>
+<%- include('footerpatient') %>
