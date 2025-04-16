@@ -1,3 +1,4 @@
+
 <%- include('headerdoc') %>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -6,29 +7,72 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>جلسات الدكتور</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     .session-card { transition: transform 0.3s, box-shadow 0.3s; }
     .session-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
     .notification { position: fixed; top: 20px; right: 20px; z-index: 1000; }
+    .loading-spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-radius: 50%;
+      border-top: 4px solid #3B82F6;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+    }
+    .badge-upcoming {
+      background-color: #3B82F6;
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-ready {
+      background-color: #10B981;
+      color: white;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body class="bg-gray-100 font-sans">
   <div class="container mx-auto p-6">
     <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-      <div class="flex items-center">
-        <img src="<%= doctor.profileImage || '/images/default-doctor.jpg' %>" alt="صورة الدكتور" class="w-24 h-24 rounded-full border-4 border-blue-500 mr-4">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-800"><%= doctor.username %></h1>
-          <p class="text-lg text-gray-600"><%= doctor.specialization %></p>
+      <div class="flex items-center justify-between">
+        <div class="flex items-center">
+          <img src="<%= doctor.profileImage || '/images/default-doctor.jpg' %>" alt="صورة الدكتور" class="w-24 h-24 rounded-full border-4 border-blue-500 mr-4">
+          <div>
+            <h1 class="text-2xl font-bold text-gray-800"><%= doctor.username %></h1>
+            <p class="text-lg text-gray-600"><%= doctor.specialization %></p>
+          </div>
         </div>
+        <a href="/doctor/reports" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+          <i class="fas fa-file-medical mr-2"></i> التقارير
+        </a>
       </div>
     </div>
-    <div class="bg-white rounded-lg shadow-lg p-6">
-      <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b-2 border-blue-500 pb-2">جلساتي مع المرضى</h2>
-      <div id="sessionsList" class="space-y-4">
-        <% if (sessions && sessions.length > 0) { %>
-          <% sessions.forEach(session => { %>
-            <div class="session-card bg-gray-50 rounded-lg p-4 flex items-center justify-between">
+
+    <div id="loadingIndicator" class="flex justify-center my-8 hidden">
+      <div class="loading-spinner"></div>
+    </div>
+
+    <div id="errorMessage" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 hidden" role="alert">
+      <p id="errorText"></p>
+    </div>
+
+    <div id="sessionsContainer">
+      <% if (sessions && sessions.length > 0) { %>
+        <div class="space-y-4">
+          <% sessions.forEach(session => { 
+            const sessionDateTime = new Date(`${session.date.toISOString().split('T')[0]}T${session.time}`);
+            const now = new Date();
+            const timeDiff = (sessionDateTime - now) / (1000 * 60); // Difference in minutes
+            const canPatientJoin = timeDiff <= 30 && timeDiff >= -60; // المريض يمكنه الانضمام قبل 30 دقيقة
+          %>
+            <div class="session-card bg-white rounded-lg p-4 shadow-lg flex items-center justify-between">
               <div class="flex items-center">
                 <img src="<%= session.patient.profileImage || '/images/default-patient.jpg' %>" alt="صورة المريض" class="w-16 h-16 rounded-full mr-4">
                 <div>
@@ -37,15 +81,31 @@
                     <i class="far fa-calendar-alt"></i> <%= new Date(session.date).toLocaleDateString('ar-EG') %> |
                     <i class="far fa-clock"></i> <%= session.time %>
                   </p>
+                  <% if (session.notes) { %>
+                    <p class="text-gray-600 mt-1"><i class="fas fa-file-medical"></i> <%= session.notes %></p>
+                  <% } %>
+                  <% if (canPatientJoin) { %>
+                    <span class="badge-ready mt-2">المريض يمكنه الانضمام الآن</span>
+                  <% } else { %>
+                    <span class="badge-upcoming mt-2">
+                      <% if (timeDiff > 30) { %>
+                        متاح للمريض بعد <%= Math.ceil(timeDiff - 30) %> دقيقة
+                      <% } else { %>
+                        انتهى وقت الجلسة
+                      <% } %>
+                    </span>
+                  <% } %>
                 </div>
               </div>
-              <button class="start-session-btn bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600" data-session-id="<%= session._id %>">بدء الجلسة</button>
+              <button class="start-session-btn bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600" data-session-id="<%= session._id %>">
+                بدء الجلسة
+              </button>
             </div>
           <% }); %>
-        <% } else { %>
-          <p class="text-gray-600">لا توجد جلسات متاحة حالياً</p>
-        <% } %>
-      </div>
+        </div>
+      <% } else { %>
+        <p class="text-gray-600 text-center">لا توجد جلسات حالية</p>
+      <% } %>
     </div>
   </div>
 
@@ -53,43 +113,65 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io();
+    document.addEventListener('DOMContentLoaded', function() {
+      const socket = io();
+      const loadingIndicator = document.getElementById('loadingIndicator');
+      const errorMessage = document.getElementById('errorMessage');
+      const errorText = document.getElementById('errorText');
 
-    document.querySelectorAll(".start-session-btn").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        const sessionId = btn.getAttribute("data-session-id");
-        try {
-          const response = await fetch("/api/sessions/start", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "CSRF-Token": "<%= csrfToken %>",
-            },
-            body: JSON.stringify({ sessionId }),
-          });
-          const data = await response.json();
-          if (data.success) {
-            window.location.href = data.redirectUrl;
-          } else {
-            showNotification(data.error, "bg-red-500");
+     
+      document.querySelectorAll('.start-session-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const sessionId = btn.getAttribute('data-session-id');
+          try {
+            loadingIndicator.classList.remove('hidden');
+            const response = await fetch('/api/sessions/start', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'CSRF-Token': '<%= csrfToken %>'
+              },
+              body: JSON.stringify({ sessionId })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+              window.location.href = data.redirectUrl;
+            } else {
+              errorText.textContent = data.error || 'حدث خطأ أثناء بدء الجلسة';
+              errorMessage.classList.remove('hidden');
+            }
+          } catch (error) {
+            errorText.textContent = 'حدث خطأ أثناء بدء الجلسة';
+            errorMessage.classList.remove('hidden');
+            console.error('Error starting session:', error);
+          } finally {
+            loadingIndicator.classList.add('hidden');
           }
-        } catch (error) {
-          showNotification("حدث خطأ: " + error.message, "bg-red-500");
-        }
+        });
       });
-    });
 
-    socket.on("sessionStarted", (data) => {
-      showNotification(`الجلسة مع د. ${data.doctorName} بدأت الآن!`, "bg-green-500");
-    });
+     
+      socket.on('sessionStarted', (data) => {
+        const notification = document.getElementById('notification');
+        notification.textContent = `الجلسة مع المريض بدأت الآن!`;
+        notification.classList.remove('hidden');
+        setTimeout(() => notification.classList.add('hidden'), 5000);
+        window.location.reload();
+      });
 
-    function showNotification(message, bgColor) {
-      const notification = document.getElementById("notification");
-      notification.textContent = message;
-      notification.className = `notification ${bgColor} text-white p-4 rounded-lg shadow-lg`;
-      notification.classList.remove("hidden");
-      setTimeout(() => notification.classList.add("hidden"), 5000);
-    }
+      
+      setInterval(() => {
+  fetch('/api/sessions/check-completed')
+    .then(response => response.json())
+    .then(data => {
+      if (data.updated) {
+        window.location.reload();
+      }
+    })
+    .catch(error => console.error('Error checking sessions:', error));
+}, 60000);
+    });
   </script>
 </body>
 </html>
