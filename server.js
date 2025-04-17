@@ -128,7 +128,8 @@ function isValidEmail(email) {
 }
 
 function isStrongPassword(password) {
-    const passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*]).{8,}$/;
+    // 8 أحرف على الأقل، حرف كبير واحد على الأقل، حرف صغير واحد على الأقل
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
     return passwordRegex.test(password);
 }
 
@@ -2205,23 +2206,26 @@ app.get("/doctor/login", (req, res) => {
 app.post("/doctor/login", async (req, res) => {
     const { username, password } = req.body;
     try {
-        const doctor = await Doctor.findOne({ username });
+        // البحث عن الطبيب بدون التحسس لحالة الأحرف
+        const doctor = await Doctor.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
+        
         if (!doctor) {
-            return res.render("doctor-login", { error: "اسم المستخدم أو كلمة المرور غير صحيحة", csrfToken: req.csrfToken() });
+            return res.json({ error: "اسم المستخدم أو كلمة المرور غير صحيحة" });
         }
 
-        
+        const isMatch = await bcrypt.compare(password, doctor.password);
+        if (!isMatch) {
+            return res.json({ error: "اسم المستخدم أو كلمة المرور غير صحيحة" });
+        }
 
         const token = jwt.sign({ _id: doctor._id, role: "doctor" }, secret, { expiresIn: "1h" });
         res.cookie("doctor_token", token, { httpOnly: true });
-        res.redirect("/doctor/dashboard");
+        return res.json({ redirect: "/doctor/dashboard" });
     } catch (error) {
         console.error("Error during doctor login:", error);
-        res.status(500).send("حدث خطأ أثناء تسجيل الدخول");
+        return res.json({ error: "حدث خطأ أثناء تسجيل الدخول" });
     }
 });
-
-
 
 app.get("/doctor/dashboard", doctorAuth, (req, res) => {
     res.render("doctor-dashboard", { doctor: req.doctor });
@@ -2270,29 +2274,29 @@ app.get("/receptionist/logout", (req, res) => {
 app.get("/admin/login", (req, res) => {
     res.render("admin-login", { error: null, csrfToken: req.csrfToken() });
 });
-
 app.post("/admin/login", async (req, res) => {
     const { username, password } = req.body;
     try {
-        const admin = await Admin.findOne({ username });
+        // البحث عن الأدمن بدون التحسس لحالة الأحرف
+        const admin = await Admin.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
+        
         if (!admin) {
-            return res.render("admin-login", { error: "اسم المستخدم أو كلمة المرور غير صحيحة", csrfToken: req.csrfToken() });
+            return res.json({ error: "اسم المستخدم أو كلمة المرور غير صحيحة" });
         }
 
         const isMatch = await bcrypt.compare(password, admin.password);
         if (!isMatch) {
-            return res.render("admin-login", { error: "اسم المستخدم أو كلمة المرور غير صحيحة", csrfToken: req.csrfToken() });
+            return res.json({ error: "اسم المستخدم أو كلمة المرور غير صحيحة" });
         }
 
         const token = jwt.sign({ _id: admin._id, role: "admin" }, secret, { expiresIn: "1h" });
         res.cookie("admin_token", token, { httpOnly: true });
-        res.redirect("/admin/dashboard");
+        return res.json({ redirect: "/admin/dashboard" });
     } catch (error) {
         console.error("Error during admin login:", error);
-        res.status(500).send("حدث خطأ أثناء تسجيل الدخول");
+        return res.json({ error: "حدث خطأ أثناء تسجيل الدخول" });
     }
 });
-
 app.get("/admin/dashboard", adminAuth, (req, res) => {
     res.render("admin-dashboard", { admin: req.admin });
 });
@@ -2356,63 +2360,69 @@ app.post("/signUp", async (req, res) => {
 app.get("/verify-account", (req, res) => {
     res.render("verify-code", { error: null, success: null, csrfToken: req.csrfToken() });
 });
-
 app.post("/verify-account", async (req, res) => {
     const code = req.body.code;
     try {
         const patient = await Patient.findOne({
             verificationCode: code,
-            verificationCodeExpires: { $gt: Date.now() } 
+            verificationCodeExpires: { $gt: Date.now() }
         });
 
         if (!patient) {
-            return res.render("verify-code", {
-                error: "كود التحقق غير صحيح أو انتهت صلاحيته",
-                success: null,
-                csrfToken: req.csrfToken()
+            return res.json({
+                error: "كود التحقق غير صحيح أو انتهت صلاحيته"
             });
         }
-        res.redirect(`/update-password/${patient._id}`);
+
+        patient.isVerified = true;
+        patient.verificationCode = null;
+        patient.verificationCodeExpires = null;
+        await patient.save();
+
+        // إنشاء توكن وتسجيل الدخول تلقائياً
+        const token = jwt.sign({ _id: patient._id }, "fgrpekrfg", { expiresIn: "1h" });
+        res.cookie("token", token, { httpOnly: true });
+        
+        return res.json({
+            redirect: "/"
+        });
     } catch (error) {
         console.error(error);
-        res.render("verify-code", {
-            error: "حدث خطأ أثناء التحقق من الكود",
-            success: null,
-            csrfToken: req.csrfToken()
+        return res.json({
+            error: "حدث خطأ أثناء التحقق من الكود"
         });
     }
 });
-
 app.get("/login", (req, res) => {
     res.render("login", { error: null, success: null, csrfToken: req.csrfToken() });
 });
-
 app.post("/login", async (req, res) => {
     const { name, password } = req.body;
     try {
-        const patient = await Patient.findOne({ name });
+        // البحث عن المستخدم بدون التحسس لحالة الأحرف
+        const patient = await Patient.findOne({ name: { $regex: new RegExp(`^${name}$`, 'i') } });
+        
         if (!patient) {
-            return res.status(400).send("اسم المستخدم أو كلمة المرور غير صحيحة");
+            return res.json({ error: "اسم المستخدم أو كلمة المرور غير صحيحة" });
         }
 
         if (patient.isFrozen) {
-            return res.status(400).send("حسابك مجمد. يرجى الاتصال بالإدارة.");
+            return res.json({ error: "حسابك مجمد. يرجى الاتصال بالإدارة." });
         }
 
         const isMatch = await bcrypt.compare(password, patient.password);
         if (!isMatch) {
-            return res.status(400).send("اسم المستخدم أو كلمة المرور غير صحيحة");
+            return res.json({ error: "اسم المستخدم أو كلمة المرور غير صحيحة" });
         }
 
         const token = jwt.sign({ _id: patient._id }, "fgrpekrfg", { expiresIn: "1h" });
         res.cookie("token", token, { httpOnly: true });
-        res.redirect("/");
+        return res.json({ redirect: "/" });
     } catch (error) {
         console.error("Error during login:", error);
-        res.status(500).send("حدث خطأ أثناء تسجيل الدخول");
+        return res.json({ error: "حدث خطأ أثناء تسجيل الدخول" });
     }
 });
-
 app.post("/admin/freeze-patient/:id", adminAuth, async (req, res) => {
     const { id } = req.params;
     try {
@@ -2483,16 +2493,13 @@ app.post("/admin/send-message-doctor", adminAuth, async (req, res) => {
 app.get("/reset-password", (req, res) => {
     res.render("reset-password", { error: null, success: null, csrfToken: req.csrfToken() });
 });
-
 app.post("/reset-password", async (req, res) => {
     const email = req.body.email;
     try {
-        const patient = await Patient.findOne({ email: email });
+        const patient = await Patient.findOne({ email: email.toLowerCase() });
         if (!patient) {
-            return res.render("reset-password", {
-                error: "البريد الإلكتروني غير مسجل",
-                success: null,
-                csrfToken: req.csrfToken()
+            return res.json({
+                error: "البريد الإلكتروني غير مسجل"
             });
         }
 
@@ -2503,21 +2510,16 @@ app.post("/reset-password", async (req, res) => {
 
         await sendVerificationCode(email, verificationCode);
 
-        res.render("verify-code", {
-            error: null,
-            success: "تم إرسال كود التحقق إلى بريدك الإلكتروني",
-            csrfToken: req.csrfToken()
+        return res.json({
+            success: "تم إرسال كود التحقق إلى بريدك الإلكتروني"
         });
     } catch (error) {
         console.error(error);
-        res.render("reset-password", {
-            error: "حدث خطأ أثناء محاولة إعادة تعيين كلمة المرور",
-            success: null,
-            csrfToken: req.csrfToken()
+        return res.json({
+            error: "حدث خطأ أثناء محاولة إعادة تعيين كلمة المرور"
         });
     }
 });
-
 app.get("/verify-code", (req, res) => {
     res.render("verify-code", { error: null, success: null, csrfToken: req.csrfToken() });
 });
@@ -2551,7 +2553,6 @@ app.post("/verify-code", async (req, res) => {
 app.get("/update-password/:patientId", (req, res) => {
     res.render("update-password", { patientId: req.params.patientId, error: null, csrfToken: req.csrfToken() });
 });
-
 app.post("/update-password/:patientId", async (req, res) => {
     const newPassword = req.body.newPassword;
     const patientId = req.params.patientId;
@@ -2559,37 +2560,29 @@ app.post("/update-password/:patientId", async (req, res) => {
     try {
         const patient = await Patient.findById(patientId);
         if (!patient) {
-            return res.render("update-password", {
-                patientId,
-                error: "المريض غير موجود",
-                csrfToken: req.csrfToken()
-            });
+            return res.json({ error: "المريض غير موجود" });
         }
 
         if (!isStrongPassword(newPassword)) {
-            return res.render("update-password", {
-                patientId,
-                error: "كلمة المرور يجب أن تحتوي على الأقل على 8 أحرف، حرف كبير، حرف صغير، رقم، وحرف خاص",
-                csrfToken: req.csrfToken()
-            });
+            return res.json({ error: "كلمة المرور يجب أن تحتوي على الأقل على 8 أحرف، حرف كبير، حرف صغير" });
         }
 
         const hashpassword = await bcrypt.hash(newPassword, 10);
         patient.password = hashpassword;
         patient.verificationCode = null;
+        patient.verificationCodeExpires = null;
         await patient.save();
 
-        res.redirect("/login?success=تم تحديث كلمة المرور بنجاح");
+        // إنشاء توكن وتسجيل الدخول تلقائياً
+        const token = jwt.sign({ _id: patient._id }, "fgrpekrfg", { expiresIn: "1h" });
+        res.cookie("token", token, { httpOnly: true });
+        
+        return res.json({ redirect: "/" });
     } catch (error) {
         console.error(error);
-        res.render("update-password", {
-            patientId,
-            error: "حدث خطأ أثناء تحديث كلمة المرور",
-            csrfToken: req.csrfToken()
-        });
+        return res.json({ error: "حدث خطأ أثناء تحديث كلمة المرور" });
     }
 });
-
 app.get("/logout", (req, res) => {
     res.cookie("token", " ", { maxAge: 1 });
     res.redirect("/");
