@@ -1,5 +1,10 @@
 const mongoose = require("mongoose");
 const Appointment = require("./appointment");
+const Doctor = require('./doctor');
+
+mongoose.connect("mongodb+srv://malhdar039:462039Mh@cluster0.kddsb.mongodb.net/all-data?retryWrites=true&w=majority&appName=Cluster0")
+    .then(() => console.log("Connected to MongoDB"))
+    .catch(() => console.log("Error connecting to MongoDB"));
 
 const patientSchema = new mongoose.Schema({
     name: { 
@@ -42,16 +47,7 @@ const patientSchema = new mongoose.Schema({
     },
     verificationCode: String,
     verificationCodeExpires: Date,
-    wallet: {
-        balance: { type: Number, default: 0 },
-        transactions: [{
-            amount: Number,
-            date: { type: Date, default: Date.now },
-            description: String,
-            adminId: mongoose.Schema.Types.ObjectId,
-            transactionType: { type: String, enum: ['deposit', 'withdrawal', 'payment'] }
-        }]
-    },
+    
     createdAt: { 
         type: Date, 
         default: Date.now,
@@ -72,6 +68,20 @@ patientSchema.virtual('appointments', {
     ref: 'Appointment',
     localField: '_id',
     foreignField: 'patient'
+});
+patientSchema.pre('save', function (next) {
+    if (!this.wallet || typeof this.wallet !== 'object') {
+        this.wallet = { balance: 0, transactions: [] };
+    }
+    next();
+});
+
+patientSchema.pre('findOneAndUpdate', function (next) {
+    const update = this.getUpdate();
+    if (update.wallet && (typeof update.wallet !== 'object' || update.wallet === null)) {
+        update.wallet = { balance: 0, transactions: [] };
+    }
+    next();
 });
 
 // Method to get upcoming appointments
