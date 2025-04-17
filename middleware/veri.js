@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const Patient = require("../models/patient");
 
+
 const verii = async (req, res, next) => {
     try {
         const token = req.cookies.token; 
