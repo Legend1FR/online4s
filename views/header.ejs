@@ -1,120 +1,119 @@
-<!-- node-project\views\header.ejs file -->
-
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= title %></title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        body {  
-            background: linear-gradient(45deg, #4169E1, #1E90FF);  
-            min-height: 100vh;  
-            display: flex;  
-            align-items: center;  
-            justify-content: center;  
-            margin: 0;  
-            font-family: system-ui, -apple-system, sans-serif;  
-        }  
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Tajawal', sans-serif;
+        }
         
-        .content {  
-            padding: 30px;  
-            width: 500px;  
-            background: rgba(255, 255, 255, 0.1);  
-            backdrop-filter: blur(10px);  
-            border-radius: 20px;  
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);  
-            transition: transform 0.3s ease, box-shadow 0.3s ease;  
-        }  
+        body {
+            background-color: #f8fafc;
+            color: #1e293b;
+            line-height: 1.6;
+        }
         
-        .content:hover {  
-            transform: translateY(-5px);  
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);  
-        }  
+        .header {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            padding: 1.5rem 0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
         
-        .content form {  
-            display: flex;  
-            flex-direction: column;  
-            gap: 20px;  
-        }  
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
         
-        .content input {  
-            padding: 15px 20px;  
-            border: none;  
-            border-radius: 12px;  
-            background: rgba(17, 197, 234, 0.8);  
-            color: white;  
-            font-size: 16px;  
-            transition: all 0.3s ease;  
-            box-shadow: 0 5px 15px rgba(17, 197, 234, 0.2);  
-            width: 100%;  
-            outline: none;  
-        }  
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
         
-        .content input::placeholder {  
-            color: rgba(255, 255, 255, 0.8);  
-        }  
+        .logo i {
+            color: #93c5fd;
+        }
         
-        .content input:focus {  
-            background: rgba(17, 197, 234, 1);  
-            transform: scale(1.02);  
-            box-shadow: 0 8px 20px rgba(17, 197, 234, 0.3);  
-        }  
+        .nav-menu {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
         
-        .content button {  
-            padding: 15px 30px;  
-            border: none;  
-            border-radius: 12px;  
-            background: linear-gradient(45deg, rgb(17, 197, 234), rgb(0, 150, 199));  
-            color: white;  
-            font-size: 16px;  
-            font-weight: bold;  
-            cursor: pointer;  
-            transition: all 0.3s ease;  
-            width: 70%;  
-            margin: 20px auto;  
-            position: relative;  
-            overflow: hidden;  
-        }  
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
         
-        .content button:hover {  
-            transform: translateY(-2px);  
-            box-shadow: 0 10px 25px rgba(17, 197, 234, 0.4);  
-        }  
+        .nav-item i {
+            font-size: 1.2rem;
+            margin-bottom: 0.3rem;
+        }
         
-        .content button:active {  
-            transform: translateY(1px);  
-        }  
+        .nav-item:hover {
+            transform: translateY(-3px);
+            opacity: 0.9;
+        }
         
-        .content button::after {  
-            content: '';  
-            position: absolute;  
-            background: rgba(255, 255, 255, 0.3);  
-            top: 50%;  
-            left: 50%;  
-            width: 200px;  
-            height: 200px;  
-            border-radius: 50%;  
-            transform: translate(-50%, -50%) scale(0);  
-            opacity: 0;  
-            transition: all 0.5s ease;  
-        }  
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
         
-        .content button:active::after {  
-            transform: translate(-50%, -50%) scale(1);  
-            opacity: 1;  
-            transition: 0s;  
-        }  
-        
-        @keyframes float {  
-            0% { transform: translateY(0px); }  
-            50% { transform: translateY(-10px); }  
-            100% { transform: translateY(0px); }  
-        }  
-        
-        .content {  
-            animation: float 6s ease-in-out infinite;  
-        }  
+        @media (max-width: 768px) {
+            .header-container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .nav-menu {
+                width: 100%;
+                justify-content: space-around;
+                flex-wrap: wrap;
+            }
+        }
     </style>
 </head>
-<body style="background-color: royalblue">
+<body>
+    <header class="header">
+        <div class="header-container">
+            <div class="logo">
+                <i class="fas fa-heartbeat"></i>
+                <span>عيادتي</span>
+            </div>
+            <nav class="nav-menu">
+                <div class="nav-item">
+                    <a href="/" class="nav-link">
+                        <i class="fas fa-home"></i>
+                        <span>الرئيسية</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="/login" class="nav-link">
+                        <i class="fas fa-sign-in-alt"></i>
+                        <span>تسجيل الدخول</span>
+                    </a>
+                </div>
+            </nav>
+        </div>
+    </header>
