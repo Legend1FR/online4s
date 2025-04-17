@@ -86,7 +86,11 @@
                         </thead>
                         <tbody>
                             <% if (locals.patients && patients.length > 0) { %>
-                                <% patients.forEach(patient => { %>
+                                <% patients.forEach(patient => { 
+                                    // Ensure wallet is properly initialized for display
+                                    const patientWallet = patient.wallet || { balance: 0, transactions: [] };
+                                    const walletTransactions = Array.isArray(patientWallet.transactions) ? patientWallet.transactions : [];
+                                %>
                                     <tr data-patient-id="<%= patient._id %>">
                                         <td><%= patient._id %></td>
                                         <td><%= patient.name %></td>
