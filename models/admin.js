@@ -1,4 +1,3 @@
-// node-project\models\admin.js file
 
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
@@ -18,3 +17,4 @@ adminSchema.pre("save", async function (next) {
 
 const Admin = mongoose.model("Admin", adminSchema);
 module.exports = Admin;
+
