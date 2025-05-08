@@ -47,9 +47,26 @@ const appointmentSchema = new mongoose.Schema({
     },
     paymentMethod: {
         type: String,
-        enum: ['إلكتروني', 'محفظة', null],
+        enum: ['محفظة', null],
         default: null
     },
+   // في ملف models/appointment.js
+// تحديث مخطط paymentDetails لجعله غير مطلوب عند الإنشاء
+paymentDetails: {
+    amount: {
+      type: Number,
+      required: function() { return this.paymentMethod === 'محفظة'; }
+    },
+    method: {
+      type: String,
+      enum: ['wallet'],
+      default: 'wallet'
+    },
+    transactionId: {
+      type: String,
+      required: function() { return this.paymentMethod === 'محفظة'; }
+    }
+  },
     amountPaid: {
         type: Number,
         default: 0
@@ -102,7 +119,16 @@ appointmentSchema.index(
     { doctor: 1, date: 1, time: 1 }, 
     { unique: true, partialFilterExpression: { status: { $ne: 'ملغي' } } }
 );
-
+appointmentSchema.pre('save', async function(next) {
+    if (this.isNew) {
+        this.paymentDetails = {
+            amount: this.amountPaid,
+            method: 'wallet',
+            transactionId: `APPT-${Date.now()}`
+        };
+    }
+    next();
+});
 // Pre-save validation
 appointmentSchema.pre('save', async function(next) {
     const doctor = await Doctor.findById(this.doctor);
@@ -130,7 +156,12 @@ appointmentSchema.pre('save', async function(next) {
     this.updatedAt = Date.now();
     next();
 });
-
+appointmentSchema.virtual('payment', {
+    ref: 'Payment',
+    localField: '_id',
+    foreignField: 'appointment',
+    justOne: true
+});
 // Virtual for formatted date
 appointmentSchema.virtual('formattedDate').get(function() {
     return this.date.toLocaleDateString('ar-EG');
@@ -163,7 +194,14 @@ appointmentSchema.methods.requestEndSession = async function(userType) {
         requestedBy: userType
     };
 };
-
+// إضافة هذا بعد تعريف السكيما
+appointmentSchema.virtual('rating', {
+    ref: 'Rating',
+    localField: '_id',
+    foreignField: 'appointment',
+    justOne: true
+});
+// Method to approve session end
 // Method to approve session end
 appointmentSchema.methods.approveEndSession = async function() {
     this.sessionEndedAt = new Date();
