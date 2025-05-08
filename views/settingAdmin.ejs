@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إعدادات الأدمن</title>
+    <style>
+        /* ... (ابقى على الأنماط الحالية كما هي) ... */
+        
+        .admin-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .admin-info {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .admin-name {
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        
+        .admin-date {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        .form-requirements {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <%- include('headeradmin') %>
+    
+    <div class="main-content">
+        <div class="card">
+            <h2 class="card-title">إضافة أدمن جديد</h2>
+            
+            <% if (error) { %>
+                <div class="alert alert-error">
+                    <strong>خطأ:</strong> <%= error %>
+                </div>
+            <% } %>
+            
+            <% if (success) { %>
+                <div class="alert alert-success">
+                    <strong>نجاح:</strong> <%= success %>
+                </div>
+            <% } %>
+            <form id="addAdminForm" action="/admin/add-admin" method="POST">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                
+                <div class="form-group">
+                    <label for="username" class="form-label">اسم المستخدم</label>
+                    <input type="text" id="username" name="username" class="form-control" required
+                           value="<%= typeof username === 'string' ? username : '' %>"
+                           pattern="[a-zA-Z0-9_]+" title="يجب أن يحتوي على أحرف إنجليزية وأرقام فقط">
+                    <small class="form-text text-muted">يجب أن يحتوي على أحرف إنجليزية وأرقام فقط (بدون مسافات)</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password" class="form-label">كلمة المرور</label>
+                    <input type="password" id="password" name="password" class="form-control" required minlength="8">
+                    <small class="form-text text-muted">8 أحرف على الأقل، تحتوي على حروف كبيرة وصغيرة وأرقام</small>
+                </div>
+                
+                <button type="submit" class="btn" id="submitBtn">
+                    <span id="submitText">إضافة أدمن</span>
+                    <span id="loadingIcon" class="loading" style="display: none;"></span>
+                </button>
+            </form>
+            
+            <div class="admins-list">
+                <h3 class="admins-list-title">قائمة الأدمن الحاليين</h3>
+                
+                <% if (admins && admins.length > 0) { %>
+                    <div class="admin-list-container">
+                        <% admins.forEach(admin => { %>
+                            <div class="admin-item">
+                                <div class="admin-info">
+                                    <span class="admin-name"><%= admin.username %></span>
+                                    <span class="admin-date">
+                                        تم الإنشاء: <%= new Date(admin.createdAt).toLocaleDateString('ar-SA') %>
+                                    </span>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                <% } else { %>
+                    <div class="no-admins-message">
+                        <p>لا يوجد أدمن مسجلين حالياً</p>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // إدارة السايدبار
+            const menuToggle = document.getElementById('menuToggle');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            
+            menuToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('active');
+                overlay.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
+            });
+            
+            overlay.addEventListener('click', function() {
+                sidebar.classList.remove('active');
+                overlay.style.display = 'none';
+            });
+
+            // تحسين تجربة النموذج
+            const form = document.getElementById('addAdminForm');
+            const submitBtn = document.getElementById('submitBtn');
+            const submitText = document.getElementById('submitText');
+            const loadingIcon = document.getElementById('loadingIcon');
+            
+            form.addEventListener('submit', function(e) {
+                // التحقق من الصحة على العميل أولاً
+                const username = form.username.value.trim();
+                const password = form.password.value;
+                
+                if (username.length < 3) {
+                    alert('اسم المستخدم يجب أن يكون 3 أحرف على الأقل');
+                    e.preventDefault();
+                    return;
+                }
+                
+                if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+                    alert('اسم المستخدم يجب أن يحتوي فقط على أحرف إنجليزية وأرقام وشرطة سفلية');
+                    e.preventDefault();
+                    return;
+                }
+                
+                if (password.length < 8) {
+                    alert('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+                    e.preventDefault();
+                    return;
+                }
+                
+                submitBtn.disabled = true;
+                submitText.textContent = 'جاري الإضافة...';
+                loadingIcon.style.display = 'inline-block';
+            });
+        });
+    </script>
+</body>
+</html>
