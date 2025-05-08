@@ -463,12 +463,12 @@
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       try {
-        // العناصر الأساسية
+       
         const socket = io();
         const sessionId = "<%= session._id %>";
         const userType = "patient";
         
-        // عناصر واجهة المستخدم
+       
         const remoteVideo = document.getElementById('remoteVideo');
         const localVideo = document.getElementById('localVideo');
         const remoteVideoPlaceholder = document.getElementById('remoteVideoPlaceholder');
@@ -492,7 +492,7 @@
         const cancelEndSession = document.getElementById('cancelEndSession');
         const confirmEndSession = document.getElementById('confirmEndSession');
 
-        // متغيرات حالة الجلسة
+       
         let peerConnection;
         let localStream;
         let connectionTimeout;
@@ -503,11 +503,7 @@
         let startX, startWidth;
         let countdownInterval;
 
-        // ======================
-        // دوال مساعدة
-        // ======================
-
-        // عرض رسالة خطأ
+       
         const showError = (message, duration = 5000) => {
           errorMessage.textContent = message;
           errorToast.classList.add('show');
@@ -517,7 +513,7 @@
           }, duration);
         };
 
-        // تحديث حالة الاتصال
+       
         const updateConnectionStatus = (status, isConnected = false, isError = false) => {
           if (!connectionStatus) return;
           
@@ -540,7 +536,7 @@
           connectionStatus.classList.remove('hidden');
         };
 
-        // إنشاء عنصر رسالة نصية
+        
         const createTextMessage = (sender, text, time) => {
           const messageDiv = document.createElement('div');
           messageDiv.className = `message ${sender === userType ? 'sent' : 'received'}`;
@@ -553,7 +549,7 @@
           return messageDiv;
         };
 
-        // إنشاء عنصر رسالة ملف
+       
         const createFileMessage = (sender, fileData) => {
           const fileDiv = document.createElement('div');
           fileDiv.className = `file-message ${sender === userType ? 'sent' : 'received'}`;
@@ -594,7 +590,7 @@
           return fileDiv;
         };
 
-        // تنسيق حجم الملف
+      
         const formatFileSize = (bytes) => {
           if (bytes === 0) return '0 بايت';
           const k = 1024;
@@ -603,7 +599,7 @@
           return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         };
 
-        // تنظيف الموارد
+      
         const cleanupResources = () => {
           if (peerConnection) {
             peerConnection.close();
@@ -617,7 +613,7 @@
           clearInterval(countdownInterval);
         };
 
-        // رفع الملفات
+       
         const uploadFile = (file) => {
           return new Promise((resolve, reject) => {
             const formData = new FormData();
@@ -650,12 +646,12 @@
           });
         };
 
-        // التمرير إلى آخر رسالة
+       
         const scrollToBottom = () => {
           messagesContainer.scrollTop = messagesContainer.scrollHeight;
         };
 
-        // تحميل سجل المحادثة
+      
         const loadChatHistory = async () => {
           try {
             const response = await fetch(`/api/sessions/${sessionId}/messages`);
@@ -688,7 +684,7 @@
           }
         };
 
-        // بدء العد التنازلي (محدث)
+      
         const startCountdown = () => {
           const appointmentTime = new Date("<%= session.date %>");
           const [hours, minutes] = "<%= session.time %>".split(':').map(Number);
@@ -702,12 +698,12 @@
             const mins = Math.floor(remaining / 60000);
             const secs = Math.floor((remaining % 60000) / 1000);
             
-            // إظهار المؤقت في آخر 30 دقيقة
+          
             if (remaining <= 30 * 60000) {
               countdownTimer.classList.remove('hidden');
               timerText.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
               
-              // إظهار تنبيه في آخر 5 دقائق
+             
               if (remaining <= 5 * 60000 && remaining > 0) {
                 showError(`تبقى ${mins} دقائق على انتهاء الجلسة`, 3000);
               }
@@ -727,15 +723,11 @@
           countdownInterval = setInterval(updateTimer, 1000);
         };
 
-        // ======================
-        // إعداد اتصال WebRTC
-        // ======================
-
         const initWebRTC = async () => {
           try {
             updateConnectionStatus('جاري إعداد الاتصال...');
             
-            // الحصول على وسائط المستخدم
+          
             localStream = await navigator.mediaDevices.getUserMedia({
               video: true,
               audio: {
@@ -747,7 +739,7 @@
             
             localVideo.srcObject = localStream;
             
-            // تكوين اتصال Peer
+           
             const configuration = {
               iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
@@ -758,19 +750,19 @@
             
             peerConnection = new RTCPeerConnection(configuration);
             
-            // إضافة مسارات الوسائط المحلية
+            
             localStream.getTracks().forEach(track => {
               peerConnection.addTrack(track, localStream);
             });
             
-            // معالجة المرشحات ICE
+           
             peerConnection.onicecandidate = (event) => {
               if (event.candidate) {
                 socket.emit('iceCandidate', { sessionId, candidate: event.candidate });
               }
             };
             
-            // معالجة تيار الوسائط البعيدة
+           
             peerConnection.ontrack = (event) => {
               remoteVideo.srcObject = event.streams[0];
               remoteVideoPlaceholder.classList.add('hidden');
@@ -778,7 +770,7 @@
               clearTimeout(connectionTimeout);
             };
             
-            // مراقبة حالة الاتصال
+            
             peerConnection.oniceconnectionstatechange = () => {
               const state = peerConnection.iceConnectionState;
               
@@ -791,7 +783,7 @@
               }
             };
             
-            // إنشاء عرض اتصال
+           
             const offer = await peerConnection.createOffer({
               offerToReceiveAudio: true,
               offerToReceiveVideo: true
@@ -802,7 +794,7 @@
             
             updateConnectionStatus('في انتظار رد الدكتور...');
 
-            // معالجة الإجابة الواردة
+           
             socket.on('answer', async (answer) => {
               try {
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
@@ -814,7 +806,7 @@
               }
             });
             
-            // معالجة مرشحات ICE الواردة
+            
             socket.on('iceCandidate', async (candidate) => {
               try {
                 if (peerConnection && candidate) {
@@ -825,7 +817,7 @@
               }
             });
             
-            // مهلة الاتصال
+          
             connectionTimeout = setTimeout(() => {
               if (!peerConnection.remoteDescription) {
                 showError('تعذر الاتصال بالدكتور. يرجى المحاولة مرة أخرى.');
@@ -842,13 +834,9 @@
           }
         };
 
-        // ======================
-        // إعداد اتصال Socket.io
-        // ======================
-
         socket.emit('joinSession', { sessionId, userType });
         
-        // استقبال الرسائل النصية
+       
         socket.on('newMessage', (message) => {
           messagesContainer.appendChild(createTextMessage(
             message.sender,
@@ -858,13 +846,13 @@
           scrollToBottom();
         });
         
-        // استقبال رسائل الملفات
+        
         socket.on('newFileMessage', (fileData) => {
           messagesContainer.appendChild(createFileMessage(fileData.sender, fileData));
           scrollToBottom();
         });
 
-        // استقبال طلب إنهاء الجلسة من الطبيب (محدث)
+       
         socket.on('endSessionRequested', async ({ requestedBy }) => {
           if (requestedBy === 'doctor') {
             const modal = document.createElement('div');
@@ -917,7 +905,7 @@
           }
         });
 
-        // استقبال تأكيد إنهاء الجلسة (محدث)
+       
         socket.on('sessionEnded', () => {
           showError('تم إنهاء الجلسة بنجاح', 2000);
           setTimeout(() => {
@@ -925,11 +913,7 @@
           }, 2000);
         });
 
-        // ======================
-        // معالجة أحداث واجهة المستخدم
-        // ======================
-
-        // إرسال رسالة نصية
+       
         sendButton.addEventListener('click', () => {
           const message = messageInput.value.trim();
           if (message) {
@@ -949,7 +933,7 @@
           }
         });
         
-        // رفع ملف
+      
         fileUploadButton.addEventListener('click', () => {
           fileInput.click();
         });
@@ -969,7 +953,7 @@
           }
         });
 
-        // التحكم في الفيديو والصوت
+       
         toggleVideoBtn.addEventListener('click', () => {
           if (localStream) {
             const videoTrack = localStream.getVideoTracks()[0];
@@ -994,7 +978,7 @@
           }
         });
 
-        // ملء الشاشة
+     
         fullscreenBtn.addEventListener('click', () => {
           if (!isFullscreen) {
             document.documentElement.requestFullscreen().catch(err => {
@@ -1010,7 +994,7 @@
           isFullscreen = !isFullscreen;
         });
 
-        // تغيير حجم الدردشة
+       
         chatResizeHandle.addEventListener('mousedown', (e) => {
           isResizing = true;
           startX = e.clientX;
@@ -1034,7 +1018,7 @@
           document.addEventListener('mouseup', handleMouseUp);
         });
 
-        // إدارة إنهاء الجلسة (محدث)
+      
         endSessionBtn.addEventListener('click', () => {
           confirmationModal.classList.add('active');
         });
@@ -1067,10 +1051,10 @@
           }
         });
 
-        // تنظيف الموارد عند إغلاق الصفحة
+       
         window.addEventListener('beforeunload', cleanupResources);
         
-        // بدء الجلسة
+       
         initWebRTC();
         loadChatHistory();
         startCountdown();
