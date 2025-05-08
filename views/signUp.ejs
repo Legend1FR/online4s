@@ -1,152 +1,186 @@
 <%- include('header', { title: 'تسجيل جديد' }) %>
-<div class="container" style="max-width: 500px; margin: 2rem auto; padding: 2rem; background-color: white; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-    <h2 style="text-align: center; margin-bottom: 1.5rem; color: #1e293b;">
+<div class="content" style="width: 500px; margin: 50px auto; background-color: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); text-align: center;">
+    <h2 style="margin-bottom: 20px; color: #333;">
         <i class="fas fa-user-plus" style="margin-left: 10px;"></i>
         إنشاء حساب جديد
     </h2>
     
-    <form action="/signUp" method="post" id="signupForm">
+    <form action="/signUp" method="post" class="auth-form">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         
-        <div class="form-group" style="margin-bottom: 1.5rem;">
-            <label for="name" style="display: block; margin-bottom: 0.5rem; color: #64748b;">اسم المستخدم</label>
-            <div style="position: relative;">
-                <input type="text" id="name" name="name" placeholder="اسم المستخدم" 
-                       style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.375rem; font-size: 1rem; padding-right: 2.5rem;"
-                       required>
-                <i class="fas fa-user" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-            </div>
+        <div class="form-group">
+            <i class="fas fa-user input-icon"></i>
+            <input type="text" name="name" placeholder="اسم المستخدم" dir="rtl" required>
         </div>
         
-        <div class="form-group" style="margin-bottom: 1.5rem;">
-            <label for="email" style="display: block; margin-bottom: 0.5rem; color: #64748b;">البريد الإلكتروني</label>
-            <div style="position: relative;">
-                <input type="email" id="email" name="email" placeholder="البريد الإلكتروني" 
-                       style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.375rem; font-size: 1rem; padding-right: 2.5rem;"
-                       required>
-                <i class="fas fa-envelope" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-            </div>
+        <div class="form-group">
+            <i class="fas fa-envelope input-icon"></i>
+            <input type="email" name="email" placeholder="البريد الإلكتروني" dir="rtl" required>
         </div>
         
-        <div class="form-group" style="margin-bottom: 1.5rem;">
-            <label for="password" style="display: block; margin-bottom: 0.5rem; color: #64748b;">كلمة المرور</label>
-            <div style="position: relative;">
-                <input type="password" id="password" name="password" placeholder="كلمة المرور" 
-                       style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.375rem; font-size: 1rem; padding-right: 2.5rem;"
-                       required>
-                <i class="fas fa-lock" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                <div id="password-strength" style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-                    <div class="requirement" data-requirement="length" style="display: flex; align-items: center; gap: 0.25rem;">
-                        <i class="fas fa-times" style="color: #ef4444;"></i>
-                        <span style="font-size: 0.875rem;">8 أحرف على الأقل</span>
-                    </div>
-                    <div class="requirement" data-requirement="uppercase" style="display: flex; align-items: center; gap: 0.25rem;">
-                        <i class="fas fa-times" style="color: #ef4444;"></i>
-                        <span style="font-size: 0.875rem;">حرف كبير</span>
-                    </div>
-                    <div class="requirement" data-requirement="lowercase" style="display: flex; align-items: center; gap: 0.25rem;">
-                        <i class="fas fa-times" style="color: #ef4444;"></i>
-                        <span style="font-size: 0.875rem;">حرف صغير</span>
-                    </div>
-                </div>
-            </div>
+        <div class="form-group">
+            <i class="fas fa-lock input-icon"></i>
+            <input type="password" name="password" placeholder="كلمة المرور" dir="rtl" required>
+            <small style="display: block; text-align: right; color: #666; margin-top: 5px;">
+                يجب أن تحتوي كلمة المرور على 8 أحرف على الأقل، حرف كبير، حرف صغير، رقم وحرف خاص
+            </small>
         </div>
         
-        <button type="submit" style="width: 100%; padding: 0.75rem; background-color: #3b82f6; color: white; border: none; border-radius: 0.375rem; font-size: 1rem; cursor: pointer; transition: background-color 0.3s;">
-            إنشاء حساب
+        <button type="submit" class="submit-btn">
+            <span id="submitText">إنشاء حساب</span>
+            <div id="loadingSpinner" class="spinner" style="display: none;">
+                <i class="fas fa-spinner fa-spin"></i>
+            </div>
         </button>
         
-        <div style="text-align: center; margin-top: 1.5rem; color: #64748b;">
-            لديك حساب بالفعل؟ <a href="/login" style="color: #3b82f6; text-decoration: none;">سجل الدخول</a>
+        <div class="form-footer">
+            لديك حساب بالفعل؟ <a href="/login" style="color: #007bff; text-decoration: none;">سجل الدخول</a>
         </div>
     </form>
     
-    <div id="message" style="margin-top: 1.5rem;">
-        <% if (error) { %>
-            <div style="padding: 0.75rem; background-color: #fee2e2; color: #b91c1c; border-radius: 0.375rem; display: flex; align-items: center; gap: 0.5rem;">
-                <i class="fas fa-exclamation-circle"></i>
-                <span><%= error %></span>
-            </div>
-        <% } %>
-        <% if (success) { %>
-            <div style="padding: 0.75rem; background-color: #dcfce7; color: #166534; border-radius: 0.375rem; display: flex; align-items: center; gap: 0.5rem;">
-                <i class="fas fa-check-circle"></i>
-                <span><%= success %></span>
-            </div>
-        <% } %>
-    </div>
+    <% if (error) { %>
+        <div class="alert alert-error">
+            <i class="fas fa-exclamation-circle"></i>
+            <%= error %>
+        </div>
+    <% } %>
+    
+    <% if (success) { %>
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle"></i>
+            <%= success %>
+            يمكنك الآن <a href="/login" style="color: #28a745; text-decoration: none;">تسجيل الدخول</a>
+        </div>
+    <% } %>
 </div>
 
-<script>
-// تحقق من قوة كلمة المرور أثناء الكتابة
-document.getElementById('password').addEventListener('input', function(e) {
-    const password = e.target.value;
-    const requirements = {
-        length: password.length >= 8,
-        uppercase: /[A-Z]/.test(password),
-        lowercase: /[a-z]/.test(password)
-    };
-    
-    Object.keys(requirements).forEach(key => {
-        const requirementElement = document.querySelector(`.requirement[data-requirement="${key}"] i`);
-        if (requirements[key]) {
-            requirementElement.className = 'fas fa-check';
-            requirementElement.style.color = '#10b981';
-        } else {
-            requirementElement.className = 'fas fa-times';
-            requirementElement.style.color = '#ef4444';
-        }
-    });
-});
-
-// إرسال النموذج باستخدام Fetch API
-document.getElementById('signupForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const form = e.target;
-    const formData = new FormData(form);
-    const submitButton = form.querySelector('button[type="submit"]');
-    const originalButtonText = submitButton.innerHTML;
-    
-    try {
-        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري إنشاء الحساب...';
-        submitButton.disabled = true;
-        
-        const response = await fetch(form.action, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'Accept': 'application/json'
-            }
-        });
-        
-        const result = await response.json();
-        
-        if (result.redirect) {
-            window.location.href = result.redirect;
-        } else if (result.error) {
-            const messageDiv = document.getElementById('message');
-            messageDiv.innerHTML = `
-                <div style="padding: 0.75rem; background-color: #fee2e2; color: #b91c1c; border-radius: 0.375rem; display: flex; align-items: center; gap: 0.5rem;">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span>${result.error}</span>
-                </div>
-            `;
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        const messageDiv = document.getElementById('message');
-        messageDiv.innerHTML = `
-            <div style="padding: 0.75rem; background-color: #fee2e2; color: #b91c1c; border-radius: 0.375rem; display: flex; align-items: center; gap: 0.5rem;">
-                <i class="fas fa-exclamation-circle"></i>
-                <span>حدث خطأ أثناء إنشاء الحساب</span>
-            </div>
-        `;
-    } finally {
-        submitButton.innerHTML = originalButtonText;
-        submitButton.disabled = false;
+<style>
+    .content {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
-});
+    
+    .form-group {
+        position: relative;
+        margin: 20px 40px;
+    }
+    
+    .form-group input {
+        width: 100%;
+        padding: 12px 40px 12px 15px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 16px;
+        transition: border 0.3s;
+    }
+    
+    .form-group input:focus {
+        border-color: #007bff;
+        outline: none;
+    }
+    
+    .input-icon {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #777;
+    }
+    
+    .submit-btn {
+        width: 100%;
+        padding: 12px;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        position: relative;
+        height: 45px;
+    }
+    
+    .submit-btn:hover {
+        background-color: #218838;
+    }
+    
+    .spinner {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+    
+    .alert-error {
+        margin-top: 20px;
+        padding: 10px 15px;
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+        border-radius: 5px;
+        text-align: right;
+    }
+    
+    .alert-success {
+        margin-top: 20px;
+        padding: 10px 15px;
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+        border-radius: 5px;
+        text-align: right;
+    }
+    
+    .form-footer {
+        margin-top: 15px;
+        color: #666;
+    }
+</style>
+
+<script>
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const form = e.target;
+        const name = form.elements['name'].value.trim();
+        const email = form.elements['email'].value.trim();
+        const password = form.elements['password'].value.trim();
+        
+        
+        if (!name || !email || !password) {
+            e.preventDefault();
+            showError('جميع الحقول مطلوبة');
+            return;
+        }
+        
+        
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            e.preventDefault();
+            showError('البريد الإلكتروني غير صحيح');
+            return;
+        }
+        
+        
+        const passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*]).{8,}$/;
+        if (!passwordRegex.test(password)) {
+            e.preventDefault();
+            showError('كلمة المرور يجب أن تحتوي على الأقل على 8 أحرف، حرف كبير، حرف صغير، رقم، وحرف خاص');
+            return;
+        }
+        
+        document.getElementById('submitText').style.visibility = 'hidden';
+        document.getElementById('loadingSpinner').style.display = 'block';
+    });
+    
+    function showError(message) {
+        const errorDiv = document.querySelector('.alert-error') || document.createElement('div');
+        errorDiv.className = 'alert-error';
+        errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+        
+        if (!document.querySelector('.alert-error')) {
+            const form = document.querySelector('form');
+            form.parentNode.insertBefore(errorDiv, form.nextSibling);
+        }
+    }
 </script>
 
 <%- include('footer') %>
