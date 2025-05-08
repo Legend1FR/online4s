@@ -19,7 +19,7 @@
             background-color: #f5f7fa;
             margin: 0;
             padding: 0;
-            padding-top: 80px; /* لمنع تداخل الهيدر مع المحتوى */
+            padding-top: 80px;
         }
         
         .main-container {
@@ -43,6 +43,32 @@
             border-radius: 10px;
             text-align: center;
             margin-bottom: 30px;
+            position: relative;
+        }
+        
+        .whatsapp-deposit {
+            background-color: #25D366;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .whatsapp-deposit:hover {
+            background-color: #128C7E;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .whatsapp-icon {
+            font-size: 1.5rem;
         }
         
         .transactions-header {
@@ -95,21 +121,68 @@
             color: #666;
             font-size: 1.1rem;
         }
+        
+        .transaction-doctor {
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+        
+        .transaction-type {
+            font-size: 0.8rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background-color: #f0f0f0;
+            display: inline-block;
+        }
+        
+        .type-deposit {
+            background-color: #e6f7ee;
+            color: #28a745;
+        }
+        
+        .type-payment {
+            background-color: #fde8e8;
+            color: #dc3545;
+        }
+
+        .error-message {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .error-message i {
+            font-size: 1.2rem;
+        }
     </style>
 </head>
 <body>
-   
-    
-
     <div class="main-container">
         <div class="wallet-container">
             <h1 style="text-align: center; color: var(--primary-color); margin-bottom: 30px;">محفظتي</h1>
             
+            <% if (error) { %>
+                <div class="error-message">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span><%= error.message %></span>
+                </div>
+            <% } %>
+            
             <div class="balance-card">
                 <h2 style="margin-bottom: 15px;">الرصيد الحالي</h2>
                 <div style="font-size: 2.5rem; font-weight: bold;">
-                    <%= patient.wallet.balance.toFixed(2) %> ر.س
+                    <%= patient.wallet.balance.toLocaleString('ar-YE') %> ر.ي
                 </div>
+            </div>
+
+            <div class="whatsapp-deposit" onclick="window.open('https://wa.me/967781430676?text=أريد شحن محفظتي في تطبيق عيادتي', '_blank')">
+                <i class="fab fa-whatsapp whatsapp-icon"></i>
+                <span>لشحن حسابك عبر البنك المحلي يرجى التواصل معنا عبر واتساب</span>
             </div>
             
             <h2 class="transactions-header">سجل المعاملات</h2>
@@ -123,7 +196,19 @@
                     <% patient.wallet.transactions.forEach(transaction => { %>
                         <div class="transaction-item">
                             <div class="transaction-info">
-                                <div style="font-weight: bold;"><%= transaction.description %></div>
+                                <div class="transaction-doctor">
+                                    <% if (transaction.type === 'appointment_payment') { %>
+                                        <i class="fas fa-user-md" style="margin-left: 5px;"></i> د. <%= transaction.doctorName || 'غير محدد' %>
+                                    <% } else if (transaction.type === 'deposit') { %>
+                                        <i class="fas fa-coins" style="margin-left: 5px;"></i> شحن محفظة
+                                    <% } %>
+                                </div>
+                                <div>
+                                    <span class="transaction-type <%= transaction.type === 'deposit' ? 'type-deposit' : 'type-payment' %>">
+                                        <%= transaction.type === 'appointment_payment' ? 'حجز موعد' : transaction.type === 'deposit' ? 'إيداع' : 'معاملة' %>
+                                    </span>
+                                    <span class="transaction-description"><%= transaction.description %></span>
+                                </div>
                                 <div class="transaction-date">
                                     <%= new Date(transaction.date).toLocaleDateString('ar-SA', { 
                                         weekday: 'long', 
@@ -136,7 +221,7 @@
                                 </div>
                             </div>
                             <div class="transaction-amount <%= transaction.amount > 0 ? 'positive' : 'negative' %>">
-                                <%= transaction.amount > 0 ? '+' : '' %><%= transaction.amount.toFixed(2) %> ر.س
+                                <%= transaction.amount > 0 ? '+' : '' %><%= transaction.amount.toLocaleString('ar-YE') %> ر.ي
                             </div>
                         </div>
                     <% }); %>
@@ -146,7 +231,6 @@
     </div>
 
     <script>
-        
         document.addEventListener('DOMContentLoaded', function() {
             window.addEventListener('click', function(e) {
                 const patientMenu = document.getElementById('patientMenu');
