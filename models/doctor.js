@@ -132,14 +132,18 @@ const doctorSchema = new mongoose.Schema({
     toObject: { virtuals: true }
 });
 
-// Virtual for appointments
 doctorSchema.virtual('appointments', {
     ref: 'Appointment',
     localField: '_id',
     foreignField: 'doctor'
 });
 
-// Pre-save validation
+doctorSchema.virtual('ratings', {
+    ref: 'Rating',
+    localField: '_id',
+    foreignField: 'doctor'
+});
+
 doctorSchema.pre('save', function(next) {
     if (this.morningStart && this.morningEnd) {
         const [startH, startM] = this.morningStart.split(':').map(Number);
@@ -163,7 +167,6 @@ doctorSchema.pre('save', function(next) {
     next();
 });
 
-// Method to get available time slots
 doctorSchema.methods.getAvailableSlots = async function(date, patientId = null) {
     try {
         const AppointmentModel = mongoose.model('Appointment');
@@ -174,7 +177,6 @@ doctorSchema.methods.getAvailableSlots = async function(date, patientId = null) 
             return [];
         }
         
-        // Check for existing appointment if patientId is provided
         if (patientId) {
             const existingAppointment = await AppointmentModel.findOne({
                 doctor: this._id,
@@ -187,7 +189,6 @@ doctorSchema.methods.getAvailableSlots = async function(date, patientId = null) 
             }
         }
         
-        // Get existing appointments for this date
         const appointments = await AppointmentModel.find({
             doctor: this._id,
             date: date,
@@ -197,7 +198,6 @@ doctorSchema.methods.getAvailableSlots = async function(date, patientId = null) 
         const bookedSlots = appointments.map(app => app.time);
         const allSlots = [];
         
-        // Generate morning slots
         const [morningStartH, morningStartM] = this.morningStart.split(':').map(Number);
         const [morningEndH, morningEndM] = this.morningEnd.split(':').map(Number);
         
@@ -217,7 +217,6 @@ doctorSchema.methods.getAvailableSlots = async function(date, patientId = null) 
             }
         }
         
-        // Generate evening slots
         const [eveningStartH, eveningStartM] = this.eveningStart.split(':').map(Number);
         const [eveningEndH, eveningEndM] = this.eveningEnd.split(':').map(Number);
         
@@ -244,7 +243,6 @@ doctorSchema.methods.getAvailableSlots = async function(date, patientId = null) 
     }
 };
 
-// Method to check if doctor is available at specific time
 doctorSchema.methods.isAvailable = async function(date, time) {
     try {
         const slots = await this.getAvailableSlots(date);
@@ -255,7 +253,6 @@ doctorSchema.methods.isAvailable = async function(date, time) {
     }
 };
 
-// Method to get upcoming appointments
 doctorSchema.methods.getUpcomingAppointments = async function() {
     try {
         const AppointmentModel = mongoose.model('Appointment');
@@ -271,7 +268,6 @@ doctorSchema.methods.getUpcomingAppointments = async function() {
     }
 };
 
-// Method to get today's appointments
 doctorSchema.methods.getTodaysAppointments = async function() {
     try {
         const today = new Date();
@@ -290,6 +286,41 @@ doctorSchema.methods.getTodaysAppointments = async function() {
     } catch (error) {
         console.error('Error in getTodaysAppointments:', error);
         throw error;
+    }
+};
+
+doctorSchema.methods.getAverageRating = async function() {
+    try {
+        const Rating = mongoose.model('Rating');
+        const result = await Rating.aggregate([
+            { $match: { doctor: this._id } },
+            { $group: { _id: null, average: { $avg: "$rating" }, count: { $sum: 1 } } }
+        ]);
+        
+        if (result.length > 0) {
+            return {
+                average: parseFloat(result[0].average.toFixed(1)),
+                count: result[0].count,
+                percentage: Math.round((result[0].average / 5) * 100)
+            };
+        }
+        return { average: 0, count: 0, percentage: 0 };
+    } catch (error) {
+        console.error('Error calculating average rating:', error);
+        return { average: 0, count: 0, percentage: 0 };
+    }
+};
+
+doctorSchema.methods.getRecentRatings = async function(limit = 5) {
+    try {
+        const Rating = mongoose.model('Rating');
+        return await Rating.find({ doctor: this._id })
+            .populate('patient', 'name profileImage')
+            .sort({ createdAt: -1 })
+            .limit(limit);
+    } catch (error) {
+        console.error('Error fetching recent ratings:', error);
+        return [];
     }
 };
 
