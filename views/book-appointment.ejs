@@ -27,13 +27,6 @@
         .slot.selected {
             transform: scale(1.1);
         }
-        .payment-method {
-            transition: all 0.2s ease;
-        }
-        .payment-method:hover:not(.disabled) {
-            transform: translateY(-3px);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
         .confirmation-modal {
             opacity: 0;
             visibility: hidden;
@@ -64,20 +57,64 @@
             transform: translateY(0);
             opacity: 1;
         }
+        .rating-stars {
+            direction: ltr;
+            unicode-bidi: bidi-override;
+        }
+        .star {
+            color: #ddd;
+            font-size: 1.2rem;
+        }
+        .star.filled {
+            color: #ffc107;
+        }
+        .rating-progress {
+            height: 0.5rem;
+            border-radius: 0.25rem;
+        }
+        .balance-info {
+            background-color: #f8fafc;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #e2e8f0;
+        }
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fade-out {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-20px); }
+        }
+        .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
+        .animate-fade-out { animation: fade-out 0.3s ease-out forwards; }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
     <div class="container mx-auto px-4 py-8">
-        <!-- رسائل الخطأ -->
-        <div id="errorContainer" class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-r hidden">
-            <p id="errorText"></p>
-        </div>
+        <!-- رسائل التنبيه -->
+        <div id="errorToast" class="fixed top-4 right-4 z-50 px-6 py-3 rounded-lg text-white bg-red-500 font-medium hidden"></div>
+        <div id="successToast" class="fixed top-4 right-4 z-50 px-6 py-3 rounded-lg text-white bg-green-500 font-medium hidden"></div>
 
         <% if (!patient) { %>
             <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r">
                 <p>يجب تسجيل الدخول كـ مريض أولاً</p>
             </div>
         <% } else { %>
+            <!-- حساب متوسط التقييم -->
+            <% 
+            let avgRating = 0;
+            let ratingCount = 0;
+            if (doctor.ratings && Array.isArray(doctor.ratings)) {
+                ratingCount = doctor.ratings.length;
+                if (ratingCount > 0) {
+                    const sum = doctor.ratings.reduce((total, r) => total + (r.rating || 0), 0);
+                    avgRating = sum / ratingCount;
+                }
+            }
+            %>
+
             <!-- بطاقة الطبيب -->
             <div class="doctor-card bg-white rounded-xl p-6 mb-8 flex flex-col md:flex-row justify-between items-center">
                 <div class="flex items-center mb-4 md:mb-0">
@@ -87,6 +124,14 @@
                     <div class="mr-4">
                         <h2 class="text-xl font-bold text-gray-800"><%= doctor.username %></h2>
                         <p class="text-gray-600"><%= doctor.specialization %></p>
+                        <div class="flex items-center mt-1">
+                            <div class="rating-stars">
+                                <% for (let i = 1; i <= 5; i++) { %>
+                                    <span class="star <%= i <= Math.round(avgRating) ? 'filled' : '' %>">★</span>
+                                <% } %>
+                            </div>
+                            <span class="text-sm text-gray-600 mr-2">(<%= ratingCount %> تقييمات)</span>
+                        </div>
                     </div>
                 </div>
                 <div class="flex items-center">
@@ -97,7 +142,28 @@
                 </div>
             </div>
 
-            <!-- موعد موجود مسبقاً -->
+            <!-- معلومات الرصيد -->
+            <div class="balance-info">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold text-gray-700">سعر الحجز</h3>
+                        <p class="text-2xl font-bold text-blue-600"><%= APPOINTMENT_PRICE.toLocaleString('ar-YE') %> ر.ي</p>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-700">رصيدك الحالي</h3>
+                        <p class="text-2xl font-bold <%= patient.wallet.balance >= APPOINTMENT_PRICE ? 'text-green-600' : 'text-red-600' %>">
+                            <%= patient.wallet.balance.toLocaleString('ar-YE') %> ر.ي
+                        </p>
+                    </div>
+                </div>
+                <% if (patient.wallet.balance < APPOINTMENT_PRICE) { %>
+                    <div class="mt-2 text-red-600">
+                        <i class="fas fa-exclamation-circle mr-1"></i>
+                        رصيدك غير كافٍ لحجز موعد. يرجى شحن المحفظة أولاً.
+                    </div>
+                <% } %>
+            </div>
+
             <% if (locals.existingAppointment && existingAppointment.status !== 'مكتمل') { %>
             <div class="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 mb-6 rounded-r">
                 <h3 class="font-bold mb-2">لديك موعد محجز مسبقاً مع هذا الطبيب</h3>
@@ -128,7 +194,7 @@
                         <input type="text" id="date" name="date" 
                             class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
                             placeholder="اختر تاريخ" 
-                            <%= locals.existingAppointment && existingAppointment.status !== 'مكتمل' || !doctor.acceptingAppointments ? 'disabled' : '' %>
+                            <%= locals.existingAppointment && existingAppointment.status !== 'مكتمل' || !doctor.acceptingAppointments || patient.wallet.balance < APPOINTMENT_PRICE ? 'disabled' : '' %>
                             required>
                     </div>
                     
@@ -144,6 +210,10 @@
                                 <div class="slot unavailable bg-red-100 text-red-800 p-4 rounded-lg text-center cursor-not-allowed">
                                     الحجوزات متوقفة
                                 </div>
+                            <% } else if (patient.wallet.balance < APPOINTMENT_PRICE) { %>
+                                <div class="slot unavailable bg-red-100 text-red-800 p-4 rounded-lg text-center cursor-not-allowed">
+                                    رصيد غير كافي
+                                </div>
                             <% } else { %>
                                 <div class="slot unavailable bg-gray-100 text-gray-500 p-4 rounded-lg text-center cursor-not-allowed">
                                     اختر تاريخاً أولاً
@@ -158,15 +228,23 @@
                         <textarea id="notes" name="notes" rows="3"
                             class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
                             placeholder="أي ملاحظات تريد إضافتها..."
-                            <%= locals.existingAppointment && existingAppointment.status !== 'مكتمل' || !doctor.acceptingAppointments ? 'disabled' : '' %>></textarea>
+                            <%= locals.existingAppointment && existingAppointment.status !== 'مكتمل' || !doctor.acceptingAppointments || patient.wallet.balance < APPOINTMENT_PRICE ? 'disabled' : '' %>></textarea>
                     </div>
                     
                     <!-- زر الحجز -->
                     <button type="button" id="submitBooking" 
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition duration-200 flex justify-center items-center"
-                        <%= locals.existingAppointment && existingAppointment.status !== 'مكتمل' || !doctor.acceptingAppointments ? 'disabled' : '' %>>
+                        class="w-full <%= patient.wallet.balance >= APPOINTMENT_PRICE && doctor.acceptingAppointments && (!locals.existingAppointment || existingAppointment.status === 'مكتمل') ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed' %> text-white font-medium py-3 px-6 rounded-lg transition duration-200 flex justify-center items-center"
+                        <%= locals.existingAppointment && existingAppointment.status !== 'مكتمل' || !doctor.acceptingAppointments || patient.wallet.balance < APPOINTMENT_PRICE ? 'disabled' : '' %>>
                         <span id="submitText">
-                            <%= locals.existingAppointment && existingAppointment.status !== 'مكتمل' ? 'لديك موعد مسبق' : !doctor.acceptingAppointments ? 'الحجوزات متوقفة' : 'تأكيد الحجز' %>
+                            <% if (locals.existingAppointment && existingAppointment.status !== 'مكتمل') { %>
+                                لديك موعد مسبق
+                            <% } else if (!doctor.acceptingAppointments) { %>
+                                الحجوزات متوقفة
+                            <% } else if (patient.wallet.balance < APPOINTMENT_PRICE) { %>
+                                رصيد غير كافي
+                            <% } else { %>
+                                تأكيد الحجز والدفع
+                            <% } %>
                         </span>
                         <span id="submitSpinner" class="loading-spinner ml-2 hidden"></span>
                     </button>
@@ -176,47 +254,35 @@
     </div>
 
     <!-- نموذج التأكيد -->
-    <div id="confirmationModal" class="confirmation-modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div id="confirmationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
         <div class="bg-white rounded-xl p-6 w-full max-w-md">
-            <h3 id="modalTitle" class="text-xl font-bold text-gray-800 mb-4">تأكيد الحجز</h3>
-            <div id="modalContent">
-                <p id="modalMessage" class="text-gray-600 mb-6">هل أنت متأكد من حجز الموعد في الوقت المحدد؟</p>
-                <div class="mb-6">
-                    <label class="block text-gray-700 font-medium mb-2">طريقة الدفع:</label>
-                    <div class="grid grid-cols-1 gap-4">
-                        <div class="payment-method">
-                            <input type="radio" id="electronicPayment" name="paymentMethod" value="electronic" checked class="hidden">
-                            <label for="electronicPayment" class="flex flex-col items-center p-4 border-2 border-blue-500 bg-blue-50 rounded-lg cursor-pointer h-full">
-                                <i class="fas fa-credit-card text-3xl text-blue-600 mb-2"></i>
-                                <span class="font-medium">الدفع الإلكتروني</span>
-                                <span class="text-sm text-gray-500 mt-1">دفع آمن عبر الإنترنت</span>
-                            </label>
-                        </div>
-                        <div class="payment-method">
-                            <input type="radio" id="walletPayment" name="paymentMethod" value="wallet" class="hidden">
-                            <label for="walletPayment" class="flex flex-col items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer h-full">
-                                <i class="fas fa-wallet text-3xl text-gray-600 mb-2"></i>
-                                <span class="font-medium">الدفع عبر المحفظة</span>
-                                <span class="text-sm text-gray-500 mt-1">الرصيد الحالي: <%= patient.wallet.balance.toFixed(2) %> ر.س</span>
-                            </label>
-                        </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-4">تأكيد الحجز والدفع</h3>
+            <div class="space-y-4">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <div class="flex justify-between mb-2">
+                        <span class="font-medium">سعر الحجز:</span>
+                        <span class="font-bold"><%= APPOINTMENT_PRICE.toLocaleString('ar-YE') %> ر.ي</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="font-medium">الرصيد بعد الحجز:</span>
+                        <span class="font-bold <%= (patient.wallet.balance - APPOINTMENT_PRICE) >= 0 ? 'text-green-600' : 'text-red-600' %>">
+                            <%= (patient.wallet.balance - APPOINTMENT_PRICE).toLocaleString('ar-YE') %> ر.ي
+                        </span>
                     </div>
                 </div>
+                <p class="text-gray-600">هل أنت متأكد من حجز الموعد والدفع من محفظتك؟</p>
             </div>
-            <div class="flex justify-end space-x-3 rtl:space-x-reverse">
+            <div class="flex justify-end space-x-3 rtl:space-x-reverse mt-6">
                 <button id="cancelBookingBtn" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
                     إلغاء
                 </button>
                 <button id="confirmBookingBtn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center">
-                    <span id="confirmText">تأكيد</span>
+                    <span id="confirmText">تأكيد الدفع والحجز</span>
                     <span id="confirmSpinner" class="loading-spinner ml-2 hidden"></span>
                 </button>
             </div>
         </div>
     </div>
-
-    <!-- رسائل التنبيه -->
-    <div id="toast" class="toast fixed top-4 right-4 z-50 px-6 py-3 rounded-lg text-white font-medium hidden"></div>
 
     <!-- المكتبات الخارجية -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -224,22 +290,17 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const errorContainer = document.getElementById('errorContainer');
-            const errorText = document.getElementById('errorText');
+            // عناصر DOM
+            const errorToast = document.getElementById('errorToast');
+            const successToast = document.getElementById('successToast');
             const dateInput = document.getElementById('date');
             const timeSlotsContainer = document.getElementById('timeSlots');
             const submitBtn = document.getElementById('submitBooking');
             const submitText = document.getElementById('submitText');
             const submitSpinner = document.getElementById('submitSpinner');
             const confirmationModal = document.getElementById('confirmationModal');
-            const modalTitle = document.getElementById('modalTitle');
-            const modalMessage = document.getElementById('modalMessage');
-            const modalContent = document.getElementById('modalContent');
             const confirmBookingBtn = document.getElementById('confirmBookingBtn');
             const cancelBookingBtn = document.getElementById('cancelBookingBtn');
-            const confirmText = document.getElementById('confirmText');
-            const confirmSpinner = document.getElementById('confirmSpinner');
-            const toast = document.getElementById('toast');
             
             // تهيئة منتقي التاريخ
             const datePicker = flatpickr(dateInput, {
@@ -280,78 +341,57 @@
                     return;
                 }
                 
-                // التحقق من عدم وجود موعد مسبق
-                try {
-                    const checkResponse = await axios.get(`/check-existing-appointment?doctorId=<%= doctor._id %>&patientId=<%= patient._id %>`);
-                    
-                    if (checkResponse.data.hasExisting) {
-                        showError('لديك موعد محجز مسبقاً مع هذا الطبيب');
-                        setTimeout(() => window.location.reload(), 2000);
-                        return;
-                    }
-                    
-                    // عرض نموذج التأكيد
-                    const date = new Date(dateInput.value);
-                    const dayNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-                    const dayName = dayNames[date.getDay()];
-                    
-                    modalTitle.textContent = 'تأكيد حجز الموعد';
-                    confirmationModal.classList.add('active');
-                    
-                } catch (error) {
-                    console.error('Error checking existing appointment:', error);
-                    showError('حدث خطأ أثناء التحقق من المواعيد');
-                }
+                // إظهار نموذج التأكيد
+                confirmationModal.classList.remove('hidden');
             });
 
             // تأكيد الحجز
             confirmBookingBtn.addEventListener('click', async function() {
                 try {
-                    confirmText.classList.add('hidden');
-                    confirmSpinner.classList.remove('hidden');
+                    // تعطيل الأزرار وإظهار مؤشر التحميل
+                    submitBtn.disabled = true;
+                    confirmBookingBtn.disabled = true;
+                    document.getElementById('confirmText').classList.add('hidden');
+                    document.getElementById('confirmSpinner').classList.remove('hidden');
                     
-                    const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+                    // جمع بيانات الحجز
                     const formData = {
                         doctorId: '<%= doctor._id %>',
                         date: dateInput.value,
                         time: document.getElementById('selectedTime').value,
                         notes: document.getElementById('notes').value,
-                        paymentMethod: paymentMethod === 'electronic' ? 'إلكتروني' : 'محفظة',
                         _csrf: '<%= csrfToken %>'
                     };
                     
+                    // إرسال طلب الحجز
                     const response = await axios.post('/book-appointment', formData);
                     
                     if (response.data.success) {
-                        showToast('تم حجز الموعد بنجاح', 'success');
-                        confirmationModal.classList.remove('active');
+                        showSuccess('تم حجز الموعد بنجاح');
+                        confirmationModal.classList.add('hidden');
                         
-                        if (paymentMethod === 'electronic') {
-                            // توجيه إلى صفحة الدفع إذا كان الدفع إلكتروني
-                            setTimeout(() => {
-                                window.location.href = `/payment/${response.data.appointment.id}`;
-                            }, 1500);
-                        } else if (paymentMethod === 'wallet') {
-                            // إذا كان الدفع عبر المحفظة، تحديث الصفحة
-                            setTimeout(() => {
-                                window.location.reload();
-                            }, 1500);
-                        }
+                        // إعادة تحميل الصفحة بعد ثانية
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
                     } else {
                         throw new Error(response.data.message || 'حدث خطأ أثناء الحجز');
                     }
                 } catch (error) {
                     console.error('Error booking appointment:', error);
                     showError(error.response?.data?.message || error.message);
-                } finally {
-                    confirmText.classList.remove('hidden');
-                    confirmSpinner.classList.add('hidden');
+                    
+                    // إعادة تمكين الأزرار وإخفاء مؤشر التحميل
+                    submitBtn.disabled = false;
+                    confirmBookingBtn.disabled = false;
+                    document.getElementById('confirmText').classList.remove('hidden');
+                    document.getElementById('confirmSpinner').classList.add('hidden');
                 }
             });
 
             // إلغاء الحجز
             cancelBookingBtn.addEventListener('click', function() {
-                confirmationModal.classList.remove('active');
+                confirmationModal.classList.add('hidden');
             });
 
             // تحميل الأوقات المتاحة
@@ -384,7 +424,10 @@
 
             // تحديث عرض الأوقات المتاحة
             function updateTimeSlotsDisplay(slots, message = null) {
-                timeSlotsContainer.innerHTML = '';
+                // مسح المحتوى الحالي
+                while (timeSlotsContainer.firstChild) {
+                    timeSlotsContainer.removeChild(timeSlotsContainer.firstChild);
+                }
                 
                 if (message) {
                     const messageElement = document.createElement('div');
@@ -401,20 +444,23 @@
                 
                 slots.forEach(slot => {
                     const slotElement = document.createElement('div');
-                    slotElement.className = 'slot bg-blue-50 text-blue-800 p-4 rounded-lg text-center font-medium';
+                    slotElement.className = 'slot bg-blue-50 text-blue-800 p-4 rounded-lg text-center font-medium cursor-pointer hover:bg-blue-100 transition';
                     slotElement.textContent = slot;
+                    slotElement.dataset.time24 = convertTo24Hour(slot);
                     
                     slotElement.addEventListener('click', function() {
+                        // إزالة التحديد من جميع الأزرار
                         document.querySelectorAll('.slot').forEach(el => {
-                            el.classList.remove('selected', 'bg-blue-500', 'text-white');
+                            el.classList.remove('bg-blue-500', 'text-white');
                             el.classList.add('bg-blue-50', 'text-blue-800');
                         });
                         
+                        // تطبيق التحديد على الزر المختار
                         this.classList.remove('bg-blue-50', 'text-blue-800');
-                        this.classList.add('selected', 'bg-blue-500', 'text-white');
-                        document.getElementById('selectedTime').value = convertTo24Hour(slot);
+                        this.classList.add('bg-blue-500', 'text-white');
+                        document.getElementById('selectedTime').value = this.dataset.time24;
                     });
-                    
+                
                     timeSlotsContainer.appendChild(slotElement);
                 });
             }
@@ -431,43 +477,29 @@
                 return `${hours.toString().padStart(2, '0')}:${minutes}`;
             }
 
-            // تحويل الوقت إلى تنسيق 12 ساعة
-            function convertTo12Hour(time24) {
-                let [hours, minutes] = time24.split(':');
-                hours = parseInt(hours);
-                const period = hours >= 12 ? 'م' : 'ص';
-                hours = hours % 12 || 12;
-                return `${hours}:${minutes.toString().padStart(2, '0')} ${period}`;
-            }
-
             // عرض رسالة الخطأ
             function showError(message) {
-                errorText.textContent = message;
-                errorContainer.classList.remove('hidden');
-                setTimeout(() => errorContainer.classList.add('hidden'), 5000);
-            }
-
-            // عرض رسالة التنبيه
-            function showToast(message, type = 'success') {
-                toast.textContent = message;
-                toast.className = `toast fixed top-4 right-4 z-50 px-6 py-3 rounded-lg text-white font-medium ${
-                    type === 'success' ? 'bg-green-500' : 'bg-red-500'
-                } show`;
+                errorToast.textContent = message;
+                errorToast.classList.remove('hidden');
+                errorToast.classList.add('animate-fade-in');
                 
                 setTimeout(() => {
-                    toast.classList.remove('show');
+                    errorToast.classList.add('animate-fade-out');
+                    setTimeout(() => errorToast.classList.add('hidden'), 300);
                 }, 5000);
             }
 
-            // تغيير مظهر طريقة الدفع عند الاختيار
-            document.querySelectorAll('input[name="paymentMethod"]').forEach(input => {
-                input.addEventListener('change', function() {
-                    document.querySelectorAll('.payment-method label').forEach(label => {
-                        label.classList.remove('border-blue-500', 'bg-blue-50');
-                    });
-                    this.nextElementSibling.classList.add('border-blue-500', 'bg-blue-50');
-                });
-            });
+            // عرض رسالة النجاح
+            function showSuccess(message) {
+                successToast.textContent = message;
+                successToast.classList.remove('hidden');
+                successToast.classList.add('animate-fade-in');
+                
+                setTimeout(() => {
+                    successToast.classList.add('animate-fade-out');
+                    setTimeout(() => successToast.classList.add('hidden'), 300);
+                }, 5000);
+            }
         });
     </script>
 </body>
