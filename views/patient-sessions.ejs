@@ -60,6 +60,11 @@
     .rating-stars label:hover ~ label {
       color: #ffc107;
     }
+    .error-message {
+      color: #e53e3e;
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
   </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -151,7 +156,7 @@
                   <div class="border-t pt-3">
                     <h4 class="font-medium mb-2">تقييم الجلسة:</h4>
                     <form class="rate-form" data-session-id="<%= session._id %>" data-doctor-id="<%= session.doctor._id %>">
-                      <div class="rating-stars flex justify-center mb-2">
+                      <div class="rating-stars flex justify-center mb-2" id="rating-stars-<%= session._id %>">
                         <input type="radio" id="star5-<%= session._id %>" name="rating" value="5">
                         <label for="star5-<%= session._id %>">★</label>
                         <input type="radio" id="star4-<%= session._id %>" name="rating" value="4">
@@ -163,6 +168,7 @@
                         <input type="radio" id="star1-<%= session._id %>" name="rating" value="1">
                         <label for="star1-<%= session._id %>">★</label>
                       </div>
+                      <div id="rating-error-<%= session._id %>" class="error-message text-center hidden">الرجاء اختيار تقييم</div>
                       <textarea name="comment" class="w-full border rounded-lg p-2 mb-2" placeholder="تعليقك (اختياري)"></textarea>
                       <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 w-full">
                         إرسال التقييم
@@ -211,8 +217,8 @@
       const loadingIndicator = document.getElementById('loadingIndicator');
       const errorMessage = document.getElementById('errorMessage');
       const errorText = document.getElementById('errorText');
+      const notification = document.getElementById('notification');
 
-      
       function switchTab(tab) {
         upcomingTab.classList.remove('active');
         completedTab.classList.remove('active');
@@ -231,7 +237,6 @@
       upcomingTab.addEventListener('click', () => switchTab('upcoming'));
       completedTab.addEventListener('click', () => switchTab('completed'));
 
-      
       document.addEventListener('click', function(e) {
         if (e.target.classList.contains('join-session-btn')) {
           const sessionId = e.target.getAttribute('data-session-id');
@@ -239,71 +244,77 @@
         }
       });
 
-      
       document.querySelectorAll('.rate-form').forEach(form => {
         form.addEventListener('submit', async function(e) {
           e.preventDefault();
           const sessionId = this.getAttribute('data-session-id');
           const doctorId = this.getAttribute('data-doctor-id');
-          const rating = this.querySelector('input[name="rating"]:checked')?.value;
+          const ratingInput = this.querySelector('input[name="rating"]:checked');
           const comment = this.querySelector('textarea[name="comment"]').value;
+          const errorElement = document.getElementById(`rating-error-${sessionId}`);
           
-          if (!rating) {
-            showError('الرجاء اختيار تقييم');
+          if (!ratingInput) {
+            errorElement.classList.remove('hidden');
             return;
           }
+          
+          errorElement.classList.add('hidden');
+          const rating = ratingInput.value;
 
           try {
             loadingIndicator.classList.remove('hidden');
-            const response = await fetch('/api/sessions/rate', {
+            const response = await fetch('/api/ratings', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
                 'CSRF-Token': '<%= csrfToken %>'
               },
-              body: JSON.stringify({ sessionId, doctorId, rating, comment })
+              body: JSON.stringify({ 
+                appointmentId: sessionId, 
+                doctorId: doctorId, 
+                rating: rating, 
+                comment: comment 
+              })
             });
             
             const data = await response.json();
-            if (data.success) {
-              showNotification('تم إرسال التقييم بنجاح');
-              setTimeout(() => window.location.reload(), 1500);
-            } else {
-              showError(data.error || 'حدث خطأ أثناء إرسال التقييم');
+            if (!response.ok) {
+              throw new Error(data.message || 'حدث خطأ أثناء إرسال التقييم');
             }
+
+            showNotification('تم إرسال التقييم بنجاح');
+            setTimeout(() => window.location.reload(), 1500);
           } catch (error) {
-            showError('حدث خطأ أثناء إرسال التقييم');
             console.error('Error submitting rating:', error);
+            showError(error.message || 'حدث خطأ أثناء إرسال التقييم');
           } finally {
             loadingIndicator.classList.add('hidden');
           }
         });
       });
 
-      
       function showNotification(message) {
-        const notification = document.getElementById('notification');
         notification.textContent = message;
         notification.classList.remove('hidden');
         setTimeout(() => notification.classList.add('hidden'), 5000);
       }
 
-     
       function showError(message) {
         errorText.textContent = message;
         errorMessage.classList.remove('hidden');
         setTimeout(() => errorMessage.classList.add('hidden'), 5000);
       }
+
       setInterval(() => {
-  fetch('/api/sessions/check-completed')
-    .then(response => response.json())
-    .then(data => {
-      if (data.updated) {
-        window.location.reload();
-      }
-    })
-    .catch(error => console.error('Error checking sessions:', error));
-}, 60000);
+        fetch('/api/sessions/check-completed')
+          .then(response => response.json())
+          .then(data => {
+            if (data.updated) {
+              window.location.reload();
+            }
+          })
+          .catch(error => console.error('Error checking sessions:', error));
+      }, 60000);
     });
   </script>
 </body>
