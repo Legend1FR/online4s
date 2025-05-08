@@ -13,10 +13,12 @@ const Appointment = require("./models/appointment.js");
 const Admin = require("./models/admin.js");
 const Doctor = require("./models/doctor.js");
 const Receptionist = require("./models/receptionist.js");  
+const Rating = require('./models/rating');
+const { Payment, SystemSettings } = require('./models/payment');
 const { name, render } = require("ejs");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const verii = require("./middleware/veri.js");
+
 const cookeparser = require("cookie-parser");
 const csrf = require("csurf");
 const fs = require("fs");
@@ -25,8 +27,8 @@ const path = require('path');
 const exceljs = require('exceljs');
 const pdfmake = require('pdfmake');
 const multer = require('multer');
+let APPOINTMENT_PRICE = 200;
 
-    
 const secret = "fgrpekrfg";
 const app = express();
 const server = http.createServer(app);
@@ -128,8 +130,7 @@ function isValidEmail(email) {
 }
 
 function isStrongPassword(password) {
-    // 8 أحرف على الأقل، حرف كبير واحد على الأقل، حرف صغير واحد على الأقل
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
+    const passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*]).{8,}$/;
     return passwordRegex.test(password);
 }
 
@@ -162,6 +163,32 @@ const doctorAuth = async (req, res, next) => {
         res.redirect("/doctor/login");
     }
 };
+
+
+
+const verii = async (req, res, next) => {
+    try {
+        const token = req.cookies.token; 
+        if (!token) {
+            return res.status(401).send("الرجاء تسجيل الدخول أولاً");
+        }
+
+        const decoded = jwt.verify(token, "fgrpekrfg");
+        const patient = await Patient.findOne({ _id: decoded._id });
+
+        if (!patient) {
+            return res.status(401).send("المريض غير موجود");
+        }
+
+        req.patient = patient;
+        next();
+    } catch (error) {
+        console.error("Error in verii middleware:", error);
+        res.status(500).send("حدث خطأ أثناء التحقق من المريض");
+    }
+};
+
+
 const adminAuth = async (req, res, next) => {
     try {
         const token = req.cookies.admin_token;
@@ -266,8 +293,117 @@ app.get("/", async (req, res) => {
                 message: "نواجه بعض الصعوبات التقنية. يرجى المحاولة لاحقاً."
             },
             patient: null,
+
+
             doctors: [],
             csrfToken: req.csrfToken()
+        });
+    }
+});
+
+
+
+// مسار تقديم التقييم
+app.post('/api/ratings', verii, csrfProtection, async (req, res) => {
+    try {
+        const { appointmentId, doctorId, rating, comment } = req.body;
+        const patientId = req.patient._id;
+
+        // التحقق من البيانات المطلوبة
+        if (!appointmentId || !doctorId || !rating) {
+            return res.status(400).json({
+                success: false,
+                message: 'معرف الموعد والتقييم مطلوبان'
+            });
+        }
+
+        // التحقق من أن الموعد منتهي
+        const appointment = await Appointment.findOne({
+            _id: appointmentId,
+            patient: patientId,
+            status: 'مكتمل'
+        });
+
+        if (!appointment) {
+            return res.status(400).json({
+                success: false,
+                message: 'لا يمكن تقييم موعد غير منتهي أو غير موجود'
+            });
+        }
+
+        // التحقق من عدم وجود تقييم سابق لنفس الموعد
+        const existingRating = await Rating.findOne({
+            appointment: appointmentId,
+            patient: patientId
+        });
+
+        if (existingRating) {
+            return res.status(400).json({
+                success: false,
+                message: 'لقد قمت بتقييم هذه الجلسة مسبقاً'
+            });
+        }
+
+        // إنشاء التقييم الجديد
+        const newRating = new Rating({
+            doctor: doctorId,
+            patient: patientId,
+            appointment: appointmentId,
+            rating: rating,
+            comment: comment
+        });
+
+        await newRating.save();
+
+        res.json({
+            success: true,
+            message: 'تم تقديم التقييم بنجاح',
+            rating: newRating
+        });
+
+    } catch (error) {
+        console.error('Error submitting rating:', error);
+        res.status(500).json({
+            success: false,
+            message: 'حدث خطأ أثناء تقديم التقييم',
+            error: error.message
+        });
+    }
+});
+
+// مسار الحصول على تقييمات الطبيب
+app.get('/api/doctors/:id/ratings', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { sort = 'recent', limit = 5 } = req.query;
+
+        let sortOption = { createdAt: -1 }; // افتراضي: الأحدث أولاً
+        if (sort === 'highest') {
+            sortOption = { rating: -1 };
+        } else if (sort === 'lowest') {
+            sortOption = { rating: 1 };
+        } else if (sort === 'oldest') {
+            sortOption = { createdAt: 1 };
+        }
+
+        const ratings = await Rating.find({ doctor: id })
+            .populate('patient', 'name profileImage')
+            .sort(sortOption)
+            .limit(parseInt(limit));
+
+        const averageRating = await Doctor.findById(id).then(doc => doc.getAverageRating());
+
+        res.json({
+            success: true,
+            ratings,
+            averageRating
+        });
+
+    } catch (error) {
+        console.error('Error fetching doctor ratings:', error);
+        res.status(500).json({
+            success: false,
+            message: 'حدث خطأ أثناء جلب التقييمات'
         });
     }
 });
@@ -518,58 +654,79 @@ app.post('/api/sessions/upload-file', uploadSessionFile.single('sessionFile'), a
           });
       }
   });
-  
-  // تحديث مسار الجلسات للمريض
-  app.get("/patient/sessions", verii, async (req, res) => {
-      try {
-          // فحص وتحديث الجلسات المنتهية
-          await Appointment.updateMany(
-              { 
-                  patient: req.patient._id,
-                  date: { $lte: new Date() },
-                  status: { $ne: 'مكتمل' }
-              },
-              { 
-                  $set: { 
-                      status: 'مكتمل',
-                      sessionEndedAt: new Date(),
-                      sessionDuration: 30
-                  } 
-              }
-          );
-  
-          const sessions = await Appointment.find({
-              patient: req.patient._id,
-              status: { $ne: 'مكتمل' }
-          })
-          .populate("doctor", "username profileImage specialization")
-          .sort({ date: 1, time: 1 });
-  
-          const completedSessions = await Appointment.find({
-              patient: req.patient._id,
-              status: 'مكتمل'
-          })
-          .populate("doctor", "username profileImage specialization")
-          .sort({ date: -1, time: -1 });
-  
-          res.render("patient-sessions", {
-              patient: req.patient,
-              sessions,
-              completedSessions,
-              csrfToken: req.csrfToken(),
-          });
-      } catch (error) {
-          console.error('Error loading patient sessions:', error);
-          res.render("patient-sessions", {
-              patient: req.patient,
-              sessions: [],
-              completedSessions: [],
-              error: "حدث خطأ أثناء تحميل الجلسات",
-              csrfToken: req.csrfToken()
-          });
-      }
-  });
-  
+  // مسار جلسات المريض
+app.get("/patient/sessions", verii, async (req, res) => {
+    try {
+        // تحديث الجلسات المنتهية تلقائياً
+        await Appointment.updateMany(
+            { 
+                patient: req.patient._id,
+                date: { $lte: new Date() },
+                status: { $ne: 'مكتمل' }
+            },
+            { 
+                $set: { 
+                    status: 'مكتمل',
+                    sessionEndedAt: new Date(),
+                    sessionDuration: 30
+                } 
+            }
+        );
+
+        const sessions = await Appointment.find({
+            patient: req.patient._id,
+            status: { $in: ['مؤكد', 'قيد الانتظار'] }
+        })
+        .populate({
+            path: "doctor",
+            select: "username profileImage specialization",
+            populate: {
+                path: "ratings",
+                match: { patient: req.patient._id }
+            }
+        })
+        .sort({ date: 1, time: 1 });
+
+        const completedSessions = await Appointment.find({
+            patient: req.patient._id,
+            status: 'مكتمل'
+        })
+        .populate({
+            path: "doctor",
+            select: "username profileImage specialization"
+        })
+        .populate("rating")
+        .sort({ date: -1, time: -1 });
+
+        // حساب متوسط التقييم لكل طبيب
+        for (let session of completedSessions) {
+            if (session.doctor) {
+                session.doctor.avgRating = await Rating.aggregate([
+                    { $match: { doctor: session.doctor._id } },
+                    { $group: { _id: null, average: { $avg: "$rating" } } }
+                ]).then(result => result.length > 0 ? result[0].average.toFixed(1) : 0);
+            }
+        }
+
+        res.render("patient-sessions", {
+            patient: req.patient,
+            sessions,
+            completedSessions,
+            csrfToken: req.csrfToken(),
+        });
+    } catch (error) {
+        console.error('Error loading patient sessions:', error);
+        res.render("patient-sessions", {
+            patient: req.patient,
+            sessions: [],
+            completedSessions: [],
+            error: "حدث خطأ أثناء تحميل الجلسات",
+            csrfToken: req.csrfToken()
+        });
+    }
+});
+
+
   // مسار بدء الجلسة
   app.post("/api/sessions/start", doctorAuth, async (req, res) => {
       try {
@@ -781,104 +938,271 @@ app.post('/process-wallet-payment', verii, csrfProtection, async (req, res) => {
     }
 });
 
-app.get('/admin/payments-management', adminAuth, (req, res) => {
+// مسار إدارة المدفوعات
+app.get('/admin/payments-management', adminAuth, async (req, res) => {
     try {
+        const appointmentPrice = await Payment.getAppointmentPrice();
+        
         res.render('payments-management', {
             admin: req.admin,
+            APPOINTMENT_PRICE: appointmentPrice,
             csrfToken: req.csrfToken()
         });
     } catch (error) {
-        console.error('Render error:', error);
-        res.status(500).send('حدث خطأ في تحميل الصفحة');
+        console.error('Error in payments-management route:', error);
+        res.status(500).render('payments-management', {
+            admin: req.admin,
+            errorMessage: "حدث خطأ في تحميل صفحة إدارة المدفوعات",
+            csrfToken: req.csrfToken()
+        });
     }
 });
 
+// مسار إضافة رصيد للمحفظة (محدث)
 app.post('/admin/add-wallet-funds', adminAuth, async (req, res) => {
     try {
         const { email, amount, description } = req.body;
         
-        if (!email || !amount) {
-            return res.status(400).json({ message: 'البريد الإلكتروني والمبلغ مطلوبان' });
+        if (!email || !amount || !description) {
+            return res.status(400).json({
+                success: false,
+                message: 'جميع الحقول مطلوبة'
+            });
         }
-
+        
         const patient = await Patient.findOne({ email });
         if (!patient) {
-            return res.status(404).json({ message: 'المريض غير موجود' });
+            return res.status(404).json({
+                success: false,
+                message: 'المريض غير موجود'
+            });
         }
         
-        const numericAmount = parseFloat(amount);
-        if (isNaN(numericAmount)) {  
-            return res.status(400).json({ message: 'المبلغ يجب أن يكون رقماً' });
+        const amountNum = parseFloat(amount);
+        if (isNaN(amountNum) || amountNum <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'المبلغ يجب أن يكون رقماً موجباً'
+            });
         }
-
-        patient.wallet.balance += numericAmount;
-        patient.wallet.transactions.push({
-            amount: numericAmount,
-            description: description || 'إضافة رصيد من قبل الإدارة',
-            adminId: req.admin._id,
-            transactionType: 'deposit'
+        
+        // إضافة الرصيد
+        await patient.addFunds(amountNum, description, true);
+        
+        // تسجيل المعاملة في سجل المدفوعات
+        const payment = new Payment({
+            patient: patient._id,
+            amount: amountNum,
+            type: 'deposit',
+            description: `إيداع بواسطة الأدمن: ${description}`,
+            transactionId: `DEP-${Date.now()}`
         });
         
-        await patient.save();
+        await payment.save();
         
-        res.json({ 
-            success: true, 
-            newBalance: patient.wallet.balance,
-            patientName: patient.name
+        res.json({
+            success: true,
+            message: 'تمت إضافة الرصيد بنجاح',
+            newBalance: patient.wallet.balance
         });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'حدث خطأ أثناء إضافة الرصيد' });
+        console.error('Error adding wallet funds:', error);
+        res.status(500).json({
+            success: false,
+            message: 'حدث خطأ أثناء إضافة الرصيد'
+        });
     }
 });
 
-app.get('/wallet', async (req, res) => {
+
+
+
+// مسار تصدير سجل المدفوعات
+app.get('/admin/export-payments', adminAuth, async (req, res) => {
     try {
-        const token = req.cookies.token;
-        if (!token) {
-            return res.redirect('/login');
-        }
-
-        const decoded = jwt.verify(token, "fgrpekrfg");
-        const patient = await Patient.findOne({ _id: decoded._id });
+        const { type, startDate, endDate } = req.query;
         
+        let query = {};
+        
+        // تطبيق الفلتر حسب النوع
+        if (type === 'credit_card') {
+            query.paymentMethod = 'credit_card';
+        } else if (type === 'wallet') {
+            query.paymentMethod = 'wallet';
+        }
+        
+        // تطبيق الفلتر حسب التاريخ
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+            
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            
+            query.createdAt = {
+                $gte: start,
+                $lte: end
+            };
+        }
+        
+        const payments = await Payment.find(query)
+            .populate('patient', 'name email')
+            .populate('doctor', 'username specialization')
+            .sort({ createdAt: -1 })
+            .lean();
+        
+        // تحويل البيانات إلى CSV
+        let csvData = 'تاريخ العملية,المريض,البريد الإلكتروني,الطبيب,التخصص,المبلغ ($),المبلغ (ر.ي),طريقة الدفع,الحالة,معرف Stripe\n';
+        
+        payments.forEach(payment => {
+            csvData += `"${new Date(payment.createdAt).toLocaleString('ar-SA')}",`;
+            csvData += `"${payment.patient.name}",`;
+            csvData += `"${payment.patient.email}",`;
+            csvData += `"${payment.doctor.username}",`;
+            csvData += `"${payment.doctor.specialization}",`;
+            csvData += `"${payment.amount.toFixed(2)}",`;
+            csvData += `"${(payment.amount * payment.exchangeRate).toFixed(2)}",`;
+            csvData += `"${payment.paymentMethod === 'credit_card' ? 'بطاقة ائتمانية' : 'محفظة'}",`;
+            csvData += `"${payment.status === 'completed' ? 'مكتمل' : payment.status === 'failed' ? 'فشل' : 'قيد الانتظار'}",`;
+            csvData += `"${payment.stripePaymentId || '--'}"\n`;
+        });
+        
+        // إرسال الملف
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename=payments_export.csv');
+        res.send(csvData);
+        
+    } catch (error) {
+        console.error('Error exporting payments:', error);
+        res.status(500).json({
+            success: false,
+            message: 'حدث خطأ أثناء تصدير سجل المدفوعات'
+        });
+    }
+});
+
+// مسار البحث عن المرضى (محدث)
+app.get('/admin/search-patients', adminAuth, async (req, res) => {
+    try {
+        const { email } = req.query;
+        
+        if (!email || email.length < 3) {
+            return res.json([]);
+        }
+        
+        const patients = await Patient.find({
+            email: { $regex: email, $options: 'i' }
+        })
+        .select('name email wallet')
+        .limit(5)
+        .lean();
+        
+        res.json(patients);
+    } catch (error) {
+        console.error('Error searching patients:', error);
+        res.status(500).json({
+            success: false,
+            message: 'حدث خطأ أثناء البحث عن المرضى'
+        });
+    }
+});
+
+// Wallet Routes
+app.get('/wallet', verii, async (req, res) => {
+    try {
+        const patient = await Patient.findById(req.patient._id);
         if (!patient) {
-            return res.redirect('/login');
+            return res.status(404).render('wallet', { 
+                error: { message: "المريض غير موجود" },
+                patient: null,
+                csrfToken: req.csrfToken()
+            });
         }
 
-        
-        const sortedTransactions = patient.wallet.transactions.sort((a, b) => b.date - a.date);
-        patient.wallet.transactions = sortedTransactions;
+        // Sort transactions by date descending
+        patient.wallet.transactions.sort((a, b) => b.date - a.date);
 
         res.render('wallet', { 
-            patient: patient, 
-            csrfToken: req.csrfToken() 
+            patient: patient,
+            csrfToken: req.csrfToken(),
+            error: null
         });
     } catch (error) {
-        console.error(error);
-        res.redirect('/login');
+        console.error('Error in wallet route:', error);
+        res.status(500).render('wallet', { 
+            error: { message: "حدث خطأ أثناء تحميل صفحة المحفظة" },
+            patient: null,
+            csrfToken: req.csrfToken()
+        });
     }
 });
 
+// مسار تحديث سعر الحجز
+app.post('/admin/update-appointment-price', adminAuth, async (req, res) => {
+    try {
+        const { price } = req.body;
+        
+        if (!price || isNaN(price)) {
+            return res.status(400).json({
+                success: false,
+                message: 'السعر يجب أن يكون رقماً صحيحاً'
+            });
+        }
+        
+        const newPrice = parseFloat(price);
+        await Payment.updateAppointmentPrice(newPrice, req.admin._id);
+        
+        res.json({
+            success: true,
+            message: 'تم تحديث سعر الحجز بنجاح',
+            newPrice: newPrice
+        });
+    } catch (error) {
+        console.error('Error updating appointment price:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'حدث خطأ أثناء تحديث سعر الحجز'
+        });
+    }
+});
 app.get("/book-appointment/:doctorId", verii, csrfProtection, async (req, res) => {
     try {
-       
-        const doctor = await Doctor.findById(req.params.doctorId);
+        const doctor = await Doctor.findById(req.params.doctorId)
+            .populate({
+                path: 'ratings',
+                select: 'rating comment patient createdAt',
+                populate: {
+                    path: 'patient',
+                    select: 'name profileImage'
+                }
+            })
+            .lean();
+
         if (!doctor) {
             return res.status(404).render('error', { message: "الطبيب غير موجود" });
         }
 
+        // حساب متوسط التقييم
+        const ratings = doctor.ratings || [];
+        const avgRating = ratings.length > 0 ? 
+            (ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length) : 0;
+
         const existingAppointment = await Appointment.findOne({
             doctor: req.params.doctorId,
             patient: req.patient._id,
-            date: { $gte: new Date() },
-            status: { $ne: 'ملغي' }
+            status: { $ne: 'مكتمل' }
         });
 
         res.render("book-appointment", {
-            doctor,
+            doctor: {
+                ...doctor,
+                avgRating: parseFloat(avgRating.toFixed(1)),
+                ratingCount: ratings.length
+            },
             patient: req.patient,
-            existingAppointment: existingAppointment || null,
+            existingAppointment,
+            APPOINTMENT_PRICE: 3000, // قيمة ثابتة أو يمكن جلبها من قاعدة البيانات
+            
             csrfToken: req.csrfToken()
         });
     } catch (error) {
@@ -944,6 +1268,67 @@ app.post("/doctor/toggle-appointments", doctorAuth, async (req, res) => {
         });
     }
 });
+
+
+app.get("/doctor/appointments", doctorAuth, csrfProtection, async (req, res) => {
+    try {
+        const hasUpcomingAppointments = await Appointment.exists({
+            doctor: req.doctor._id,
+            date: { $gte: new Date() },
+            status: { $ne: 'ملغي' }
+        });
+
+        res.render("doctor-appointments", {
+            doctor: req.doctor,
+            hasUpcomingAppointments,
+            csrfToken: req.csrfToken()
+        });
+    } catch (error) {
+        console.error("Error loading doctor appointments:", error);
+        res.status(500).render('error', { message: "حدث خطأ أثناء تحميل الصفحة" });
+    }
+});
+app.post("/doctor/toggle-appointments", doctorAuth, async (req, res) => {
+    try {
+        const doctor = await Doctor.findById(req.doctor._id);
+        if (!doctor) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "الطبيب غير موجود" 
+            });
+        }
+
+        const newStatus = !doctor.acceptingAppointments;
+        
+        
+        const updatedDoctor = await Doctor.findByIdAndUpdate(
+            req.doctor._id, 
+            { acceptingAppointments: newStatus },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedDoctor) {
+            return res.status(500).json({ 
+                success: false, 
+                message: "فشل في تحديث حالة الحجوزات" 
+            });
+        }
+
+        res.json({ 
+            success: true, 
+            message: newStatus ? "تم تفعيل الحجوزات بنجاح" : "تم إيقاف الحجوزات بنجاح",
+            newStatus
+        });
+    } catch (error) {
+        console.error("Error toggling appointments:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: "حدث خطأ أثناء تغيير حالة الحجوزات",
+            error: error.message 
+        });
+    }
+});
+
 app.get("/get-available-slots", async (req, res) => {
     try {
         const { doctorId, date, patientId } = req.query;
@@ -1055,190 +1440,17 @@ app.get("/get-available-slots", async (req, res) => {
         res.status(500).json({ message: "حدث خطأ أثناء جلب الأوقات المتاحة" });
     }
 });
-// استيراد نموذج الدفع الجديد
-const Payment = require('./models/payment');
-
-// إعداد سعر الحجز الموحد
-const APPOINTMENT_PRICE = 100; // يمكن تغيير هذه القيمة من لوحة التحكم
-
-// إضافة مسار جديد لصفحة الدفع
-app.get('/payment/:appointmentId', verii, csrfProtection, async (req, res) => {
-    try {
-        const appointment = await Appointment.findById(req.params.appointmentId)
-            .populate('doctor')
-            .populate('patient');
-        
-        if (!appointment) {
-            return res.status(404).render('error', { message: "الموعد غير موجود" });
-        }
-        
-        // تأكد أن الموعد يخص المريض الحالي
-        if (appointment.patient._id.toString() !== req.patient._id.toString()) {
-            return res.status(403).render('error', { message: "غير مسموح بالوصول لهذا الموعد" });
-        }
-        
-        // تحديث سعر الحجز إذا لم يكن محدداً
-        if (!appointment.amountPaid || appointment.amountPaid === 0) {
-            appointment.amountPaid = APPOINTMENT_PRICE;
-            await appointment.save();
-        }
-        
-        res.render('payment', {
-            appointment,
-            patient: req.patient,
-            csrfToken: req.csrfToken()
-        });
-    } catch (error) {
-        console.error("Error loading payment page:", error);
-        res.status(500).render('error', { message: "حدث خطأ أثناء تحميل صفحة الدفع" });
-    }
-});
-
-// معالجة الدفع
-app.post('/process-payment', verii, csrfProtection, async (req, res) => {
-    try {
-        const { appointmentId, paymentMethod } = req.body;
-        const patientId = req.patient._id;
-        
-        if (!appointmentId || !paymentMethod) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "بيانات الدفع غير مكتملة" 
-            });
-        }
-        
-        const appointment = await Appointment.findById(appointmentId)
-            .populate('doctor')
-            .populate('patient');
-        
-        if (!appointment) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "الموعد غير موجود" 
-            });
-        }
-        
-        // تأكد أن الموعد يخص المريض الحالي
-        if (appointment.patient._id.toString() !== patientId.toString()) {
-            return res.status(403).json({ 
-                success: false, 
-                message: "غير مسموح بالوصول لهذا الموعد" 
-            });
-        }
-        
-        // إذا كان الدفع عبر المحفظة
-        if (paymentMethod === 'wallet') {
-            const patient = await Patient.findById(patientId);
-            
-            if (patient.wallet.balance < appointment.amountPaid) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: "رصيد المحفظة غير كافٍ" 
-                });
-            }
-            
-            // خصم المبلغ من المحفظة
-            patient.wallet.balance -= appointment.amountPaid;
-            patient.wallet.transactions.push({
-                amount: -appointment.amountPaid,
-                date: new Date(),
-                description: `دفع حجز موعد مع الطبيب ${appointment.doctor.username}`,
-                transactionType: 'payment'
-            });
-            
-            // تحديث حالة الموعد
-            appointment.paymentMethod = 'محفظة';
-            appointment.paymentStatus = 'مدفوع';
-            appointment.status = 'مؤكد';
-            
-            // إنشاء سجل الدفع
-            const payment = new Payment({
-                appointment: appointment._id,
-                patient: patient._id,
-                doctor: appointment.doctor._id,
-                amount: appointment.amountPaid,
-                paymentMethod: 'محفظة',
-                status: 'مكتمل'
-            });
-            
-            await Promise.all([
-                patient.save(),
-                appointment.save(),
-                payment.save()
-            ]);
-            
-            return res.json({ 
-                success: true, 
-                message: "تم الدفع وتأكيد الحجز بنجاح"
-            });
-        }
-        
-        // إذا كان الدفع الإلكتروني (بطاقة ائتمان)
-        if (paymentMethod === 'creditCard') {
-            // هنا يمكنك إضافة تكامل مع بوابة الدفع
-            // في هذا المثال سنفترض أن الدفع تم بنجاح
-            
-            // تحديث حالة الموعد
-            appointment.paymentMethod = 'إلكتروني';
-            appointment.paymentStatus = 'مدفوع';
-            appointment.status = 'مؤكد';
-            
-            // إنشاء سجل الدفع
-            const payment = new Payment({
-                appointment: appointment._id,
-                patient: patientId,
-                doctor: appointment.doctor._id,
-                amount: appointment.amountPaid,
-                paymentMethod: 'إلكتروني',
-                status: 'مكتمل',
-                paymentDetails: {
-                    method: 'MasterCard',
-                    transactionId: `tx_${Math.random().toString(36).substr(2, 9)}`
-                }
-            });
-            
-            await Promise.all([
-                appointment.save(),
-                payment.save()
-            ]);
-            
-            return res.json({ 
-                success: true, 
-                message: "تم الدفع وتأكيد الحجز بنجاح"
-            });
-        }
-        
-        return res.status(400).json({ 
-            success: false, 
-            message: "طريقة الدفع غير معروفة" 
-        });
-        
-    } catch (error) {
-        console.error("Error processing payment:", error);
-        res.status(500).json({ 
-            success: false, 
-            message: "حدث خطأ أثناء عملية الدفع",
-            error: error.message 
-        });
-    }
-});
-
-// مسار لجلب سجل المدفوعات للإدارة
 app.get('/admin/payments', adminAuth, async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-        const filter = req.query.filter || 'all';
-        const date = req.query.date || '';
+        const { page = 1, limit = 10, filter, date } = req.query;
+        const skip = (page - 1) * limit;
         
         let query = {};
         
-        // تطبيق الفلتر حسب طريقة الدفع
-        if (filter !== 'all') {
-            query.paymentMethod = filter === 'electronic' ? 'إلكتروني' : 'محفظة';
+        if (filter && filter !== 'all') {
+            query.type = filter === 'deposit' ? 'deposit' : 'appointment_payment';
         }
         
-        // تطبيق الفلتر حسب التاريخ
         if (date) {
             const startDate = new Date(date);
             startDate.setHours(0, 0, 0, 0);
@@ -1246,216 +1458,176 @@ app.get('/admin/payments', adminAuth, async (req, res) => {
             const endDate = new Date(date);
             endDate.setHours(23, 59, 59, 999);
             
-            query.createdAt = { $gte: startDate, $lte: endDate };
+            query.createdAt = {
+                $gte: startDate,
+                $lte: endDate
+            };
         }
-        
-        const totalPayments = await Payment.countDocuments(query);
-        const totalPages = Math.ceil(totalPayments / limit);
         
         const payments = await Payment.find(query)
             .populate('patient', 'name email')
             .populate('doctor', 'username specialization')
             .sort({ createdAt: -1 })
-            .skip((page - 1) * limit)
-            .limit(limit);
+            .skip(skip)
+            .limit(parseInt(limit))
+            .lean();
+            
+        const totalPayments = await Payment.countDocuments(query);
         
         res.json({
-            payments,
-            totalPages,
-            currentPage: page
+            success: true,
+            payments: payments,
+            totalPages: Math.ceil(totalPayments / limit)
         });
-        
     } catch (error) {
-        console.error("Error fetching payments:", error);
-        res.status(500).json({ 
-            message: "حدث خطأ أثناء جلب سجل المدفوعات",
-            error: error.message 
+        console.error('Error fetching payments:', error);
+        res.status(500).json({
+            success: false,
+            message: 'حدث خطأ أثناء جلب سجل المدفوعات'
         });
     }
 });
 
-// تحديث مسار حجز الموعد
+
+// مسار حجز الموعد (محدث)
 app.post("/book-appointment", verii, csrfProtection, async (req, res) => {
     try {
-        const { doctorId, date, time, notes, paymentMethod } = req.body;
+        const { doctorId, date, time, notes } = req.body;
         const patientId = req.patient._id;
         
-        // التحقق من البيانات المطلوبة
-        if (!doctorId || !date || !time || !paymentMethod) {
+        if (!doctorId || !date || !time) {
             return res.status(400).json({ 
                 success: false, 
-                message: "جميع الحقول مطلوبة",
-                details: "يجب إدخال بيانات الطبيب والتاريخ والوقت وطريقة الدفع",
-                missingFields: {
-                    doctorId: !doctorId,
-                    date: !date,
-                    time: !time,
-                    paymentMethod: !paymentMethod
+                message: "بيانات غير مكتملة",
+                errors: {
+                    doctorId: !doctorId ? "معرف الطبيب مطلوب" : undefined,
+                    date: !date ? "تاريخ الموعد مطلوب" : undefined,
+                    time: !time ? "وقت الموعد مطلوب" : undefined
                 }
             });
         }
 
-        // البحث عن الطبيب
-        const doctor = await Doctor.findById(doctorId);
-        if (!doctor) {
+        const appointmentPrice = await Payment.getAppointmentPrice();
+        const [doctor, patient] = await Promise.all([
+            Doctor.findById(doctorId),
+            Patient.findById(patientId)
+        ]);
+
+        if (!doctor || !patient) {
             return res.status(404).json({ 
                 success: false, 
-                message: "الطبيب غير موجود",
-                details: "معرف الطبيب غير صحيح"
+                message: "الطبيب أو المريض غير موجود"
             });
         }
 
-        // التحقق من قبول الطبيب للحجوزات
         if (!doctor.acceptingAppointments) {
             return res.status(400).json({ 
                 success: false, 
-                message: "الطبيب لا يقبل الحجوزات حالياً",
-                details: "حالة الطبيب لا تسمح بقبول حجوزات جديدة"
+                message: "الطبيب لا يقبل الحجوزات حالياً"
             });
         }
 
         const selectedDate = new Date(date);
-        const now = new Date();
-        const isToday = selectedDate.toDateString() === now.toDateString();
-
-        // التحقق من صحة التاريخ
         if (isNaN(selectedDate.getTime())) {
             return res.status(400).json({ 
                 success: false, 
-                message: "تاريخ غير صالح",
-                details: "تنسيق التاريخ غير صحيح"
+                message: "تاريخ غير صالح"
             });
         }
 
-        // التحقق من أن التاريخ ليس في الماضي
-        if (selectedDate < new Date().setHours(0, 0, 0, 0)) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (selectedDate < today) {
             return res.status(400).json({ 
                 success: false, 
-                message: "لا يمكن حجز موعد في تاريخ قديم",
-                details: "التاريخ المحدد قد مضى"
+                message: "لا يمكن حجز موعد في تاريخ قديم"
             });
         }
 
-        // التحقق من صحة الوقت
         if (!/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
             return res.status(400).json({ 
                 success: false, 
-                message: "تنسيق الوقت غير صحيح",
-                details: "يجب أن يكون الوقت بتنسيق 24 ساعة (HH:MM)"
+                message: "تنسيق الوقت غير صحيح"
             });
         }
 
-        // التحقق من وجود موعد سابق للمريض (تجاهل المواعيد المكتملة)
         const existingAppointment = await Appointment.findOne({
             doctor: doctorId,
             patient: patientId,
-            date: { $gte: new Date() },
             status: { $nin: ['ملغي', 'مكتمل'] }
         });
 
         if (existingAppointment) {
-            return res.status(400).json({ 
+            return res.status(409).json({ 
                 success: false, 
                 message: "لديك موعد محجز مسبقاً مع هذا الطبيب",
-                details: "يوجد موعد نشط آخر للمريض مع نفس الطبيب",
-                existingAppointment 
+                existingAppointment: {
+                    id: existingAppointment._id,
+                    date: existingAppointment.date,
+                    time: existingAppointment.time,
+                    status: existingAppointment.status
+                }
             });
         }
 
-        // التحقق من أن وقت الحجز ليس في الماضي
-        const appointmentTime = new Date(`${selectedDate.toISOString().split('T')[0]}T${time}`);
-        if (appointmentTime < now) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "لا يمكن حجز موعد في وقت مضى",
-                details: "الوقت المحدد قد مضى"
-            });
-        }
-
-        // إذا كان الحجز في نفس اليوم، التحقق من أن الوقت الحالي أقل من وقت الحجز بساعة على الأقل
-        if (isToday) {
-            const timeDiff = appointmentTime - now;
-            if (timeDiff < 60 * 60 * 1000) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: "يجب حجز الموعد قبل ساعة على الأقل من الوقت الحالي",
-                    details: "الفرق بين الوقت الحالي ووقت الحجز أقل من ساعة"
-                });
-            }
-        }
-
-        // التحقق من أن الوقت المحدد متاح للطبيب
-        const availableSlots = await doctor.getAvailableSlots(selectedDate, patientId);
-        if (!availableSlots.includes(time)) {
+        const isAvailable = await doctor.isAvailable(selectedDate, time);
+        if (!isAvailable) {
+            const availableSlots = await doctor.getAvailableSlots(selectedDate);
             return res.status(400).json({ 
                 success: false, 
                 message: "الوقت المحدد غير متاح",
-                details: "الوقت محجوز مسبقاً أو خارج أوقات عمل الطبيب",
                 availableSlots
             });
         }
 
-        // إنشاء الموعد الجديد
+        if (patient.wallet.balance < appointmentPrice) {
+            return res.status(402).json({ 
+                success: false, 
+                message: "رصيد المحفظة غير كافٍ",
+                requiredAmount: appointmentPrice,
+                currentBalance: patient.wallet.balance
+            });
+        }
+
         const newAppointment = new Appointment({
             doctor: doctorId,
             patient: patientId,
             date: selectedDate,
             time: time,
             notes: notes || '',
-            status: paymentMethod === 'محفظة' ? 'مؤكد' : 'قيد الانتظار',
-            paymentMethod: paymentMethod,
-            paymentStatus: paymentMethod === 'محفظة' ? 'مدفوع' : 'معلق',
-            amountPaid: APPOINTMENT_PRICE
+            paymentMethod: 'محفظة',
+            paymentStatus: 'مدفوع',
+            status: 'مؤكد',
+            amountPaid: appointmentPrice,
+            paymentDetails: {
+                amount: appointmentPrice,
+                method: 'wallet',
+                transactionId: `APPT-${Date.now()}-${patientId.toString().slice(-4)}`
+            }
         });
 
-        // حفظ الموعد في قاعدة البيانات
-        await newAppointment.save();
+        await patient.payFromWallet(
+            appointmentPrice,
+            `حجز موعد مع د. ${doctor.username}`,
+            newAppointment._id,
+            doctor.username
+        );
 
-        // إذا كان الدفع عبر المحفظة، معالجة الدفع
-        if (paymentMethod === 'محفظة') {
-            const patient = await Patient.findById(patientId);
-            
-            if (patient.wallet.balance < APPOINTMENT_PRICE) {
-                // إذا لم يكن هناك رصيد كافي، تحديث حالة الموعد
-                newAppointment.paymentStatus = 'غير مدفوع';
-                newAppointment.status = 'ملغي';
-                await newAppointment.save();
-                
-                return res.json({ 
-                    success: false, 
-                    message: "رصيد المحفظة غير كافٍ",
-                    appointment: {
-                        id: newAppointment._id,
-                        status: newAppointment.status,
-                        paymentStatus: newAppointment.paymentStatus
-                    }
-                });
-            }
-            
-            // خصم المبلغ من المحفظة
-            patient.wallet.balance -= APPOINTMENT_PRICE;
-            patient.wallet.transactions.push({
-                amount: -APPOINTMENT_PRICE,
-                date: new Date(),
-                description: `دفع حجز موعد مع الطبيب ${doctor.username}`,
-                transactionType: 'payment'
-            });
-            
-            // إنشاء سجل الدفع
-            const payment = new Payment({
-                appointment: newAppointment._id,
-                patient: patientId,
-                doctor: doctorId,
-                amount: APPOINTMENT_PRICE,
-                paymentMethod: 'محفظة',
-                status: 'مكتمل'
-            });
-            
-            await Promise.all([
-                patient.save(),
-                payment.save()
-            ]);
-        }
+        const payment = new Payment({
+            appointment: newAppointment._id,
+            patient: patientId,
+            doctor: doctorId,
+            amount: appointmentPrice,
+            type: 'appointment_payment',
+            description: `حجز موعد مع د. ${doctor.username}`,
+            status: 'completed',
+            transactionId: newAppointment.paymentDetails.transactionId
+        });
+
+        await Promise.all([
+            newAppointment.save(),
+            payment.save()
+        ]);
 
         res.json({ 
             success: true, 
@@ -1464,38 +1636,29 @@ app.post("/book-appointment", verii, csrfProtection, async (req, res) => {
                 id: newAppointment._id,
                 date: newAppointment.date,
                 time: newAppointment.time,
-                status: newAppointment.status,
-                paymentStatus: newAppointment.paymentStatus
+                status: newAppointment.status
             },
-            nextSteps: paymentMethod === 'إلكتروني' ? 
-                "سيتم تحويلك لصفحة الدفع" : 
-                "تم تأكيد الحجز بنجاح"
+            newBalance: patient.wallet.balance
         });
 
     } catch (error) {
-        console.error("Error booking appointment:", error);
+        console.error("Error in book-appointment:", error);
         
-        // تحديد نوع الخطأ لإرسال رسالة مناسبة
-        let errorMessage = "حدث خطأ أثناء حجز الموعد";
-        let errorDetails = error.message;
-        
+        let errorMessage = "حدث خطأ غير متوقع";
         if (error.name === 'ValidationError') {
-            errorMessage = "بيانات الحجز غير صالحة";
-            errorDetails = Object.values(error.errors).map(e => e.message).join(', ');
+            errorMessage = "بيانات غير صالحة";
         } else if (error.name === 'MongoError' && error.code === 11000) {
-            errorMessage = "هذا الموعد محجوز مسبقاً";
-            errorDetails = "يوجد تعارض في المواعيد";
+            errorMessage = "تعارض في المواعيد";
         }
 
         res.status(500).json({ 
             success: false, 
             message: errorMessage,
-            details: errorDetails,
-            errorType: error.name,
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 });
+
 app.get("/doctor/get-appointments", doctorAuth, async (req, res) => {
     try {
         const appointments = await Appointment.find({ doctor: req.doctor._id })
@@ -2136,6 +2299,110 @@ io.on("connection", (socket) => {
     });
 });
 
+// تحديث route إضافة الأدمن
+app.post("/admin/add-admin", adminAuth, async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        
+        // التحقق من البيانات المدخلة
+        if (!username || !password) {
+            const admins = await Admin.find({}, 'username').lean();
+            return res.render("settingAdmin", {
+                admin: req.admin,
+                admins: admins,
+                csrfToken: req.csrfToken(),
+                error: "يجب إدخال اسم المستخدم وكلمة المرور",
+                success: null
+            });
+        }
+        
+        // التحقق من قوة كلمة المرور
+        if (password.length < 8) {
+            const admins = await Admin.find({}, 'username').lean();
+            return res.render("settingAdmin", {
+                admin: req.admin,
+                admins: admins,
+                csrfToken: req.csrfToken(),
+                error: "كلمة المرور يجب أن تكون 8 أحرف على الأقل",
+                success: null
+            });
+        }
+        
+        // التحقق من عدم تكرار اسم المستخدم (باستخدام تعبير منتظم لحساسية الحروف)
+        const existingAdmin = await Admin.findOne({ 
+            username: { $regex: new RegExp(`^${username}$`, 'i') }
+        });
+        
+        if (existingAdmin) {
+            const admins = await Admin.find({}, 'username').lean();
+            return res.render("settingAdmin", {
+                admin: req.admin,
+                admins: admins,
+                csrfToken: req.csrfToken(),
+                error: "اسم المستخدم موجود بالفعل (قد يكون بحروف مختلفة)",
+                success: null
+            });
+        }
+        
+        // إنشاء الأدمن الجديد مع هاش كلمة المرور
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+        
+        const newAdmin = new Admin({ 
+            username: username.trim(), 
+            password: hashedPassword 
+        });
+        
+        await newAdmin.save();
+        
+        // جلب القائمة المحدثة مع ترتيب أبجدي
+        const updatedAdmins = await Admin.find({}, 'username')
+            .sort({ username: 1 })
+            .lean();
+        
+        res.render("settingAdmin", {
+            admin: req.admin,
+            admins: updatedAdmins,
+            csrfToken: req.csrfToken(),
+            error: null,
+            success: `تمت إضافة الأدمن "${username.trim()}" بنجاح`
+        });
+        
+    } catch (error) {
+        console.error("Error adding admin:", error);
+        
+        // جلب القائمة الحالية حتى في حالة الخطأ
+        const admins = await Admin.find({}, 'username').lean().catch(() => []);
+        
+        res.render("settingAdmin", {
+            admin: req.admin,
+            admins: admins,
+            csrfToken: req.csrfToken(),
+            error: "حدث خطأ أثناء إضافة الأدمن: " + error.message,
+            success: null
+        });
+    }
+});
+// إضافة route للتحقق من اسم المستخدم
+app.post('/admin/check-username', adminAuth, async (req, res) => {
+    try {
+        const { username } = req.body;
+        
+        if (!username) {
+            return res.status(400).json({ error: 'اسم المستخدم مطلوب' });
+        }
+        
+        // التحقق من وجود المستخدم (حساسية الحروف)
+        const existingAdmin = await Admin.findOne({ 
+            username: { $regex: new RegExp(`^${username}$`, 'i') }
+        });
+        
+        res.json({ exists: !!existingAdmin });
+    } catch (error) {
+        console.error('Error checking username:', error);
+        res.status(500).json({ error: 'حدث خطأ أثناء التحقق' });
+    }
+});
 app.post("/admin/add-patient", adminAuth, async (req, res) => {
     const { name, email, password } = req.body;
 
@@ -2206,26 +2473,23 @@ app.get("/doctor/login", (req, res) => {
 app.post("/doctor/login", async (req, res) => {
     const { username, password } = req.body;
     try {
-        // البحث عن الطبيب بدون التحسس لحالة الأحرف
-        const doctor = await Doctor.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
-        
+        const doctor = await Doctor.findOne({ username });
         if (!doctor) {
-            return res.json({ error: "اسم المستخدم أو كلمة المرور غير صحيحة" });
+            return res.render("doctor-login", { error: "اسم المستخدم أو كلمة المرور غير صحيحة", csrfToken: req.csrfToken() });
         }
 
-        const isMatch = await bcrypt.compare(password, doctor.password);
-        if (!isMatch) {
-            return res.json({ error: "اسم المستخدم أو كلمة المرور غير صحيحة" });
-        }
+        
 
         const token = jwt.sign({ _id: doctor._id, role: "doctor" }, secret, { expiresIn: "1h" });
         res.cookie("doctor_token", token, { httpOnly: true });
-        return res.json({ redirect: "/doctor/dashboard" });
+        res.redirect("/doctor/dashboard");
     } catch (error) {
         console.error("Error during doctor login:", error);
-        return res.json({ error: "حدث خطأ أثناء تسجيل الدخول" });
+        res.status(500).send("حدث خطأ أثناء تسجيل الدخول");
     }
 });
+
+
 
 app.get("/doctor/dashboard", doctorAuth, (req, res) => {
     res.render("doctor-dashboard", { doctor: req.doctor });
@@ -2274,29 +2538,29 @@ app.get("/receptionist/logout", (req, res) => {
 app.get("/admin/login", (req, res) => {
     res.render("admin-login", { error: null, csrfToken: req.csrfToken() });
 });
+
 app.post("/admin/login", async (req, res) => {
     const { username, password } = req.body;
     try {
-        // البحث عن الأدمن بدون التحسس لحالة الأحرف
-        const admin = await Admin.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
-        
+        const admin = await Admin.findOne({ username });
         if (!admin) {
-            return res.json({ error: "اسم المستخدم أو كلمة المرور غير صحيحة" });
+            return res.render("admin-login", { error: "اسم المستخدم أو كلمة المرور غير صحيحة", csrfToken: req.csrfToken() });
         }
 
         const isMatch = await bcrypt.compare(password, admin.password);
         if (!isMatch) {
-            return res.json({ error: "اسم المستخدم أو كلمة المرور غير صحيحة" });
+            return res.render("admin-login", { error: "اسم المستخدم أو كلمة المرور غير صحيحة", csrfToken: req.csrfToken() });
         }
 
         const token = jwt.sign({ _id: admin._id, role: "admin" }, secret, { expiresIn: "1h" });
         res.cookie("admin_token", token, { httpOnly: true });
-        return res.json({ redirect: "/admin/dashboard" });
+        res.redirect("/admin/dashboard");
     } catch (error) {
         console.error("Error during admin login:", error);
-        return res.json({ error: "حدث خطأ أثناء تسجيل الدخول" });
+        res.status(500).send("حدث خطأ أثناء تسجيل الدخول");
     }
 });
+
 app.get("/admin/dashboard", adminAuth, (req, res) => {
     res.render("admin-dashboard", { admin: req.admin });
 });
@@ -2360,41 +2624,62 @@ app.post("/signUp", async (req, res) => {
 app.get("/verify-account", (req, res) => {
     res.render("verify-code", { error: null, success: null, csrfToken: req.csrfToken() });
 });
+
 app.post("/verify-account", async (req, res) => {
     const code = req.body.code;
     try {
         const patient = await Patient.findOne({
             verificationCode: code,
-            verificationCodeExpires: { $gt: Date.now() }
+            verificationCodeExpires: { $gt: Date.now() } 
         });
 
         if (!patient) {
-            return res.json({
-                error: "كود التحقق غير صحيح أو انتهت صلاحيته"
+            return res.render("verify-code", {
+                error: "كود التحقق غير صحيح أو انتهت صلاحيته",
+                success: null,
+                csrfToken: req.csrfToken()
             });
         }
-
-        patient.isVerified = true;
-        patient.verificationCode = null;
-        patient.verificationCodeExpires = null;
-        await patient.save();
-
-        // إنشاء توكن وتسجيل الدخول تلقائياً
-        const token = jwt.sign({ _id: patient._id }, "fgrpekrfg", { expiresIn: "1h" });
-        res.cookie("token", token, { httpOnly: true });
         
-        return res.json({
-            redirect: "/"
-        });
+        res.redirect("/login");
     } catch (error) {
         console.error(error);
-        return res.json({
-            error: "حدث خطأ أثناء التحقق من الكود"
+        res.render("verify-code", {
+            error: "حدث خطأ أثناء التحقق من الكود",
+            success: null,
+            csrfToken: req.csrfToken()
         });
     }
 });
+
 app.get("/login", (req, res) => {
     res.render("login", { error: null, success: null, csrfToken: req.csrfToken() });
+});
+
+app.post("/login", async (req, res) => {
+    const { name, password } = req.body;
+    try {
+        const patient = await Patient.findOne({ name });
+        if (!patient) {
+            return res.status(400).send("اسم المستخدم أو كلمة المرور غير صحيحة");
+        }
+
+        if (patient.isFrozen) {
+            return res.status(400).send("حسابك مجمد. يرجى الاتصال بالإدارة.");
+        }
+
+        const isMatch = await bcrypt.compare(password, patient.password);
+        if (!isMatch) {
+            return res.status(400).send("اسم المستخدم أو كلمة المرور غير صحيحة");
+        }
+
+        const token = jwt.sign({ _id: patient._id }, "fgrpekrfg", { expiresIn: "1h" });
+        res.cookie("token", token, { httpOnly: true });
+        res.redirect("/");
+    } catch (error) {
+        console.error("Error during login:", error);
+        res.status(500).send("حدث خطأ أثناء تسجيل الدخول");
+    }
 });
 app.post("/login", async (req, res) => {
     const { name, password } = req.body;
@@ -2493,13 +2778,16 @@ app.post("/admin/send-message-doctor", adminAuth, async (req, res) => {
 app.get("/reset-password", (req, res) => {
     res.render("reset-password", { error: null, success: null, csrfToken: req.csrfToken() });
 });
+
 app.post("/reset-password", async (req, res) => {
     const email = req.body.email;
     try {
-        const patient = await Patient.findOne({ email: email.toLowerCase() });
+        const patient = await Patient.findOne({ email: email });
         if (!patient) {
-            return res.json({
-                error: "البريد الإلكتروني غير مسجل"
+            return res.render("reset-password", {
+                error: "البريد الإلكتروني غير مسجل",
+                success: null,
+                csrfToken: req.csrfToken()
             });
         }
 
@@ -2510,16 +2798,21 @@ app.post("/reset-password", async (req, res) => {
 
         await sendVerificationCode(email, verificationCode);
 
-        return res.json({
-            success: "تم إرسال كود التحقق إلى بريدك الإلكتروني"
+        res.render("verify-code", {
+            error: null,
+            success: "تم إرسال كود التحقق إلى بريدك الإلكتروني",
+            csrfToken: req.csrfToken()
         });
     } catch (error) {
         console.error(error);
-        return res.json({
-            error: "حدث خطأ أثناء محاولة إعادة تعيين كلمة المرور"
+        res.render("reset-password", {
+            error: "حدث خطأ أثناء محاولة إعادة تعيين كلمة المرور",
+            success: null,
+            csrfToken: req.csrfToken()
         });
     }
 });
+
 app.get("/verify-code", (req, res) => {
     res.render("verify-code", { error: null, success: null, csrfToken: req.csrfToken() });
 });
@@ -2553,6 +2846,7 @@ app.post("/verify-code", async (req, res) => {
 app.get("/update-password/:patientId", (req, res) => {
     res.render("update-password", { patientId: req.params.patientId, error: null, csrfToken: req.csrfToken() });
 });
+
 app.post("/update-password/:patientId", async (req, res) => {
     const newPassword = req.body.newPassword;
     const patientId = req.params.patientId;
@@ -2560,70 +2854,86 @@ app.post("/update-password/:patientId", async (req, res) => {
     try {
         const patient = await Patient.findById(patientId);
         if (!patient) {
-            return res.json({ error: "المريض غير موجود" });
+            return res.render("update-password", {
+                patientId,
+                error: "المريض غير موجود",
+                csrfToken: req.csrfToken()
+            });
         }
 
         if (!isStrongPassword(newPassword)) {
-            return res.json({ error: "كلمة المرور يجب أن تحتوي على الأقل على 8 أحرف، حرف كبير، حرف صغير" });
+            return res.render("update-password", {
+                patientId,
+                error: "كلمة المرور يجب أن تحتوي على الأقل على 8 أحرف، حرف كبير، حرف صغير، رقم، وحرف خاص",
+                csrfToken: req.csrfToken()
+            });
         }
 
         const hashpassword = await bcrypt.hash(newPassword, 10);
         patient.password = hashpassword;
         patient.verificationCode = null;
-        patient.verificationCodeExpires = null;
         await patient.save();
 
-        // إنشاء توكن وتسجيل الدخول تلقائياً
-        const token = jwt.sign({ _id: patient._id }, "fgrpekrfg", { expiresIn: "1h" });
-        res.cookie("token", token, { httpOnly: true });
-        
-        return res.json({ redirect: "/" });
+        res.redirect("/login?success=تم تحديث كلمة المرور بنجاح");
     } catch (error) {
         console.error(error);
-        return res.json({ error: "حدث خطأ أثناء تحديث كلمة المرور" });
+        res.render("update-password", {
+            patientId,
+            error: "حدث خطأ أثناء تحديث كلمة المرور",
+            csrfToken: req.csrfToken()
+        });
     }
 });
+
 app.get("/logout", (req, res) => {
     res.cookie("token", " ", { maxAge: 1 });
     res.redirect("/");
 });
-
 app.get("/request-session", verii, async (req, res) => {
     try {
         const token = req.cookies.token;
-        if (token) {
-            const decoded = jwt.verify(token, "fgrpekrfg");
-            const patient = await Patient.findOne({ _id: decoded._id });
-            if (patient) {
-                const specialization = req.query.specialization;
-                let doctors;
-                if (specialization && specialization !== 'all') {
-                    doctors = await Doctor.find({ specialization: specialization });
-                } else {
-                    doctors = await Doctor.find({});
+        const patient = token ? await Patient.findOne({ _id: jwt.verify(token, "fgrpekrfg")._id }) : null;
+        
+        const specialization = req.query.specialization;
+        let doctors = await Doctor.find(specialization && specialization !== 'all' ? 
+            { specialization } : {})
+            .populate({
+                path: 'ratings',
+                select: 'rating patient',
+                populate: {
+                    path: 'patient',
+                    select: 'name profileImage'
                 }
-                res.render("doctor-list", { 
-                    patient: patient, 
-                    doctors: doctors, 
-                    csrfToken: req.csrfToken() 
-                });
-            } else {
-                res.render("doctor-list", { 
-                    patient: null, 
-                    doctors: [], 
-                    csrfToken: req.csrfToken() 
-                });
-            }
-        } else {
-            res.render("doctor-list", { 
-                patient: null, 
-                doctors: [], 
-                csrfToken: req.csrfToken() 
-            });
-        }
+            })
+            .lean();
+
+        // حساب متوسط التقييم لكل طبيب
+        doctors = doctors.map(doctor => {
+            const ratings = doctor.ratings || [];
+            const ratingCount = ratings.length;
+            const avgRating = ratingCount > 0 ? 
+                (ratings.reduce((sum, r) => sum + r.rating, 0) / ratingCount) : 0;
+            
+            return {
+                ...doctor,
+                avgRating: parseFloat(avgRating.toFixed(1)),
+                ratingCount
+            };
+        });
+
+        res.render("doctor-list", { 
+            patient, 
+            doctors, 
+            csrfToken: req.csrfToken() 
+        });
     } catch (error) {
-        console.error(error);
-        res.status(500).send("حدث خطأ أثناء جلب بيانات المريض");
+        console.error('Error in request-session:', error);
+        res.render("doctor-list", { 
+            patient: null, 
+            doctors: [], 
+            error: "حدث خطأ أثناء جلب بيانات الأطباء",
+            csrfToken: req.csrfToken() 
+        });
     }
 });
 
