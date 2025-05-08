@@ -1,3 +1,4 @@
+<!-- views/book-appointment.ejs -->
 <%- include('headerpatient') %>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -79,23 +80,15 @@
             margin-bottom: 1.5rem;
             border: 1px solid #e2e8f0;
         }
-        @keyframes fade-in {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes fade-out {
-            from { opacity: 1; transform: translateY(0); }
-            to { opacity: 0; transform: translateY(-20px); }
-        }
-        .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
-        .animate-fade-out { animation: fade-out 0.3s ease-out forwards; }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
     <div class="container mx-auto px-4 py-8">
-        <!-- رسائل التنبيه -->
-        <div id="errorToast" class="fixed top-4 right-4 z-50 px-6 py-3 rounded-lg text-white bg-red-500 font-medium hidden"></div>
-        <div id="successToast" class="fixed top-4 right-4 z-50 px-6 py-3 rounded-lg text-white bg-green-500 font-medium hidden"></div>
+        <!-- رسائل الخطأ -->
+        <div id="errorToast" class="fixed top-4 right-4 z-50 px-6 py-3 rounded-lg text-white bg-red-500 font-medium hidden transition-all duration-300 transform translate-x-full"></div>
+        
+        <!-- رسائل النجاح -->
+        <div id="successToast" class="fixed top-4 right-4 z-50 px-6 py-3 rounded-lg text-white bg-green-500 font-medium hidden transition-all duration-300 transform translate-x-full"></div>
 
         <% if (!patient) { %>
             <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r">
@@ -143,7 +136,7 @@
             </div>
 
             <!-- معلومات الرصيد -->
-            <div class="balance-info">
+            <div class="balance-info bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
                 <div class="flex justify-between items-center">
                     <div>
                         <h3 class="font-bold text-gray-700">سعر الحجز</h3>
@@ -460,7 +453,7 @@
                         this.classList.add('bg-blue-500', 'text-white');
                         document.getElementById('selectedTime').value = this.dataset.time24;
                     });
-                
+                    
                     timeSlotsContainer.appendChild(slotElement);
                 });
             }
@@ -480,11 +473,11 @@
             // عرض رسالة الخطأ
             function showError(message) {
                 errorToast.textContent = message;
-                errorToast.classList.remove('hidden');
-                errorToast.classList.add('animate-fade-in');
+                errorToast.classList.remove('hidden', 'translate-x-full');
+                errorToast.classList.add('translate-x-0');
                 
                 setTimeout(() => {
-                    errorToast.classList.add('animate-fade-out');
+                    errorToast.classList.add('translate-x-full');
                     setTimeout(() => errorToast.classList.add('hidden'), 300);
                 }, 5000);
             }
@@ -492,14 +485,16 @@
             // عرض رسالة النجاح
             function showSuccess(message) {
                 successToast.textContent = message;
-                successToast.classList.remove('hidden');
-                successToast.classList.add('animate-fade-in');
+                successToast.classList.remove('hidden', 'translate-x-full');
+                successToast.classList.add('translate-x-0');
                 
                 setTimeout(() => {
-                    successToast.classList.add('animate-fade-out');
+                    successToast.classList.add('translate-x-full');
                     setTimeout(() => successToast.classList.add('hidden'), 300);
                 }, 5000);
             }
+
+            
         });
     </script>
 </body>
