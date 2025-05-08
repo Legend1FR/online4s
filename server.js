@@ -14,7 +14,7 @@ const Admin = require("./models/admin.js");
 const Doctor = require("./models/doctor.js");
 const Receptionist = require("./models/receptionist.js");  
 const Rating = require('./models/rating');
-const { Payment, SystemSettings } = require('./models/payment');
+const Payment = require('./models/payment');
 const { name, render } = require("ejs");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -27,7 +27,7 @@ const path = require('path');
 const exceljs = require('exceljs');
 const pdfmake = require('pdfmake');
 const multer = require('multer');
-let APPOINTMENT_PRICE = 200;
+let APPOINTMENT_PRICE = 800;
 
 const secret = "fgrpekrfg";
 const app = express();
@@ -937,12 +937,12 @@ app.post('/process-wallet-payment', verii, csrfProtection, async (req, res) => {
         });
     }
 });
-
-// مسار إدارة المدفوعات
 app.get('/admin/payments-management', adminAuth, async (req, res) => {
     try {
-        const appointmentPrice = await Payment.getAppointmentPrice();
-        
+        // جلب إعدادات سعر الحجز من قاعدة البيانات إذا كنت تخزنه هناك
+        // أو استخدم القيمة الافتراضية إذا لم تكن مخزنة
+        const appointmentPrice = APPOINTMENT_PRICE || 300; // 100 كقيمة افتراضية مثال
+
         res.render('payments-management', {
             admin: req.admin,
             APPOINTMENT_PRICE: appointmentPrice,
@@ -950,10 +950,9 @@ app.get('/admin/payments-management', adminAuth, async (req, res) => {
         });
     } catch (error) {
         console.error('Error in payments-management route:', error);
-        res.status(500).render('payments-management', {
-            admin: req.admin,
-            errorMessage: "حدث خطأ في تحميل صفحة إدارة المدفوعات",
-            csrfToken: req.csrfToken()
+        res.status(500).render('error', {
+            message: "حدث خطأ في تحميل صفحة إدارة المدفوعات",
+            error: error.message
         });
     }
 });
@@ -1136,32 +1135,32 @@ app.get('/wallet', verii, async (req, res) => {
         });
     }
 });
-
 // مسار تحديث سعر الحجز
 app.post('/admin/update-appointment-price', adminAuth, async (req, res) => {
     try {
         const { price } = req.body;
         
-        if (!price || isNaN(price)) {
+        if (!price || isNaN(price)) { // هنا كان ينقص القوس الختامي
             return res.status(400).json({
                 success: false,
                 message: 'السعر يجب أن يكون رقماً صحيحاً'
             });
         }
         
-        const newPrice = parseFloat(price);
-        await Payment.updateAppointmentPrice(newPrice, req.admin._id);
+        // هنا يمكنك حفظ السعر في قاعدة البيانات أو ملف الإعدادات
+        // سنفترض أننا نستخدم متغير APPOINTMENT_PRICE الذي تم تعريفه في الأعلى
+        APPOINTMENT_PRICE = parseFloat(price);
         
         res.json({
             success: true,
             message: 'تم تحديث سعر الحجز بنجاح',
-            newPrice: newPrice
+            newPrice: APPOINTMENT_PRICE
         });
     } catch (error) {
         console.error('Error updating appointment price:', error);
         res.status(500).json({
             success: false,
-            message: error.message || 'حدث خطأ أثناء تحديث سعر الحجز'
+            message: 'حدث خطأ أثناء تحديث سعر الحجز'
         });
     }
 });
@@ -1201,7 +1200,7 @@ app.get("/book-appointment/:doctorId", verii, csrfProtection, async (req, res) =
             },
             patient: req.patient,
             existingAppointment,
-            APPOINTMENT_PRICE: 3000, // قيمة ثابتة أو يمكن جلبها من قاعدة البيانات
+            APPOINTMENT_PRICE: APPOINTMENT_PRICE, // قيمة ثابتة أو يمكن جلبها من قاعدة البيانات
             
             csrfToken: req.csrfToken()
         });
@@ -1487,177 +1486,213 @@ app.get('/admin/payments', adminAuth, async (req, res) => {
         });
     }
 });
-
-
+// server.js
+app.get('/admin/search-doctors', adminAuth, async (req, res) => {
+    try {
+        const query = req.query.query;
+        
+        if (!query || query.length < 3) {
+            return res.json([]);
+        }
+        
+        const doctors = await Doctor.find({
+            $or: [
+                { username: { $regex: query, $options: 'i' } },
+                { specialization: { $regex: query, $options: 'i' } },
+                { email: { $regex: query, $options: 'i' } }
+            ]
+        })
+        .limit(10)
+        .select('username specialization email sessionPrice')
+        .lean();
+        
+        res.json(doctors);
+    } catch (error) {
+        console.error('Error searching doctors:', error);
+        res.status(500).json([]);
+    }
+});
 // مسار حجز الموعد (محدث)
 app.post("/book-appointment", verii, csrfProtection, async (req, res) => {
     try {
-        const { doctorId, date, time, notes } = req.body;
-        const patientId = req.patient._id;
-        
-        if (!doctorId || !date || !time) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "بيانات غير مكتملة",
-                errors: {
-                    doctorId: !doctorId ? "معرف الطبيب مطلوب" : undefined,
-                    date: !date ? "تاريخ الموعد مطلوب" : undefined,
-                    time: !time ? "وقت الموعد مطلوب" : undefined
-                }
-            });
-        }
-
-        const appointmentPrice = await Payment.getAppointmentPrice();
-        const [doctor, patient] = await Promise.all([
-            Doctor.findById(doctorId),
-            Patient.findById(patientId)
-        ]);
-
-        if (!doctor || !patient) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "الطبيب أو المريض غير موجود"
-            });
-        }
-
-        if (!doctor.acceptingAppointments) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "الطبيب لا يقبل الحجوزات حالياً"
-            });
-        }
-
-        const selectedDate = new Date(date);
-        if (isNaN(selectedDate.getTime())) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "تاريخ غير صالح"
-            });
-        }
-
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (selectedDate < today) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "لا يمكن حجز موعد في تاريخ قديم"
-            });
-        }
-
-        if (!/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "تنسيق الوقت غير صحيح"
-            });
-        }
-
-        const existingAppointment = await Appointment.findOne({
-            doctor: doctorId,
-            patient: patientId,
-            status: { $nin: ['ملغي', 'مكتمل'] }
+      const { doctorId, date, time, notes } = req.body;
+      const patientId = req.patient._id;
+      
+      // التحقق من صحة البيانات المدخلة
+      if (!doctorId || !date || !time) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "بيانات غير مكتملة",
+          errors: {
+            doctorId: !doctorId ? "معرف الطبيب مطلوب" : undefined,
+            date: !date ? "تاريخ الموعد مطلوب" : undefined,
+            time: !time ? "وقت الموعد مطلوب" : undefined
+          }
         });
-
-        if (existingAppointment) {
-            return res.status(409).json({ 
-                success: false, 
-                message: "لديك موعد محجز مسبقاً مع هذا الطبيب",
-                existingAppointment: {
-                    id: existingAppointment._id,
-                    date: existingAppointment.date,
-                    time: existingAppointment.time,
-                    status: existingAppointment.status
-                }
-            });
-        }
-
-        const isAvailable = await doctor.isAvailable(selectedDate, time);
-        if (!isAvailable) {
-            const availableSlots = await doctor.getAvailableSlots(selectedDate);
-            return res.status(400).json({ 
-                success: false, 
-                message: "الوقت المحدد غير متاح",
-                availableSlots
-            });
-        }
-
-        if (patient.wallet.balance < appointmentPrice) {
-            return res.status(402).json({ 
-                success: false, 
-                message: "رصيد المحفظة غير كافٍ",
-                requiredAmount: appointmentPrice,
-                currentBalance: patient.wallet.balance
-            });
-        }
-
-        const newAppointment = new Appointment({
-            doctor: doctorId,
-            patient: patientId,
-            date: selectedDate,
-            time: time,
-            notes: notes || '',
-            paymentMethod: 'محفظة',
-            paymentStatus: 'مدفوع',
-            status: 'مؤكد',
-            amountPaid: appointmentPrice,
-            paymentDetails: {
-                amount: appointmentPrice,
-                method: 'wallet',
-                transactionId: `APPT-${Date.now()}-${patientId.toString().slice(-4)}`
-            }
+      }
+  
+      // جلب بيانات الطبيب والمريض
+      const [doctor, patient] = await Promise.all([
+        Doctor.findById(doctorId),
+        Patient.findById(patientId)
+      ]);
+  
+      if (!doctor) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "الطبيب غير موجود"
         });
-
-        await patient.payFromWallet(
-            appointmentPrice,
-            `حجز موعد مع د. ${doctor.username}`,
-            newAppointment._id,
-            doctor.username
-        );
-
-        const payment = new Payment({
-            appointment: newAppointment._id,
-            patient: patientId,
-            doctor: doctorId,
-            amount: appointmentPrice,
-            type: 'appointment_payment',
-            description: `حجز موعد مع د. ${doctor.username}`,
-            status: 'completed',
-            transactionId: newAppointment.paymentDetails.transactionId
+      }
+  
+      if (!doctor.acceptingAppointments) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "الطبيب لا يقبل الحجوزات حالياً"
         });
-
-        await Promise.all([
-            newAppointment.save(),
-            payment.save()
-        ]);
-
-        res.json({ 
-            success: true, 
-            message: "تم حجز الموعد بنجاح",
-            appointment: {
-                id: newAppointment._id,
-                date: newAppointment.date,
-                time: newAppointment.time,
-                status: newAppointment.status
-            },
-            newBalance: patient.wallet.balance
+      }
+  
+      // معالجة التاريخ والوقت
+      const selectedDate = new Date(date);
+      if (isNaN(selectedDate.getTime())) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "تاريخ غير صالح"
         });
-
+      }
+  
+      // التحقق من أن التاريخ ليس في الماضي
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (selectedDate < today) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "لا يمكن حجز موعد في تاريخ قديم"
+        });
+      }
+  
+      // التحقق من صحة الوقت
+      if (!/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "تنسيق الوقت غير صحيح"
+        });
+      }
+  
+      // التحقق من المواعيد المتضاربة
+      const existingAppointment = await Appointment.findOne({
+        doctor: doctorId,
+        patient: patientId,
+        status: { $nin: ['ملغي', 'مكتمل'] }
+      });
+  
+      if (existingAppointment) {
+        return res.status(409).json({ 
+          success: false, 
+          message: "لديك موعد محجز مسبقاً مع هذا الطبيب",
+          existingAppointment: {
+            id: existingAppointment._id,
+            date: existingAppointment.date,
+            time: existingAppointment.time,
+            status: existingAppointment.status
+          }
+        });
+      }
+  
+      // التحقق من توفر الوقت
+      const isAvailable = await doctor.isAvailable(selectedDate, time);
+      if (!isAvailable) {
+        const availableSlots = await doctor.getAvailableSlots(selectedDate);
+        return res.status(400).json({ 
+          success: false, 
+          message: "الوقت المحدد غير متاح",
+          availableSlots
+        });
+      }
+  
+      // التحقق من رصيد المحفظة
+      const appointmentPrice = APPOINTMENT_PRICE;
+      if (patient.wallet.balance < appointmentPrice) {
+        return res.status(402).json({ 
+          success: false, 
+          message: "رصيد المحفظة غير كافٍ",
+          requiredAmount: appointmentPrice,
+          currentBalance: patient.wallet.balance
+        });
+      }
+  
+      // إنشاء الموعد الجديد
+      const newAppointment = new Appointment({
+        doctor: doctorId,
+        patient: patientId,
+        date: selectedDate,
+        time: time,
+        notes: notes || '',
+        paymentMethod: 'محفظة',
+        paymentStatus: 'مدفوع',
+        status: 'مؤكد',
+        amountPaid: appointmentPrice,
+        paymentDetails: {
+          amount: appointmentPrice,
+          method: 'wallet',
+          transactionId: `APPT-${Date.now()}-${patientId.toString().slice(-4)}`
+        }
+      });
+  
+      // خصم المبلغ من محفظة المريض
+      await patient.payFromWallet(
+        appointmentPrice,
+        `حجز موعد مع د. ${doctor.username}`,
+        newAppointment._id,
+        doctor.username
+      );
+  
+      // إنشاء سجل الدفع
+      const payment = new Payment({
+        appointment: newAppointment._id,
+        patient: patientId,
+        doctor: doctorId,
+        amount: appointmentPrice,
+        type: 'appointment_payment',
+        description: `حجز موعد مع د. ${doctor.username}`,
+        status: 'completed',
+        transactionId: newAppointment.paymentDetails.transactionId
+      });
+  
+      await Promise.all([
+        newAppointment.save(),
+        payment.save()
+      ]);
+  
+      res.json({ 
+        success: true, 
+        message: "تم حجز الموعد بنجاح",
+        appointment: {
+          id: newAppointment._id,
+          date: newAppointment.date,
+          time: newAppointment.time,
+          status: newAppointment.status
+        },
+        newBalance: patient.wallet.balance
+      });
+  
     } catch (error) {
-        console.error("Error in book-appointment:", error);
-        
-        let errorMessage = "حدث خطأ غير متوقع";
-        if (error.name === 'ValidationError') {
-            errorMessage = "بيانات غير صالحة";
-        } else if (error.name === 'MongoError' && error.code === 11000) {
-            errorMessage = "تعارض في المواعيد";
-        }
-
-        res.status(500).json({ 
-            success: false, 
-            message: errorMessage,
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
+      console.error("Error in book-appointment:", error);
+      
+      let errorMessage = "حدث خطأ غير متوقع";
+      if (error.name === 'ValidationError') {
+        errorMessage = "بيانات غير صالحة";
+      } else if (error.name === 'MongoError' && error.code === 11000) {
+        errorMessage = "تعارض في المواعيد";
+      }
+  
+      res.status(500).json({ 
+        success: false, 
+        message: errorMessage,
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
-});
+  });
+
 
 app.get("/doctor/get-appointments", doctorAuth, async (req, res) => {
     try {
