@@ -107,12 +107,7 @@ const doctorSchema = new mongoose.Schema({
         enum: [30],
         message: 'مدة الموعد يجب أن تكون 30 دقيقة'
     },
-    sessionPrice: {
-        type: Number,
-        default: 100,
-        min: [50, 'لا يمكن أن يكون سعر الجلسة أقل من 50 ريال'],
-        max: [1000, 'لا يمكن أن يكون سعر الجلسة أكثر من 1000 ريال']
-    },
+     
     acceptingAppointments: {
         type: Boolean,
         default: true
