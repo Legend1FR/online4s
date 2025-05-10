@@ -613,49 +613,56 @@ app.post('/api/sessions/upload-file', uploadSessionFile.single('sessionFile'), a
       console.error('Error fetching session messages:', error);
       res.status(500).json({ error: 'حدث خطأ أثناء جلب سجل المحادثة' });
     }
-  });// تحديث مسار جلسات الطبيب
-  app.get("/doctor/sessions", doctorAuth, async (req, res) => {
-      try {
-          // فحص وتحديث الجلسات المنتهية
-          await Appointment.updateMany(
-              { 
-                  doctor: req.doctor._id,
-                  date: { $lte: new Date() },
-                  status: { $ne: 'مكتمل' }
-              },
-              { 
-                  $set: { 
-                      status: 'مكتمل',
-                      sessionEndedAt: new Date(),
-                      sessionDuration: 30
-                  } 
-              }
-          );
-  
-          const sessions = await Appointment.find({ 
-              doctor: req.doctor._id,
-              status: { $ne: 'مكتمل' }
-          })
-          .populate("patient", "name profileImage")
-          .sort({ date: 1, time: 1 });
-  
-          res.render("doctor-sessions", {
-              doctor: req.doctor,
-              sessions,
-              csrfToken: req.csrfToken(),
-          });
-      } catch (error) {
-          console.error('Error loading doctor sessions:', error);
-          res.render("doctor-sessions", {
-              doctor: req.doctor,
-              sessions: [],
-              error: "حدث خطأ أثناء تحميل الجلسات",
-              csrfToken: req.csrfToken()
-          });
-      }
   });
+
+ 
+
+  app.get("/doctor/sessions", doctorAuth, async (req, res) => {
+    try {
+        // فحص وتحديث الجلسات المنتهية
+        await Appointment.updateMany(
+            { 
+                doctor: req.doctor._id,
+                date: { $lte: new Date() },
+                status: { $ne: 'مكتمل' }
+            },
+            { 
+                $set: { 
+                    status: 'مكتمل',
+                    sessionEndedAt: new Date(),
+                    sessionDuration: 30
+                } 
+            }
+        );
+
+        const sessions = await Appointment.find({ 
+            doctor: req.doctor._id,
+            status: { $ne: 'مكتمل' }
+        })
+        .populate("patient", "name profileImage")
+        .sort({ date: 1, time: 1 });
+
+        res.render("doctor-sessions", {
+            doctor: req.doctor,
+            sessions,
+            csrfToken: req.csrfToken(),
+        });
+    } catch (error) {
+        console.error('Error loading doctor sessions:', error);
+        res.render("doctor-sessions", {
+            doctor: req.doctor,
+            sessions: [],
+            error: "حدث خطأ أثناء تحميل الجلسات",
+            csrfToken: req.csrfToken()
+        });
+    }
+});
+
+
+
+
   // مسار جلسات المريض
-app.get("/patient/sessions", verii, async (req, res) => {
+  app.get("/patient/sessions", verii, async (req, res) => {
     try {
         // تحديث الجلسات المنتهية تلقائياً
         await Appointment.updateMany(
@@ -725,6 +732,7 @@ app.get("/patient/sessions", verii, async (req, res) => {
         });
     }
 });
+
 
 
   // مسار بدء الجلسة
@@ -1446,7 +1454,16 @@ app.get('/admin/payments', adminAuth, async (req, res) => {
         
         let query = {};
         
-        if (filter && filter !== 'all') {
+        if (filter === 'cancelled') {
+            query = {
+                type: 'appointment_payment',
+                status: 'refunded'
+            };
+        } else if (filter === 'refund') {
+            query = {
+                type: 'refund'
+            };
+        } else if (filter && filter !== 'all') {
             query.type = filter === 'deposit' ? 'deposit' : 'appointment_payment';
         }
         
@@ -1486,6 +1503,118 @@ app.get('/admin/payments', adminAuth, async (req, res) => {
         });
     }
 });
+
+// مسار إلغاء الموعد
+app.post('/cancel-appointment', verii, csrfProtection, async (req, res) => {
+    try {
+        const { appointmentId } = req.body;
+        const patientId = req.patient._id;
+
+        // التحقق من وجود الموعد
+        const appointment = await Appointment.findById(appointmentId)
+            .populate('doctor', 'username')
+            .populate('patient', 'wallet');
+
+        if (!appointment) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "الموعد غير موجود" 
+            });
+        }
+
+        // التحقق من أن الموعد للمريض الصحيح
+        if (appointment.patient._id.toString() !== patientId.toString()) {
+            return res.status(403).json({ 
+                success: false, 
+                message: "غير مصرح لك بإلغاء هذا الموعد" 
+            });
+        }
+
+        // التحقق من حالة الموعد
+        if (appointment.status === 'ملغي') {
+            return res.status(400).json({ 
+                success: false, 
+                message: "تم إلغاء هذا الموعد مسبقاً" 
+            });
+        }
+
+        if (appointment.status === 'مكتمل') {
+            return res.status(400).json({ 
+                success: false, 
+                message: "لا يمكن إلغاء موعد منجز" 
+            });
+        }
+
+        // حساب المبلغ المسترد (50%)
+        const refundAmount = Math.floor(appointment.amountPaid * 0.5);
+
+        // تحديث حالة الموعد
+        appointment.status = 'ملغي';
+        appointment.cancellationReason = 'تم الإلغاء من قبل المريض';
+        appointment.paymentStatus = 'مسترد جزئياً';
+        appointment.updatedAt = new Date();
+
+        // إضافة المبلغ المسترد إلى محفظة المريض
+        const patient = appointment.patient;
+        patient.wallet.balance += refundAmount;
+        patient.wallet.transactions.push({
+            amount: refundAmount,
+            date: new Date(),
+            description: `استرداد جزئي لإلغاء موعد مع د. ${appointment.doctor.username}`,
+            type: 'refund',
+            appointmentId: appointment._id,
+            doctorName: appointment.doctor.username
+        });
+
+        // تسجيل معاملة الاسترداد
+        const refundPayment = new Payment({
+            patient: patient._id,
+            doctor: appointment.doctor._id,
+            amount: refundAmount,
+            type: 'refund',
+            description: `استرداد 50% لإلغاء موعد مع د. ${appointment.doctor.username}`,
+            status: 'completed',
+            transactionId: `REF-${Date.now()}`,
+            relatedAppointment: appointment._id
+        });
+
+        // تسجيل معاملة الإلغاء
+        const cancelledPayment = new Payment({
+            appointment: appointment._id,
+            patient: patient._id,
+            doctor: appointment.doctor._id,
+            amount: -appointment.amountPaid,
+            type: 'appointment_payment',
+            description: `حجز ملغي مع د. ${appointment.doctor.username}`,
+            status: 'refunded',
+            transactionId: appointment.paymentDetails.transactionId
+        });
+
+        // حفظ جميع التغييرات في قاعدة البيانات
+        await Promise.all([
+            appointment.save(),
+            patient.save(),
+            refundPayment.save(),
+            cancelledPayment.save()
+        ]);
+
+        res.json({ 
+            success: true, 
+            message: "تم إلغاء الموعد بنجاح",
+            refundAmount: refundAmount,
+            newBalance: patient.wallet.balance
+        });
+
+    } catch (error) {
+        console.error('Error cancelling appointment:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: "حدث خطأ أثناء إلغاء الموعد",
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
 // server.js
 app.get('/admin/search-doctors', adminAuth, async (req, res) => {
     try {
