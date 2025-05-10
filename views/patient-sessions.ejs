@@ -40,6 +40,10 @@
       background-color: #10B981;
       color: white;
     }
+    .badge-cancelled {
+      background-color: #EF4444;
+      color: white;
+    }
     .rating-stars {
       direction: ltr;
       unicode-bidi: bidi-override;
@@ -65,6 +69,10 @@
       font-size: 0.875rem;
       margin-top: 0.25rem;
     }
+    .cancelled-card {
+      border-left: 4px solid #EF4444;
+      background-color: #FEF2F2;
+    }
   </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -81,6 +89,9 @@
         </button>
         <button id="completedTab" class="tab-button px-6 py-3 focus:outline-none">
           الجلسات المنجزة
+        </button>
+        <button id="cancelledTab" class="tab-button px-6 py-3 focus:outline-none">
+          الجلسات الملغية
         </button>
       </div>
     </div>
@@ -111,9 +122,16 @@
                     <span class="badge badge-upcoming mt-1">محجوزة</span>
                   </div>
                 </div>
-                <button class="join-session-btn bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600" data-session-id="<%= session._id %>">
-                  انضم إلى الجلسة
-                </button>
+                <div class="flex space-x-2">
+                  <button class="cancel-session-btn bg-red-100 text-red-700 px-4 py-2 rounded-lg hover:bg-red-200" 
+                          data-session-id="<%= session._id %>">
+                    إلغاء
+                  </button>
+                  <button class="join-session-btn bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600" 
+                          data-session-id="<%= session._id %>">
+                    انضم
+                  </button>
+                </div>
               </div>
             <% }); %>
           </div>
@@ -201,6 +219,79 @@
           <p class="text-gray-600 text-center">ليس هناك جلسات منجزة</p>
         <% } %>
       </div>
+
+      <div id="cancelledSessions" class="hidden">
+        <% if (cancelledSessions && cancelledSessions.length > 0) { %>
+          <div class="space-y-4 max-w-lg mx-auto">
+            <% cancelledSessions.forEach(session => { %>
+              <div class="session-card cancelled-card bg-white rounded-lg p-4 shadow-lg">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="flex items-center">
+                    <img src="<%= session.doctor.profileImage || '/images/default-doctor.jpg' %>" alt="<%= session.doctor.username %>" class="w-16 h-16 rounded-full mr-4">
+                    <div>
+                      <p class="font-bold text-gray-800"><%= session.doctor.username %></p>
+                      <p class="text-gray-600"><%= session.doctor.specialization %></p>
+                      <p class="text-gray-600">
+                        <i class="far fa-calendar-alt"></i> <%= new Date(session.date).toLocaleDateString('ar-EG') %> |
+                        <i class="far fa-clock"></i> <%= session.time %>
+                      </p>
+                    </div>
+                  </div>
+                  <span class="badge badge-cancelled">ملغية</span>
+                </div>
+                
+                <div class="bg-red-50 p-3 rounded-lg mb-3">
+                  <p class="text-red-700"><i class="fas fa-info-circle mr-2"></i> 
+                    تم إلغاء هذه الجلسة في <%= new Date(session.updatedAt).toLocaleDateString('ar-EG') %>
+                  </p>
+                  <% if (session.cancellationReason) { %>
+                    <p class="text-red-700 mt-1"><%= session.cancellationReason %></p>
+                  <% } %>
+                </div>
+                
+                <div class="bg-green-50 p-3 rounded-lg">
+                  <p class="text-green-700">
+                    <i class="fas fa-coins mr-2"></i>
+                    تم استرداد <%= (session.amountPaid * 0.5).toLocaleString('ar-YE') %> ر.ي إلى محفظتك
+                  </p>
+                </div>
+              </div>
+            <% }); %>
+          </div>
+        <% } else { %>
+          <p class="text-gray-600 text-center">ليس هناك جلسات ملغية</p>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <!-- نافذة تأكيد الإلغاء -->
+  <div id="cancelModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md">
+      <h3 class="text-xl font-bold text-gray-800 mb-4">تأكيد إلغاء الجلسة</h3>
+      <div class="space-y-4">
+        <div class="bg-red-50 p-4 rounded-lg">
+          <h4 class="font-bold mb-2">شروط الإلغاء:</h4>
+          <ul class="list-disc mr-4 space-y-1">
+            <li>سيتم استرداد 50% من قيمة الحجز إلى محفظتك</li>
+            <li>لا يمكنك حجز موعد جديد مع نفس الطبيب قبل 24 ساعة</li>
+            <li>سيتم إلغاء الموعد نهائياً</li>
+          </ul>
+        </div>
+        <div class="flex items-center">
+          <input type="checkbox" id="agreeToCancel" class="mr-2 h-5 w-5 text-red-600 rounded">
+          <label for="agreeToCancel" class="text-gray-700">أوافق على الشروط</label>
+        </div>
+      </div>
+      <div class="flex justify-end space-x-3 rtl:space-x-reverse mt-6">
+        <button id="cancelCancelBtn" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+          تراجع
+        </button>
+        <button id="confirmCancelBtn" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center" disabled>
+          <span id="confirmCancelText">تأكيد الإلغاء</span>
+          <span id="confirmCancelSpinner" class="loading-spinner ml-2 hidden"></span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -212,38 +303,107 @@
       const socket = io();
       const upcomingTab = document.getElementById('upcomingTab');
       const completedTab = document.getElementById('completedTab');
+      const cancelledTab = document.getElementById('cancelledTab');
       const upcomingSessionsDiv = document.getElementById('upcomingSessions');
       const completedSessionsDiv = document.getElementById('completedSessions');
+      const cancelledSessionsDiv = document.getElementById('cancelledSessions');
       const loadingIndicator = document.getElementById('loadingIndicator');
       const errorMessage = document.getElementById('errorMessage');
       const errorText = document.getElementById('errorText');
       const notification = document.getElementById('notification');
+      const cancelModal = document.getElementById('cancelModal');
+      const agreeCheckbox = document.getElementById('agreeToCancel');
+      const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+      let currentSessionToCancel = null;
 
       function switchTab(tab) {
         upcomingTab.classList.remove('active');
         completedTab.classList.remove('active');
+        cancelledTab.classList.remove('active');
+        
+        upcomingSessionsDiv.classList.add('hidden');
+        completedSessionsDiv.classList.add('hidden');
+        cancelledSessionsDiv.classList.add('hidden');
         
         if (tab === 'upcoming') {
           upcomingTab.classList.add('active');
           upcomingSessionsDiv.classList.remove('hidden');
-          completedSessionsDiv.classList.add('hidden');
-        } else {
+        } else if (tab === 'completed') {
           completedTab.classList.add('active');
-          upcomingSessionsDiv.classList.add('hidden');
           completedSessionsDiv.classList.remove('hidden');
+        } else {
+          cancelledTab.classList.add('active');
+          cancelledSessionsDiv.classList.remove('hidden');
         }
       }
 
       upcomingTab.addEventListener('click', () => switchTab('upcoming'));
       completedTab.addEventListener('click', () => switchTab('completed'));
+      cancelledTab.addEventListener('click', () => switchTab('cancelled'));
 
+      // معالجة النقر على زر الانضمام إلى الجلسة
       document.addEventListener('click', function(e) {
         if (e.target.classList.contains('join-session-btn')) {
           const sessionId = e.target.getAttribute('data-session-id');
           window.location.href = `/patient/session/${sessionId}`;
         }
+        
+        // معالجة النقر على زر الإلغاء
+        if (e.target.classList.contains('cancel-session-btn')) {
+          currentSessionToCancel = e.target.getAttribute('data-session-id');
+          cancelModal.classList.remove('hidden');
+        }
       });
 
+      // معالجة موافقة الشروط للإلغاء
+      agreeCheckbox.addEventListener('change', function() {
+        confirmCancelBtn.disabled = !this.checked;
+      });
+
+      // معالجة زر تراجع في نافذة الإلغاء
+      document.getElementById('cancelCancelBtn').addEventListener('click', function() {
+        cancelModal.classList.add('hidden');
+        currentSessionToCancel = null;
+      });
+
+      // معالجة تأكيد الإلغاء
+      confirmCancelBtn.addEventListener('click', async function() {
+        try {
+          confirmCancelBtn.disabled = true;
+          document.getElementById('confirmCancelText').classList.add('hidden');
+          document.getElementById('confirmCancelSpinner').classList.remove('hidden');
+          
+          const response = await fetch('/cancel-appointment', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'CSRF-Token': '<%= csrfToken %>'
+            },
+            body: JSON.stringify({ 
+              appointmentId: currentSessionToCancel 
+            })
+          });
+          
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.message || 'حدث خطأ أثناء الإلغاء');
+          }
+
+          showNotification('تم إلغاء الجلسة بنجاح واسترداد 50% من المبلغ');
+          cancelModal.classList.add('hidden');
+          setTimeout(() => window.location.reload(), 1500);
+        } catch (error) {
+          errorText.textContent = error.message;
+          errorMessage.classList.remove('hidden');
+          console.error('Error cancelling session:', error);
+        } finally {
+          confirmCancelBtn.disabled = false;
+          document.getElementById('confirmCancelText').classList.remove('hidden');
+          document.getElementById('confirmCancelSpinner').classList.add('hidden');
+        }
+      });
+
+      // معالجة تقييم الجلسات
       document.querySelectorAll('.rate-form').forEach(form => {
         form.addEventListener('submit', async function(e) {
           e.preventDefault();
@@ -305,6 +465,7 @@
         setTimeout(() => errorMessage.classList.add('hidden'), 5000);
       }
 
+      // التحقق من الجلسات المكتملة كل دقيقة
       setInterval(() => {
         fetch('/api/sessions/check-completed')
           .then(response => response.json())
