@@ -12,6 +12,7 @@
             --secondary-color: #33A1FD;
             --positive-color: #28a745;
             --negative-color: #dc3545;
+            --refund-color: #17a2b8;
         }
         
         body {
@@ -108,6 +109,10 @@
         .negative {
             color: var(--negative-color);
         }
+
+        .refund {
+            color: var(--refund-color);
+        }
         
         .transaction-date {
             font-size: 0.85rem;
@@ -145,6 +150,11 @@
             color: #dc3545;
         }
 
+        .type-refund {
+            background-color: #e6f7fb;
+            color: #17a2b8;
+        }
+
         .error-message {
             background-color: #fee2e2;
             color: #b91c1c;
@@ -158,6 +168,15 @@
 
         .error-message i {
             font-size: 1.2rem;
+        }
+
+        .cancelled-badge {
+            background-color: #6c757d;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-right: 0.5rem;
         }
     </style>
 </head>
@@ -193,19 +212,28 @@
                 </div>
             <% } else { %>
                 <div class="transactions-list">
-                    <% patient.wallet.transactions.forEach(transaction => { %>
+                    <% patient.wallet.transactions.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(transaction => { %>
                         <div class="transaction-item">
                             <div class="transaction-info">
                                 <div class="transaction-doctor">
                                     <% if (transaction.type === 'appointment_payment') { %>
                                         <i class="fas fa-user-md" style="margin-left: 5px;"></i> د. <%= transaction.doctorName || 'غير محدد' %>
+                                        <% if (transaction.cancelled) { %>
+                                            <span class="cancelled-badge">ملغي</span>
+                                        <% } %>
                                     <% } else if (transaction.type === 'deposit') { %>
                                         <i class="fas fa-coins" style="margin-left: 5px;"></i> شحن محفظة
+                                    <% } else if (transaction.type === 'refund') { %>
+                                        <i class="fas fa-undo" style="margin-left: 5px;"></i> استرداد أموال
                                     <% } %>
                                 </div>
                                 <div>
-                                    <span class="transaction-type <%= transaction.type === 'deposit' ? 'type-deposit' : 'type-payment' %>">
-                                        <%= transaction.type === 'appointment_payment' ? 'حجز موعد' : transaction.type === 'deposit' ? 'إيداع' : 'معاملة' %>
+                                    <span class="transaction-type 
+                                        <%= transaction.type === 'deposit' ? 'type-deposit' : 
+                                            transaction.type === 'refund' ? 'type-refund' : 'type-payment' %>">
+                                        <%= transaction.type === 'appointment_payment' ? 'حجز موعد' : 
+                                            transaction.type === 'deposit' ? 'إيداع' : 
+                                            transaction.type === 'refund' ? 'استرداد' : 'معاملة' %>
                                     </span>
                                     <span class="transaction-description"><%= transaction.description %></span>
                                 </div>
@@ -220,7 +248,8 @@
                                     }) %>
                                 </div>
                             </div>
-                            <div class="transaction-amount <%= transaction.amount > 0 ? 'positive' : 'negative' %>">
+                            <div class="transaction-amount 
+                                <%= transaction.amount > 0 ? transaction.type === 'refund' ? 'refund' : 'positive' : 'negative' %>">
                                 <%= transaction.amount > 0 ? '+' : '' %><%= transaction.amount.toLocaleString('ar-YE') %> ر.ي
                             </div>
                         </div>
