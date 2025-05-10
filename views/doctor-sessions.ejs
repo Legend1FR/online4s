@@ -1,4 +1,3 @@
-
 <%- include('headerdoc') %>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -32,9 +31,17 @@
       background-color: #10B981;
       color: white;
     }
+    .badge-cancelled {
+      background-color: #EF4444;
+      color: white;
+    }
     @keyframes spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
+    }
+    .cancelled-session {
+      opacity: 0.7;
+      border-left: 4px solid #EF4444;
     }
   </style>
 </head>
@@ -49,9 +56,14 @@
             <p class="text-lg text-gray-600"><%= doctor.specialization %></p>
           </div>
         </div>
-        <a href="/doctor/reports" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
-          <i class="fas fa-file-medical mr-2"></i> التقارير
-        </a>
+        <div class="flex space-x-2">
+          <a href="/doctor/reports" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+            <i class="fas fa-file-medical mr-2"></i> التقارير
+          </a>
+          <a href="/doctor/cancelled-appointments" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+            <i class="fas fa-ban mr-2"></i> الملغية
+          </a>
+        </div>
       </div>
     </div>
 
@@ -70,9 +82,9 @@
             const sessionDateTime = new Date(`${session.date.toISOString().split('T')[0]}T${session.time}`);
             const now = new Date();
             const timeDiff = (sessionDateTime - now) / (1000 * 60); // Difference in minutes
-            const canPatientJoin = timeDiff <= 30 && timeDiff >= -60; // المريض يمكنه الانضمام قبل 30 دقيقة
+            const canPatientJoin = timeDiff <= 30 && timeDiff >= -60;
           %>
-            <div class="session-card bg-white rounded-lg p-4 shadow-lg flex items-center justify-between">
+            <div class="session-card <%= session.status === 'ملغي' ? 'cancelled-session bg-gray-100' : 'bg-white' %> rounded-lg p-4 shadow-lg flex items-center justify-between">
               <div class="flex items-center">
                 <img src="<%= session.patient.profileImage || '/images/default-patient.jpg' %>" alt="صورة المريض" class="w-16 h-16 rounded-full mr-4">
                 <div>
@@ -84,7 +96,9 @@
                   <% if (session.notes) { %>
                     <p class="text-gray-600 mt-1"><i class="fas fa-file-medical"></i> <%= session.notes %></p>
                   <% } %>
-                  <% if (canPatientJoin) { %>
+                  <% if (session.status === 'ملغي') { %>
+                    <span class="badge-cancelled mt-2">ملغية</span>
+                  <% } else if (canPatientJoin) { %>
                     <span class="badge-ready mt-2">المريض يمكنه الانضمام الآن</span>
                   <% } else { %>
                     <span class="badge-upcoming mt-2">
@@ -97,9 +111,11 @@
                   <% } %>
                 </div>
               </div>
-              <button class="start-session-btn bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600" data-session-id="<%= session._id %>">
-                بدء الجلسة
-              </button>
+              <% if (session.status !== 'ملغي') { %>
+                <button class="start-session-btn bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600" data-session-id="<%= session._id %>">
+                  بدء الجلسة
+                </button>
+              <% } %>
             </div>
           <% }); %>
         </div>
@@ -118,8 +134,9 @@
       const loadingIndicator = document.getElementById('loadingIndicator');
       const errorMessage = document.getElementById('errorMessage');
       const errorText = document.getElementById('errorText');
+      const notification = document.getElementById('notification');
 
-     
+      // بدء الجلسة
       document.querySelectorAll('.start-session-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const sessionId = btn.getAttribute('data-session-id');
@@ -151,26 +168,25 @@
         });
       });
 
-     
+      // إشعار بدء الجلسة
       socket.on('sessionStarted', (data) => {
-        const notification = document.getElementById('notification');
         notification.textContent = `الجلسة مع المريض بدأت الآن!`;
         notification.classList.remove('hidden');
         setTimeout(() => notification.classList.add('hidden'), 5000);
         window.location.reload();
       });
 
-      
+      // التحقق من الجلسات المكتملة كل دقيقة
       setInterval(() => {
-  fetch('/api/sessions/check-completed')
-    .then(response => response.json())
-    .then(data => {
-      if (data.updated) {
-        window.location.reload();
-      }
-    })
-    .catch(error => console.error('Error checking sessions:', error));
-}, 60000);
+        fetch('/api/sessions/check-completed')
+          .then(response => response.json())
+          .then(data => {
+            if (data.updated) {
+              window.location.reload();
+            }
+          })
+          .catch(error => console.error('Error checking sessions:', error));
+      }, 60000);
     });
   </script>
 </body>
