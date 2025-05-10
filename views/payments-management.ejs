@@ -59,7 +59,9 @@
                 <select id="paymentFilter" class="px-3 py-1 border border-gray-300 rounded-md">  
                     <option value="all">جميع المدفوعات</option>  
                     <option value="appointment">حجوزات المواعيد</option>  
-                    <option value="deposit">إيداعات الرصيد</option>  
+                    <option value="deposit">إيداعات الرصيد</option>
+                    <option value="refund">استرداد أموال</option>
+                    <option value="cancelled">حجوزات ملغية</option>  
                 </select>  
                 <input type="date" id="dateFilter" class="px-3 py-1 border border-gray-300 rounded-md">  
             </div>  
@@ -74,12 +76,13 @@
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">التاريخ</th>  
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المبلغ (ر.ي)</th>  
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">النوع</th>  
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الحالة</th>
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الوصف</th>  
                     </tr>  
                 </thead>  
                 <tbody id="paymentsTableBody" class="bg-white divide-y divide-gray-200">  
                     <tr>  
-                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">جارٍ تحميل البيانات...</td>  
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">جارٍ تحميل البيانات...</td>  
                     </tr>  
                 </tbody>  
             </table>  
@@ -124,7 +127,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.data.payments.length === 0) {  
                 paymentsTableBody.innerHTML = `  
                     <tr>  
-                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">لا توجد مدفوعات لعرضها</td>  
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">لا توجد مدفوعات لعرضها</td>  
                     </tr>  
                 `;  
                 return;  
@@ -133,6 +136,48 @@ document.addEventListener('DOMContentLoaded', function() {
             response.data.payments.forEach(payment => {  
                 const row = document.createElement('tr');  
                 row.className = 'hover:bg-gray-50';  
+                
+                // تحديد لون الحالة
+                let statusColor = '';
+                let statusText = '';
+                switch(payment.status) {
+                    case 'completed':
+                        statusColor = 'bg-green-100 text-green-800';
+                        statusText = 'مكتمل';
+                        break;
+                    case 'failed':
+                        statusColor = 'bg-red-100 text-red-800';
+                        statusText = 'فشل';
+                        break;
+                    case 'refunded':
+                        statusColor = 'bg-yellow-100 text-yellow-800';
+                        statusText = 'مسترد';
+                        break;
+                    case 'partially_refunded':
+                        statusColor = 'bg-blue-100 text-blue-800';
+                        statusText = 'مسترد جزئياً';
+                        break;
+                    default:
+                        statusColor = 'bg-gray-100 text-gray-800';
+                        statusText = payment.status;
+                }
+                
+                // تحديد نوع المعاملة
+                let typeText = '';
+                switch(payment.type) {
+                    case 'appointment_payment':
+                        typeText = payment.status === 'refunded' ? 'حجز ملغي' : 'حجز موعد';
+                        break;
+                    case 'deposit':
+                        typeText = 'إيداع';
+                        break;
+                    case 'refund':
+                        typeText = 'استرداد';
+                        break;
+                    default:
+                        typeText = payment.type;
+                }
+
                 row.innerHTML = `  
                     <td class="px-6 py-4 whitespace-nowrap">  
                         <div class="flex items-center">  
@@ -161,9 +206,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     </td>  
                     <td class="px-6 py-4 whitespace-nowrap">  
                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full   
-                            ${payment.type === 'deposit' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}">  
-                            ${payment.type === 'appointment_payment' ? 'حجز موعد' : payment.type === 'deposit' ? 'إيداع' : 'معاملة'}  
+                            ${payment.type === 'deposit' ? 'bg-green-100 text-green-800' : 
+                              payment.type === 'refund' ? 'bg-blue-100 text-blue-800' : 
+                              'bg-purple-100 text-purple-800'}">  
+                            ${typeText}  
                         </span>  
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}">
+                            ${statusText}
+                        </span>
                     </td>  
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">  
                         ${payment.description || '--'}  
@@ -231,10 +283,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (email.length > 2) {  
             try {  
                 const response = await axios.get(`/admin/search-patients?email=${encodeURIComponent(email)}`);  
-                  
+                   
                 patientSearchResults.innerHTML = '';  
                 patientSearchResults.classList.add('hidden');  
-                  
+                   
                 if (response.data && Array.isArray(response.data)) {  
                     response.data.forEach(patient => {  
                         const patientCard = document.createElement('div');  
@@ -310,46 +362,48 @@ document.addEventListener('DOMContentLoaded', function() {
             submitSpinner.classList.add('hidden');  
         }  
     });  
+      // تحديث سعر الحجز  
+updatePriceBtn.addEventListener('click', async () => {  
+    const price = parseFloat(appointmentPriceInput.value);  
       
-    // تحديث سعر الحجز  
-    updatePriceBtn.addEventListener('click', async () => {  
-        const price = parseFloat(appointmentPriceInput.value);  
+    if (isNaN(price)) {  // تم إصلاح الأقواس هنا
+        showToast('الرجاء إدخال سعر صحيح', 'error');  
+        return;  
+    }  
+      
+    if (price < 50 || price > 1000) {
+        showToast('يجب أن يكون السعر بين 50 و 1000 ريال', 'error');
+        return;
+    }
+      
+    try {  
+        updatePriceBtn.disabled = true;  
+        updatePriceBtn.innerHTML = `  
+            <span class="loading-spinner inline-block mr-2"></span>  
+            جاري التحديث...  
+        `;  
           
-        if (isNaN(price)) {  
-            showToast('الرجاء إدخال سعر صحيح', 'error');  
-            return;  
-        }  
-          
-       
-          
-        try {  
-            updatePriceBtn.disabled = true;  
-            updatePriceBtn.innerHTML = `  
-                <span class="loading-spinner inline-block mr-2"></span>  
-                جاري التحديث...  
-            `;  
-              
-            const response = await axios.post('/admin/update-appointment-price', {  
-                price  
-            }, {  
-                headers: {  
-                    'CSRF-Token': '<%= csrfToken %>'  
-                }  
-            });  
-              
-            if (response.data?.success) {  
-                showToast('تم تحديث سعر الحجز بنجاح', 'success');  
-            } else {  
-                throw new Error(response.data?.message || 'حدث خطأ أثناء التحديث');  
+        const response = await axios.post('/admin/update-appointment-price', {  
+            price  
+        }, {  
+            headers: {  
+                'CSRF-Token': '<%= csrfToken %>'  
             }  
-        } catch (error) {  
-            console.error('Error updating appointment price:', error);  
-            showToast(error.message, 'error');  
-        } finally {  
-            updatePriceBtn.disabled = false;  
-            updatePriceBtn.textContent = 'تحديث السعر';  
+        });  
+          
+        if (response.data?.success) {  
+            showToast('تم تحديث سعر الحجز بنجاح', 'success');  
+        } else {  
+            throw new Error(response.data?.message || 'حدث خطأ أثناء التحديث');  
         }  
-    });  
+    } catch (error) {  
+        console.error('Error updating appointment price:', error);  
+        showToast(error.message, 'error');  
+    } finally {  
+        updatePriceBtn.disabled = false;  
+        updatePriceBtn.textContent = 'تحديث السعر';  
+    }  
+});
       
     // عرض رسائل التنبيه  
     function showToast(message, type = 'success') {  
