@@ -1,26 +1,179 @@
-
-
-
-
-
-
-<!-- node-project\views\verify-code.ejs file -->
- <%- include('header', { title: 'إدخال كود التحقق' }) %>
-    <div class="content" style="width: 500px; height: 400px; background-color: rgb(211, 205, 204); border-radius:14px;margin: auto; color: white; box-shadow: 2px 3px 4px navajowhite;">
-        <form action="/verify-account" method="post">
-            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <input type="text" placeholder="أدخل كود التحقق" name="code" style="border: none; background-color: rgb(17, 197, 234); width: inherit; display: block; color: white;">
-            <button type="submit" style="border: none; background-color: navy;  background-color:  rgb(17, 197, 234); display: block; color: white; cursor: pointer; width:70%; margin: auto; height: 20px;">تحقق</button>
-        </form>
-        <% if (error) { %>
-            <div style="color: red; text-align: center; margin-top: 20px;">
-                <%= error %>
-            </div>
-        <% } %>
-        <% if (success) { %>
-            <div style="color: green; text-align: center; margin-top: 20px;">
-                <%= success %>
-            </div>
-        <% } %>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تأكيد الكود | عيادتي</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Tajawal', sans-serif; }
+        body { background-color: #f8fafc; color: #1e293b; min-height: 100vh; }
+        .reset-container {
+            max-width: 400px;
+            margin: 60px auto 0 auto;
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 16px rgba(59,130,246,0.08);
+            padding: 2.5rem 2rem 2rem 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .reset-card {
+            width: 100%;
+        }
+        .reset-card h2 {
+            font-size: 1.4rem;
+            color: #1e293b;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        .reset-card h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .reset-card h2 i {
+            margin-left: 10px;
+            color: #2563eb;
+        }
+        .reset-form {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
+        .form-group {
+            width: 100%;
+            position: relative;
+            margin-bottom: 1rem;
+        }
+        .input-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #3b82f6;
+            font-size: 1.1rem;
+        }
+        .form-group input[type="text"] {
+            width: 100%;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.5rem;
+            padding: 0.8rem 2.5rem 0.8rem 1rem;
+            font-size: 1.1rem;
+            background: #f1f5f9;
+            color: #1e293b;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .form-group input[type="text"]:focus {
+            border-color: #3b82f6;
+            background: #fff;
+        }
+        .submit-btn {
+            background: linear-gradient(90deg, #3b82f6 60%, #1d4ed8 100%);
+            color: #fff;
+            border: none;
+            border-radius: 0.5rem;
+            padding: 0.9rem 0;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(59,130,246,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.7rem;
+            position: relative;
+        }
+        .submit-btn:focus,
+        .submit-btn:hover {
+            background: linear-gradient(90deg, #2563eb 60%, #1d4ed8 100%);
+        }
+        .spinner {
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .alert {
+            width: 100%;
+            margin: 1rem 0 0 0;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            font-size: 1rem;
+            justify-content: flex-start;
+        }
+        .alert-error {
+            background: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+        }
+        .alert-success {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        .alert i {
+            font-size: 1.3rem;
+        }
+        @media (max-width: 600px) {
+            .reset-container {
+                max-width: 95vw;
+                padding: 1.5rem 0.7rem 1.2rem 0.7rem;
+            }
+            .reset-card h2 { font-size: 1.1rem; }
+        }
+    </style>
+</head>
+<body>
+    <%- include('header', { title: 'تأكيد الكود' }) %>
+    <div class="reset-container">
+        <div class="reset-card">
+            <h2 style="margin-bottom: 20px; color: #333;">
+                <i class="fas fa-shield-alt" style="margin-left: 10px; color: #2563eb;"></i>
+                تأكيد الكود
+            </h2>
+            <form class="reset-form" action="/verify-code" method="post">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <input type="hidden" name="email" value="<%= typeof email !== 'undefined' ? email : '' %>">
+                <input type="hidden" name="mode" value="<%= typeof mode !== 'undefined' ? mode : 'signup' %>">
+                <div class="form-group">
+                    <i class="fas fa-key input-icon"></i>
+                    <input type="text" placeholder="أدخل الكود المرسل" name="code" required style="direction: ltr;">
+                </div>
+                <button type="submit" class="submit-btn">
+                    <span>تأكيد</span>
+                    <div class="spinner" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </button>
+            </form>
+            <% if (error) { %>
+                <div class="alert alert-error" role="alert">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <%= error %>
+                </div>
+            <% } %>
+            <% if (success) { %>
+                <div class="alert alert-success" role="alert">
+                    <i class="fas fa-check-circle"></i>
+                    <%= success %>
+                </div>
+            <% } %>
+        </div>
     </div>
-<%- include('footer') %>
+    <%- include('footer') %>
+
+    <script>
+        document.querySelector('.reset-form').addEventListener('submit', function(e) {
+            var spinner = document.querySelector('.spinner');
+            if (spinner) spinner.style.display = 'inline-block';
+        });
+    </script>
+</body>
+</html>
