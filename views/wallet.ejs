@@ -194,36 +194,65 @@
             <% } else { %>
                 <div class="transactions-list">
                     <% patient.wallet.transactions.forEach(transaction => { %>
-                        <div class="transaction-item">
-                            <div class="transaction-info">
-                                <div class="transaction-doctor">
-                                    <% if (transaction.type === 'appointment_payment') { %>
-                                        <i class="fas fa-user-md" style="margin-left: 5px;"></i> د. <%= transaction.doctorName || 'غير محدد' %>
-                                    <% } else if (transaction.type === 'deposit') { %>
-                                        <i class="fas fa-coins" style="margin-left: 5px;"></i> شحن محفظة
-                                    <% } %>
+                        <% if (transaction.type === 'refund') { %>
+                            <div class="transaction-item">
+                                <div class="transaction-info">
+                                    <div class="transaction-doctor">
+                                        <i class="fas fa-undo" style="margin-left: 5px;"></i> استرداد مبلغ
+                                    </div>
+                                    <div>
+                                        <span class="transaction-type type-deposit">
+                                            استرداد
+                                        </span>
+                                        <span class="transaction-description"><%= transaction.description %></span>
+                                    </div>
+                                    <div class="transaction-date">
+                                        <%= new Date(transaction.date).toLocaleDateString('ar-SA', { 
+                                            weekday: 'long', 
+                                            year: 'numeric', 
+                                            month: 'long', 
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        }) %>
+                                    </div>
                                 </div>
-                                <div>
-                                    <span class="transaction-type <%= transaction.type === 'deposit' ? 'type-deposit' : 'type-payment' %>">
-                                        <%= transaction.type === 'appointment_payment' ? 'حجز موعد' : transaction.type === 'deposit' ? 'إيداع' : 'معاملة' %>
-                                    </span>
-                                    <span class="transaction-description"><%= transaction.description %></span>
-                                </div>
-                                <div class="transaction-date">
-                                    <%= new Date(transaction.date).toLocaleDateString('ar-SA', { 
-                                        weekday: 'long', 
-                                        year: 'numeric', 
-                                        month: 'long', 
-                                        day: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                    }) %>
+                                <div class="transaction-amount positive">
+                                    +<%= transaction.amount.toLocaleString('ar-YE') %> ر.ي
                                 </div>
                             </div>
-                            <div class="transaction-amount <%= transaction.amount > 0 ? 'positive' : 'negative' %>">
-                                <%= transaction.amount > 0 ? '+' : '' %><%= transaction.amount.toLocaleString('ar-YE') %> ر.ي
+                        <% } else { %>
+                            <div class="transaction-item">
+                                <div class="transaction-info">
+                                    <div class="transaction-doctor">
+                                        <% if (transaction.type === 'appointment_payment') { %>
+                                            <i class="fas fa-user-md" style="margin-left: 5px;"></i> د. <%= transaction.doctorName || 'غير محدد' %>
+                                        <% } else if (transaction.type === 'deposit') { %>
+                                            <i class="fas fa-coins" style="margin-left: 5px;"></i> شحن محفظة
+                                        <% } %>
+                                    </div>
+                                    <div>
+                                        <span class="transaction-type <%= transaction.type === 'deposit' ? 'type-deposit' : 'type-payment' %>">
+                                            <%= transaction.type === 'appointment_payment' ? 'حجز موعد' : transaction.type === 'deposit' ? 'إيداع' : 'معاملة' %>
+                                        </span>
+                                        <span class="transaction-description"><%= transaction.description %></span>
+                                    </div>
+                                    <div class="transaction-date">
+                                        <%= new Date(transaction.date).toLocaleDateString('ar-SA', { 
+                                            weekday: 'long', 
+                                            year: 'numeric', 
+                                            month: 'long', 
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        }) %>
+                                    </div>
+                                </div>
+                                <div class="transaction-amount <%= transaction.amount > 0 ? 'positive' : 'negative' %>">
+                                    <%= transaction.amount > 0 ? '+' : '' %><%= transaction.amount.toLocaleString('ar-YE') %> ر.ي
+                                </div>
                             </div>
-                        </div>
+                        <% } %>
                     <% }); %>
                 </div>
             <% } %>
@@ -242,4 +271,3 @@
     </script>
 </body>
 </html>
-<%- include('footerpatient') %>
