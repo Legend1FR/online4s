@@ -224,6 +224,7 @@ input[type="number"] {
     <!-- رسائل التنبيه -->
     <div id="toastContainer" class="fixed left-4 top-4 z-50 space-y-2"></div>
 
+<<<<<<< HEAD
     <!-- إضافة رصيد للمريض -->
     <div class="bg-white rounded-lg shadow-md p-7 mb-10 text-right">
         <h2 class="text-xl font-bold text-gray-700 mb-5">إضافة رصيد لمريض</h2>
@@ -250,8 +251,51 @@ input[type="number"] {
                 <span id="submitSpinner" class="loading-spinner mr-2 hidden"></span>
             </button>
         </form>
+=======
+    <!-- سجل المدفوعات -->  
+    <div class="bg-white rounded-lg shadow-md p-6">  
+        <div class="flex justify-between items-center mb-4">  
+            <h2 class="text-xl font-bold text-gray-700">سجل المدفوعات</h2>  
+            <div class="flex space-x-2">  
+                <select id="paymentFilter" class="px-3 py-1 border border-gray-300 rounded-md">  
+                    <option value="all">جميع المدفوعات</option>  
+                    <option value="appointment">حجوزات المواعيد</option>  
+                    <option value="deposit">إيداعات الرصيد</option>
+                    <option value="refund">استرداد أموال</option>
+                    <option value="cancelled">حجوزات ملغية</option>  
+                </select>  
+                <input type="date" id="dateFilter" class="px-3 py-1 border border-gray-300 rounded-md">  
+            </div>  
+        </div>  
+          
+        <div class="overflow-x-auto">  
+            <table class="min-w-full divide-y divide-gray-200">  
+                <thead class="bg-gray-50">  
+                    <tr>  
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المريض</th>  
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الطبيب</th>  
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">التاريخ</th>  
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المبلغ (ر.ي)</th>  
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">النوع</th>  
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الحالة</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الوصف</th>  
+                    </tr>  
+                </thead>  
+                <tbody id="paymentsTableBody" class="bg-white divide-y divide-gray-200">  
+                    <tr>  
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">جارٍ تحميل البيانات...</td>  
+                    </tr>  
+                </tbody>  
+            </table>  
+        </div>  
+          
+        <div id="paymentsPagination" class="mt-4 flex justify-center">  
+            <!-- سيتم تعبئة أزرار التصفح هنا -->  
+        </div>  
+>>>>>>> a7a5b16802c9127625fa8133dee330a4d940ef88
     </div>
 
+<<<<<<< HEAD
     <!-- إدارة سعر الحجز -->
     <div class="bg-white rounded-lg shadow-md p-7 mb-10 text-right">
         <h2 class="text-xl font-bold text-gray-700 mb-5">إدارة سعر الحجز</h2>
@@ -638,3 +682,384 @@ style.textContent = `
 document.head.appendChild(style);
 </script>
 <%- include('footeradmin') %>
+=======
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>  
+<script>  
+document.addEventListener('DOMContentLoaded', function() {  
+    // عناصر DOM  
+    const addFundsForm = document.getElementById('addFundsForm');  
+    const patientEmailInput = document.getElementById('patientEmail');  
+    const patientSearchResults = document.getElementById('patientSearchResults');  
+    const paymentsTableBody = document.getElementById('paymentsTableBody');  
+    const paymentFilter = document.getElementById('paymentFilter');  
+    const dateFilter = document.getElementById('dateFilter');  
+    const paymentsPagination = document.getElementById('paymentsPagination');  
+    const appointmentPriceInput = document.getElementById('appointmentPrice');  
+    const updatePriceBtn = document.getElementById('updatePriceBtn');  
+    const toastContainer = document.getElementById('toastContainer');  
+      
+    let currentPage = 1;  
+    const itemsPerPage = 10;  
+      
+    // تحميل سجل المدفوعات  
+    async function loadPayments(page = 1, filter = 'all', date = '') {  
+        try {  
+            currentPage = page;  
+            const response = await axios.get(`/admin/payments?page=${page}&limit=${itemsPerPage}&filter=${filter}&date=${date}`);  
+              
+            if (!response.data || !Array.isArray(response.data.payments)) {  
+                throw new Error('Invalid data received');  
+            }  
+              
+            paymentsTableBody.innerHTML = '';  
+              
+            if (response.data.payments.length === 0) {  
+                paymentsTableBody.innerHTML = `  
+                    <tr>  
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">لا توجد مدفوعات لعرضها</td>  
+                    </tr>  
+                `;  
+                return;  
+            }  
+              
+            response.data.payments.forEach(payment => {  
+                const row = document.createElement('tr');  
+                row.className = 'hover:bg-gray-50';  
+                
+                // تحديد لون الحالة
+                let statusColor = '';
+                let statusText = '';
+                switch(payment.status) {
+                    case 'completed':
+                        statusColor = 'bg-green-100 text-green-800';
+                        statusText = 'مكتمل';
+                        break;
+                    case 'failed':
+                        statusColor = 'bg-red-100 text-red-800';
+                        statusText = 'فشل';
+                        break;
+                    case 'refunded':
+                        statusColor = 'bg-yellow-100 text-yellow-800';
+                        statusText = 'مسترد';
+                        break;
+                    case 'partially_refunded':
+                        statusColor = 'bg-blue-100 text-blue-800';
+                        statusText = 'مسترد جزئياً';
+                        break;
+                    default:
+                        statusColor = 'bg-gray-100 text-gray-800';
+                        statusText = payment.status;
+                }
+                
+                // تحديد نوع المعاملة
+                let typeText = '';
+                switch(payment.type) {
+                    case 'appointment_payment':
+                        typeText = payment.status === 'refunded' ? 'حجز ملغي' : 'حجز موعد';
+                        break;
+                    case 'deposit':
+                        typeText = 'إيداع';
+                        break;
+                    case 'refund':
+                        typeText = 'استرداد';
+                        break;
+                    default:
+                        typeText = payment.type;
+                }
+
+                row.innerHTML = `  
+                    <td class="px-6 py-4 whitespace-nowrap">  
+                        <div class="flex items-center">  
+                            <div class="ml-4">  
+                                <div class="text-sm font-medium text-gray-900">${payment.patient?.name || '--'}</div>  
+                                <div class="text-sm text-gray-500">${payment.patient?.email || '--'}</div>  
+                            </div>  
+                        </div>  
+                    </td>  
+                    <td class="px-6 py-4 whitespace-nowrap">  
+                        ${payment.doctor ? `  
+                            <div class="text-sm text-gray-900">${payment.doctor.username}</div>  
+                            <div class="text-sm text-gray-500">${payment.doctor.specialization}</div>  
+                        ` : '<div class="text-sm text-gray-500">--</div>'}  
+                    </td>  
+                    <td class="px-6 py-4 whitespace-nowrap">  
+                        <div class="text-sm text-gray-900">  
+                            ${new Date(payment.createdAt).toLocaleDateString('ar-SA')}  
+                        </div>  
+                        <div class="text-sm text-gray-500">  
+                            ${new Date(payment.createdAt).toLocaleTimeString('ar-SA')}  
+                        </div>  
+                    </td>  
+                    <td class="px-6 py-4 whitespace-nowrap text-sm ${payment.amount > 0 ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}">  
+                        ${payment.amount > 0 ? '+' : ''}${payment.amount?.toLocaleString('ar-YE') || '0'} ر.ي  
+                    </td>  
+                    <td class="px-6 py-4 whitespace-nowrap">  
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full   
+                            ${payment.type === 'deposit' ? 'bg-green-100 text-green-800' : 
+                              payment.type === 'refund' ? 'bg-blue-100 text-blue-800' : 
+                              'bg-purple-100 text-purple-800'}">  
+                            ${typeText}  
+                        </span>  
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}">
+                            ${statusText}
+                        </span>
+                    </td>  
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">  
+                        ${payment.description || '--'}  
+                    </td>  
+                `;  
+                paymentsTableBody.appendChild(row);  
+            });  
+              
+            createPagination(response.data.totalPages, page);  
+              
+        } catch (error) {  
+            console.error('Error loading payments:', error);  
+            showToast('حدث خطأ أثناء جلب سجل المدفوعات', 'error');  
+        }  
+    }  
+      
+    // إنشاء أزرار التصفح  
+    function createPagination(totalPages, currentPage) {  
+        paymentsPagination.innerHTML = '';  
+          
+        if (totalPages <= 1) return;  
+          
+        const ul = document.createElement('ul');  
+        ul.className = 'flex space-x-1';  
+          
+        if (currentPage > 1) {  
+            const li = document.createElement('li');  
+            li.innerHTML = `  
+                <button onclick="loadPayments(${currentPage - 1}, paymentFilter.value, dateFilter.value)"   
+                        class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50">  
+                    السابق  
+                </button>  
+            `;  
+            ul.appendChild(li);  
+        }  
+          
+        for (let i = 1; i <= totalPages; i++) {  
+            const li = document.createElement('li');  
+            li.innerHTML = `  
+                <button onclick="loadPayments(${i}, paymentFilter.value, dateFilter.value)"   
+                        class="px-3 py-1 border ${i === currentPage ? 'bg-blue-600 text-white' : 'border-gray-300 hover:bg-gray-50'} rounded-md">  
+                    ${i}  
+                </button>  
+            `;  
+            ul.appendChild(li);  
+        }  
+          
+        if (currentPage < totalPages) {  
+            const li = document.createElement('li');  
+            li.innerHTML = `  
+                <button onclick="loadPayments(${currentPage + 1}, paymentFilter.value, dateFilter.value)"   
+                        class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50">  
+                    التالي  
+                </button>  
+            `;  
+            ul.appendChild(li);  
+        }  
+          
+        paymentsPagination.appendChild(ul);  
+    }  
+      
+    // البحث عن المرضى  
+    patientEmailInput.addEventListener('input', async (e) => {  
+        const email = e.target.value.trim();  
+        if (email.length > 2) {  
+            try {  
+                const response = await axios.get(`/admin/search-patients?email=${encodeURIComponent(email)}`);  
+                   
+                patientSearchResults.innerHTML = '';  
+                patientSearchResults.classList.add('hidden');  
+                   
+                if (response.data && Array.isArray(response.data)) {  
+                    response.data.forEach(patient => {  
+                        const patientCard = document.createElement('div');  
+                        patientCard.className = 'p-2 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer';  
+                        patientCard.innerHTML = `  
+                            <div class="font-medium">${patient.name || '--'}</div>  
+                            <div class="text-sm text-gray-600">${patient.email || '--'}</div>  
+                            <div class="text-sm text-blue-600">الرصيد: ${patient.wallet?.balance?.toLocaleString('ar-YE') || '0'} ر.ي</div>  
+                        `;  
+                          
+                        patientCard.addEventListener('click', () => {  
+                            patientEmailInput.value = patient.email || '';  
+                            patientSearchResults.classList.add('hidden');  
+                        });  
+                          
+                        patientSearchResults.appendChild(patientCard);  
+                    });  
+                      
+                    if (response.data.length > 0) {  
+                        patientSearchResults.classList.remove('hidden');  
+                    }  
+                }  
+            } catch (error) {  
+                console.error('Error searching patients:', error);  
+            }  
+        } else {  
+            patientSearchResults.classList.add('hidden');  
+        }  
+    });  
+      
+    // إضافة رصيد للمريض  
+    addFundsForm.addEventListener('submit', async (e) => {  
+        e.preventDefault();  
+          
+        const submitText = document.getElementById('submitText');  
+        const submitSpinner = document.getElementById('submitSpinner');  
+          
+        try {  
+            submitText.classList.add('hidden');  
+            submitSpinner.classList.remove('hidden');  
+              
+            const email = patientEmailInput.value.trim();  
+            const amount = parseFloat(document.getElementById('amount').value);  
+            const description = document.getElementById('description').value.trim();  
+              
+            if (!email || !amount || !description) {  
+                throw new Error('الرجاء ملء جميع الحقول');  
+            }  
+              
+            const response = await axios.post('/admin/add-wallet-funds', {  
+                email,  
+                amount,  
+                description  
+            }, {  
+                headers: {  
+                    'CSRF-Token': '<%= csrfToken %>'  
+                }  
+            });  
+              
+            if (response.data?.success) {  
+                showToast('تمت إضافة الرصيد بنجاح', 'success');  
+                addFundsForm.reset();  
+                patientSearchResults.classList.add('hidden');  
+                loadPayments(currentPage, paymentFilter.value, dateFilter.value);  
+            } else {  
+                throw new Error(response.data?.message || 'حدث خطأ أثناء إضافة الرصيد');  
+            }  
+        } catch (error) {  
+            console.error('Error adding funds:', error);  
+            showToast(error.response?.data?.message || error.message, 'error');  
+        } finally {  
+            submitText.classList.remove('hidden');  
+            submitSpinner.classList.add('hidden');  
+        }  
+    });  
+      // تحديث سعر الحجز  
+updatePriceBtn.addEventListener('click', async () => {  
+    const price = parseFloat(appointmentPriceInput.value);  
+      
+    if (isNaN(price)) {  // تم إصلاح الأقواس هنا
+        showToast('الرجاء إدخال سعر صحيح', 'error');  
+        return;  
+    }  
+      
+    if (price < 50 || price > 1000) {
+        showToast('يجب أن يكون السعر بين 50 و 1000 ريال', 'error');
+        return;
+    }
+      
+    try {  
+        updatePriceBtn.disabled = true;  
+        updatePriceBtn.innerHTML = `  
+            <span class="loading-spinner inline-block mr-2"></span>  
+            جاري التحديث...  
+        `;  
+          
+        const response = await axios.post('/admin/update-appointment-price', {  
+            price  
+        }, {  
+            headers: {  
+                'CSRF-Token': '<%= csrfToken %>'  
+            }  
+        });  
+          
+        if (response.data?.success) {  
+            showToast('تم تحديث سعر الحجز بنجاح', 'success');  
+        } else {  
+            throw new Error(response.data?.message || 'حدث خطأ أثناء التحديث');  
+        }  
+    } catch (error) {  
+        console.error('Error updating appointment price:', error);  
+        showToast(error.message, 'error');  
+    } finally {  
+        updatePriceBtn.disabled = false;  
+        updatePriceBtn.textContent = 'تحديث السعر';  
+    }  
+});
+      
+    // عرض رسائل التنبيه  
+    function showToast(message, type = 'success') {  
+        const toast = document.createElement('div');  
+        toast.className = `px-6 py-3 rounded-lg text-white font-medium shadow-lg flex items-center justify-between ${  
+            type === 'success' ? 'bg-green-500' : 'bg-red-500'  
+        } animate-fade-in`;  
+          
+        toast.innerHTML = `  
+            <span>${message}</span>  
+            <button class="ml-4" onclick="this.parentElement.remove()">×</button>  
+        `;  
+          
+        toastContainer.appendChild(toast);  
+          
+        setTimeout(() => {  
+            toast.classList.add('animate-fade-out');  
+            setTimeout(() => toast.remove(), 300);  
+        }, 5000);  
+    }  
+      
+    // تصفية المدفوعات  
+    paymentFilter.addEventListener('change', () => {  
+        loadPayments(1, paymentFilter.value, dateFilter.value);  
+    });  
+      
+    dateFilter.addEventListener('change', () => {  
+        loadPayments(1, paymentFilter.value, dateFilter.value);  
+    });  
+      
+    // جعل الدالة متاحة عالمياً  
+    window.loadPayments = loadPayments;  
+      
+    // تحميل البيانات الأولية  
+    loadPayments();  
+});  
+  
+// تعريفات الحركات CSS  
+const style = document.createElement('style');  
+style.textContent = `  
+    .loading-spinner {  
+        display: inline-block;  
+        width: 1rem;  
+        height: 1rem;  
+        border: 2px solid rgba(255,255,255,0.3);  
+        border-radius: 50%;  
+        border-top-color: white;  
+        animation: spin 1s ease-in-out infinite;  
+    }  
+    @keyframes spin {  
+        to { transform: rotate(360deg); }  
+    }  
+    @keyframes fade-in {  
+        from { opacity: 0; transform: translateY(-20px); }  
+        to { opacity: 1; transform: translateY(0); }  
+    }  
+    @keyframes fade-out {  
+        from { opacity: 1; transform: translateY(0); }  
+        to { opacity: 0; transform: translateY(-20px); }  
+    }  
+    .animate-fade-in {  
+        animation: fade-in 0.3s ease-out forwards;  
+    }  
+    .animate-fade-out {  
+        animation: fade-out 0.3s ease-out forwards;  
+    }  
+`;  
+document.head.appendChild(style);  
+</script>
+>>>>>>> a7a5b16802c9127625fa8133dee330a4d940ef88
