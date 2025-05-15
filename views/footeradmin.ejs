@@ -4,70 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        /* Footer Styles */
-        .footer {
-            background: linear-gradient(90deg, #2176FF 0%, #31A8FF 100%);
-            padding: 1.5rem;
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            gap: 3rem;
-        }
+    
 
-        .footer-link {
-            color: white;
-            text-decoration: none;
-            font-size: 1.2rem;
-            font-weight: 500;
-            transition: opacity 0.3s;
-        }
 
-        .footer-link:hover {
-            opacity: 0.8;
-        }
-
-        /* Overlay */
-        .overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: none;
-            z-index: 999;
-        }
-
-        .overlay.active {
-            display: block;
-        }
-    </style>
-    <footer class="footer">
-        <a href="#" class="footer-link">Medical</a>
-        <a href="#" class="footer-link">Hospital</a>
-        <a href="#" class="footer-link">Dental</a>
-        <a href="#" class="footer-link">Healthcare</a>
-        <a href="#" class="footer-link">Doctor</a>
-        <a href="#" class="footer-link">Patient</a>
-    </footer>
-
-    <script>
-        const menuToggle = document.getElementById('menuToggle');
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('overlay');
-
-        menuToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('active');
-            overlay.classList.toggle('active');
-        });
-
-        overlay.addEventListener('click', () => {
-            sidebar.classList.remove('active');
-            overlay.classList.remove('active');
-        });
-    </script>
-</body>
-</html>
+<!-- يمكنك إضافة سكريبتات عامة هنا إذا لزم الأمر -->
+<footer style="text-align:center; padding:1rem 0; color:#64748b; background:#f1f5f9;">
+    جميع الحقوق محفوظة &copy; <%= new Date().getFullYear() %> عيادتي
+</footer>
