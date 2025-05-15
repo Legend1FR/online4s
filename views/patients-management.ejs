@@ -1,5 +1,3 @@
-
-<!-- node-project\views\patients-management.ejs file -->
 <%- include('headeradmin', { title: 'إدارة المرضى' }) %>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -8,58 +6,101 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>إدارة المرضى</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        .search-container {
-            margin: 20px 0;
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Tajawal', sans-serif; }
+        body { background-color: #f8fafc; color: #1e293b; line-height: 1.6; }
+        .container { max-width: 1200px; margin: 2rem auto; padding: 1rem; background: #fff; border-radius: 0.75rem; box-shadow: 0 4px 16px 0 rgba(30,41,59,0.07); }
+        .table-responsive { margin-top: 20px; }
+        .table { border-radius: 0.5rem; overflow: hidden; }
+        .table th, .table td { vertical-align: middle; }
+        .btn, .btn-sm, .btn-primary, .btn-success, .btn-warning, .btn-danger, .btn-info { font-family: 'Tajawal', sans-serif; font-weight: 500; border-radius: 0.375rem !important; transition: all 0.2s; }
+        .btn i { margin-left: 0.3rem; }
+        .btn-primary { background-color: #3b82f6; border: none; }
+        .btn-primary:hover { background-color: #2563eb; }
+        .btn-success { background-color: #22c55e; border: none; }
+        .btn-success:hover { background-color: #16a34a; }
+        .btn-warning { background-color: #f59e0b; border: none; color: #1e293b; }
+        .btn-warning:hover { background-color: #fbbf24; }
+        .btn-danger { background-color: #ef4444; border: none; }
+        .btn-danger:hover { background-color: #dc2626; }
+        .btn-info { background-color: #0ea5e9; border: none; }
+        .btn-info:hover { background-color: #0369a1; }
+        .badge.bg-success { background-color: #22c55e !important; }
+        .badge.bg-danger { background-color: #ef4444 !important; }
+        .badge.bg-warning { background-color: #f59e0b !important; color: #1e293b !important; }
+        .status-badge { font-size: 0.9em; padding: 5px 10px; }
+        .search-container { margin: 20px 0; }
+        .form-select, .form-control { border-radius: 0.375rem; font-family: 'Tajawal', sans-serif; }
+        .form-control:focus, .form-select:focus { border-color: #3b82f6; box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15); }
+        .modal-header { background-color: #f8f9fa; border-bottom: 1px solid #dee2e6; }
+        .modal-footer { background-color: #f8f9fa; border-top: 1px solid #dee2e6; }
+        .empty-state { text-align: center; padding: 2rem; color: #64748b; }
+        .toast-container { position: fixed; top: 50px; right: 50%; left: auto; transform: translateX(50%); z-index: 1060; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+        .toast { pointer-events: auto; }
+        #patientsPagination {
+            display: flex;
+            justify-content: center !important;
+            align-items: center;
+            width: 100%;
+            margin-top: 24px;
         }
-        .table-responsive {
-            margin-top: 20px;
-        }
-        .pagination {
-            justify-content: center;
-            margin-top: 20px;
-        }
-        .form-control {
-            max-width: 300px;
-        }
-        .modal-header {
-            background-color: #f8f9fa;
-            border-bottom: 1px solid #dee2e6;
-        }
-        .modal-footer {
-            background-color: #f8f9fa;
-            border-top: 1px solid #dee2e6;
-        }
-        .toast-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1060;
-        }
-        .btn-sm {
+        .pagination-btn {
+            background: #fff;
+            color: #2563eb;
+            border: 1.5px solid #2563eb;
             margin: 0 2px;
+            border-radius: 8px;
+            padding: 0.18rem 0.7rem;
+            font-weight: 700;
+            font-size: 0.97rem;
+            min-width: 30px;
+            min-height: 30px;
+            transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+            outline: none;
+            box-shadow: 0 1px 4px 0 rgba(30,41,59,0.06);
         }
-        .form-control:focus {
-            border-color: #80bdff;
-            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        .pagination-btn.active, .pagination-btn[aria-current="page"] {
+            background: #2563eb !important;
+            color: #fff !important;
+            border-color: #2563eb !important;
+            box-shadow: 0 2px 8px 0 rgba(30,41,59,0.10);
         }
-        .edit-btn {
-            margin-right: 5px;
+        .pagination-btn:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 2px #2563eb33;
         }
-        .status-badge {
-            font-size: 0.9em;
-            padding: 5px 10px;
+        .pagination-btn.prev-next:hover {
+            background: #e0e7ef !important;
+            color: #2563eb !important;
+            border-color: #2563eb !important;
+        }
+        .pagination-btn.prev-next {
+            background: #f1f5f9;
+            color: #2563eb;
+            border-color: #2563eb;
+        }
+        @media (max-width: 992px) {
+            .container { max-width: 100%; padding: 0 0.5rem; }
+        }
+        @media (max-width: 768px) {
+            .container { padding: 0.5rem; }
+            .table-responsive { font-size: 0.95rem; }
+            .modal-content { padding: 0.5rem; }
+        }
+        @media (max-width: 480px) {
+            .container { padding: 0.2rem; }
         }
     </style>
 </head>
 <body>
+    <div id="toastArea" class="toast-container"></div>
     <div class="container">
         <div class="row">
             <div class="col-12">
                 <h1 class="my-4">المرضى</h1>
                 <p class="text-muted">هنا يمكنك رؤية قائمة جميع المرضى</p>
-                
-               
                 <div class="search-container">
                     <div class="input-group">
                         <select class="form-select" id="sortSelect">
@@ -70,7 +111,6 @@
                         </select>
                     </div>
                 </div>
-
                 <!-- Patients Table -->
                 <div class="table-responsive">
                     <table class="table table-hover">
@@ -87,83 +127,87 @@
                         <tbody>
                             <% if (locals.patients && patients.length > 0) { %>
                                 <% patients.forEach(patient => { 
-                                    // Ensure wallet is properly initialized for display
                                     const patientWallet = patient.wallet || { balance: 0, transactions: [] };
                                     const walletTransactions = Array.isArray(patientWallet.transactions) ? patientWallet.transactions : [];
                                 %>
                                     <tr data-patient-id="<%= patient._id %>">
                                         <td><%= patient._id %></td>
-                                        <td><%= patient.name %></td>
-                                        <td><%= patient.email %></td>
+                                        <td><i class="fas fa-user text-primary me-1"></i> <%= patient.name %></td>
+                                        <td><i class="fas fa-envelope text-info me-1"></i> <%= patient.email %></td>
                                         <td>
                                             <span class="badge <%= patient.isVerified ? 'bg-success' : 'bg-danger' %>">
+                                                <i class="fas <%= patient.isVerified ? 'fa-check-circle' : 'fa-times-circle' %>"></i>
                                                 <%= patient.isVerified ? 'تم التحقق' : 'غير مؤكد' %>
                                             </span>
                                         </td>
                                         <td>
-                                            <span class="badge <%= patient.isFrozen ? 'bg-warning' : 'bg-success' %>">
-                                                <%= patient.isFrozen ? 'مجمد' : 'نشط' %>
-                                            </span>
+                                            <% if (patient.isFrozen) { %>
+                                                <span class="badge bg-warning">
+                                                    <i class="fas fa-lock"></i> مجمد
+                                                </span>
+                                            <% } else { %>
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check-circle"></i> نشط
+                                                </span>
+                                            <% } %>
                                         </td>
                                         <td>
-                                            <button class="btn btn-primary btn-sm edit-btn" 
-                                                    onclick="openEditModal('<%= patient._id %>', '<%= patient.name %>', '<%= patient.email %>', '<%= patient.isVerified %>')">
-                                                تعديل
-                                            </button>
-                                            <a href="/admin/delete-patient/<%= patient._id %>" 
-                                               class="btn btn-danger btn-sm" 
-                                               onclick="return confirm('هل أنت متأكد من حذف هذا المريض؟')">
-                                                حذف
-                                            </a>
-                                            <button class="btn btn-info btn-sm" 
-                                                    onclick="openSendMessageModal('<%= patient._id %>', '<%= patient.email %>')">
-                                                إرسال رسالة
-                                            </button>
-                                            <% if (patient.isFrozen) { %>
-                                                <button class="btn btn-success btn-sm" onclick="unfreezePatient('<%= patient._id %>')">
-                                                    إلغاء التجميد
-                                                </button>
-                                            <% } else { %>
-                                                <button class="btn btn-warning btn-sm" onclick="freezePatient('<%= patient._id %>')">
-                                                    تجميد
-                                                </button>
-                                            <% } %>
+                                            <div class="d-flex flex-column gap-1">
+                                                <div class="d-flex flex-wrap gap-1 mb-1">
+                                                    <button class="btn btn-primary btn-sm edit-btn px-2 py-1"
+                                                        onclick="openEditModal('<%= patient._id %>', '<%= patient.name %>', '<%= patient.email %>', '<%= patient.isVerified %>')">
+                                                        <i class="fas fa-edit"></i> تعديل
+                                                    </button>
+                                                    <button class="btn btn-info btn-sm message-btn px-2 py-1"
+                                                        onclick="openSendMessageModal('<%= patient._id %>', '<%= patient.email %>')">
+                                                        <i class="fas fa-envelope"></i> رسالة
+                                                    </button>
+                                                </div>
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    <% if (patient.isFrozen) { %>
+                                                        <button class="btn btn-success btn-sm px-2 py-1" onclick="unfreezePatient('<%= patient._id %>')">
+                                                            <i class="fas fa-unlock"></i> إلغاء التجميد
+                                                        </button>
+                                                    <% } else { %>
+                                                        <button class="btn btn-warning btn-sm px-2 py-1" onclick="freezePatient('<%= patient._id %>')">
+                                                            <i class="fas fa-lock"></i> تجميد
+                                                        </button>
+                                                    <% } %>
+                                                    <a href="/admin/delete-patient/<%= patient._id %>" 
+                                                        class="btn btn-danger btn-sm px-2 py-1" 
+                                                        onclick="return confirm('هل أنت متأكد من حذف هذا المريض؟')">
+                                                        <i class="fas fa-trash"></i> حذف
+                                                    </a>
+                                                </div>
+                                            </div>
                                         </td>
                                     </tr>
                                 <% }); %>
                             <% } else { %>
                                 <tr>
-                                    <td colspan="6" class="text-center">ليس هناك مرضى</td>
+                                    <td colspan="6" class="text-center empty-state">
+                                        <i class="fas fa-user fa-2x mb-2"></i><br>
+                                        ليس هناك مرضى
+                                    </td>
                                 </tr>
                             <% } %>
                         </tbody>
                     </table>
                 </div>
-
                 <div class="mt-3">
-                    <button class="btn btn-success" onclick="exportToExcel()">تصدير إلى Excel</button>
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPatientModal">إضافة مريض</button>
+                    <button class="btn btn-success" onclick="exportToExcel()">
+                        <i class="fas fa-file-excel"></i> تصدير إلى Excel
+                    </button>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPatientModal">
+                        <i class="fas fa-plus"></i> إضافة مريض
+                    </button>
                 </div>
-
                 <!-- Pagination -->
-                <nav>
-                    <ul class="pagination">
-                        <li class="page-item <%= currentPage <= 1 ? 'disabled' : '' %>">
-                            <a class="page-link" href="?page=<%= currentPage - 1 %>">السابق</a>
-                        </li>
-                        <li class="page-item active">
-                            <span class="page-link"><%= currentPage %></span>
-                        </li>
-                        <li class="page-item <%= !hasNextPage ? 'disabled' : '' %>">
-                            <a class="page-link" href="?page=<%= currentPage + 1 %>">التالي</a>
-                        </li>
-                    </ul>
-                </nav>
+                <div id="patientsPagination"></div>
             </div>
         </div>
     </div>
-
-   
+    <!-- Add Patient Modal -->
     <div class="modal fade" id="addPatientModal" tabindex="-1" aria-labelledby="addPatientModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -195,8 +239,7 @@
             </div>
         </div>
     </div>
-
-    
+    <!-- Send Message Modal -->
     <div class="modal fade" id="sendMessageModal" tabindex="-1" aria-labelledby="sendMessageModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -222,8 +265,7 @@
             </div>
         </div>
     </div>
-
-    
+    <!-- Edit Patient Modal -->
     <div class="modal fade" id="editPatientModal" tabindex="-1" aria-labelledby="editPatientModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -260,14 +302,18 @@
             </div>
         </div>
     </div>
-
-    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        document.getElementById('sortSelect')?.addEventListener('change', function() {
+            const value = this.value;
+            const url = new URL(window.location.href);
+            url.searchParams.set('sort', value);
+            window.location.href = url.toString();
+        });
+
         function openSendMessageModal(patientId, patientEmail) {
             document.getElementById('patientId').value = patientId;
             document.getElementById('patientEmail').value = patientEmail;
-            
             const sendMessageModal = new bootstrap.Modal(document.getElementById('sendMessageModal'));
             sendMessageModal.show();
         }
@@ -350,7 +396,6 @@
             document.getElementById('editName').value = name;
             document.getElementById('editEmail').value = email;
             document.getElementById('editIsVerified').checked = isVerified;
-            
             const editModal = new bootstrap.Modal(document.getElementById('editPatientModal'));
             editModal.show();
         }
@@ -446,29 +491,82 @@
         }
 
         function showToast(message, type = 'success') {
-            const toastContainer = document.createElement('div');
-            toastContainer.className = `toast align-items-center text-white bg-${type} border-0`;
-            toastContainer.setAttribute('role', 'alert');
-            toastContainer.setAttribute('aria-live', 'assertive');
-            toastContainer.setAttribute('aria-atomic', 'true');
-            
-            toastContainer.innerHTML = `
+            const toastArea = document.getElementById('toastArea');
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type} border-0 show mb-2`;
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+            toast.innerHTML = `
                 <div class="d-flex">
-                    <div class="toast-body">
-                        ${message}
-                    </div>
+                    <div class="toast-body">${message}</div>
                     <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
             `;
-            
-            document.body.appendChild(toastContainer);
-            const toast = new bootstrap.Toast(toastContainer);
-            toast.show();
-            
-            toastContainer.addEventListener('hidden.bs.toast', () => {
-                toastContainer.remove();
+            toastArea.appendChild(toast);
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+            toast.addEventListener('hidden.bs.toast', () => {
+                toast.remove();
             });
         }
+
+        // Pagination (مطابق لتصميم الأطباء والمدفوعات)
+        function createPatientsPagination(totalPages, currentPage) {
+            const patientsPagination = document.getElementById('patientsPagination');
+            patientsPagination.innerHTML = '';
+            if (totalPages <= 1) return;
+            const ul = document.createElement('ul');
+            ul.className = 'pagination justify-content-center';
+
+            // زر السابق
+            const prevLi = document.createElement('li');
+            prevLi.className = `page-item${currentPage <= 1 ? ' disabled' : ''}`;
+            prevLi.innerHTML = `
+                <button class="pagination-btn prev-next" ${currentPage > 1 ? `onclick="goToPatientsPage(${currentPage - 1})"` : ''} aria-label="السابق">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="#2563eb" style="width:18px;height:18px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    <span>السابق</span>
+                </button>
+            `;
+            ul.appendChild(prevLi);
+
+            // أرقام الصفحات
+            for (let i = 1; i <= totalPages; i++) {
+                const li = document.createElement('li');
+                li.className = `page-item${i === currentPage ? ' active' : ''}`;
+                li.innerHTML = `
+                    <button class="pagination-btn${i === currentPage ? ' active' : ''}" ${i !== currentPage ? `onclick="goToPatientsPage(${i})"` : ''} ${i === currentPage ? 'aria-current="page"' : ''}>
+                        ${i}
+                    </button>
+                `;
+                ul.appendChild(li);
+            }
+
+            // زر التالي
+            const nextLi = document.createElement('li');
+            nextLi.className = `page-item${currentPage >= totalPages ? ' disabled' : ''}`;
+            nextLi.innerHTML = `
+                <button class="pagination-btn prev-next" ${currentPage < totalPages ? `onclick="goToPatientsPage(${currentPage + 1})"` : ''} aria-label="التالي">
+                    <span>التالي</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="#2563eb" style="width:18px;height:18px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+            `;
+            ul.appendChild(nextLi);
+
+            patientsPagination.appendChild(ul);
+        }
+        window.goToPatientsPage = function(page) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('page', page);
+            window.location.href = url.toString();
+        };
+        <% if (typeof totalPages !== 'undefined' && typeof currentPage !== 'undefined') { %>
+            createPatientsPagination(<%= totalPages %>, <%= currentPage %>);
+        <% } %>
     </script>
 </body>
 </html>
