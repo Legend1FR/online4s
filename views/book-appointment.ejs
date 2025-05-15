@@ -156,6 +156,19 @@
                     </div>
                 <% } %>
             </div>
+            <% if (restriction) { %>
+                <div class="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-r">
+                    <h3 class="font-bold mb-2">لا يمكنك الحجز الآن</h3>
+                    <p>يمكنك الحجز مرة أخرى بعد: <%= new Date(restriction.expiresAt).toLocaleString('ar-EG') %></p>
+                </div>
+            <% } else { %>
+                <!-- نموذج الحجز -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                   
+                    <!-- باقي نموذج الحجز -->
+                </div>
+            <% } %>
+            
 
             <% if (locals.existingAppointment && existingAppointment.status !== 'مكتمل') { %>
             <div class="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 mb-6 rounded-r">
@@ -170,6 +183,8 @@
                 </div>
             </div>
             <% } %>
+
+            
 
             <!-- نموذج الحجز -->
             <div class="bg-white rounded-xl shadow-sm p-6">
@@ -241,8 +256,94 @@
                         </span>
                         <span id="submitSpinner" class="loading-spinner ml-2 hidden"></span>
                     </button>
+
+                    <!-- زر إلغاء الموعد -->
+                    <button type="button" id="cancelAppointmentBtn" 
+                        class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-6 rounded-lg transition duration-200 flex justify-center items-center mt-4"
+                        <%= !locals.existingAppointment || existingAppointment.status === 'مكتمل' || existingAppointment.status === 'ملغي' ? 'style="display: none;"' : '' %>>
+                        <span id="cancelText">
+                            <% if (locals.existingAppointment && existingAppointment.status !== 'مكتمل' && existingAppointment.status !== 'ملغي') { %>
+                                إلغاء الموعد
+                            <% } else { %>
+                                لا يوجد موعد للإلغاء
+                            <% } %>
+                        </span>
+                        <span id="cancelSpinner" class="loading-spinner ml-2 hidden"></span>
+                    </button>
                 </form>
             </div>
+        <% } %>
+
+        <!-- تقييمات الطبيب -->
+        <% if (doctor.ratingCount > 0) { %>
+        <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">تقييمات المرضى</h3>
+            
+            <div class="mb-6">
+                <div class="flex items-center mb-2">
+                    <span class="text-2xl font-bold text-gray-800 mr-2">
+                        <%= doctor.avgRating.toFixed(1) %>
+                    </span>
+                    <div class="rating-stars">
+                        <% for (let i = 1; i <= 5; i++) { %>
+                            <span class="star <%= i <= Math.round(doctor.avgRating) ? 'filled' : '' %>">★</span>
+                        <% } %>
+                    </div>
+                    <span class="text-gray-600 text-sm mr-2">
+                        (<%= doctor.ratingCount %> تقييم)
+                    </span>
+                </div>
+                
+                <div class="space-y-2">
+                    <% for (let i = 5; i >= 1; i--) { 
+                        const count = doctor.ratings.filter(r => Math.round(r.rating) === i).length;
+                        const percentage = (count / doctor.ratingCount) * 100;
+                    %>
+                        <div class="flex items-center">
+                            <span class="text-sm text-gray-600 w-8"><%= i %> نجوم</span>
+                            <div class="flex-1 mx-2">
+                                <div class="rating-progress bg-gray-200 w-full">
+                                    <div class="rating-progress bg-yellow-400" 
+                                         style="width: <%= percentage %>%"></div>
+                                </div>
+                            </div>
+                            <span class="text-sm text-gray-600 w-12">
+                                <%= Math.round(percentage) %>%
+                            </span>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+            
+            <div class="border-t pt-4">
+                <h4 class="font-medium mb-3">آخر التقييمات</h4>
+                <% doctor.ratings.slice(0, 3).forEach(rating => { %>
+                    <div class="border-b border-gray-100 pb-3 mb-3">
+                        <div class="flex items-center mb-1">
+                            <% if (rating.patient) { %>
+                                <img src="<%= rating.patient.profileImage || '/images/default-patient.jpg' %>" 
+                                     class="w-8 h-8 rounded-full mr-2">
+                                <span class="font-medium"><%= rating.patient.name %></span>
+                            <% } else { %>
+                                <img src="/images/default-patient.jpg" class="w-8 h-8 rounded-full mr-2">
+                                <span class="font-medium text-gray-400">مستخدم غير معروف</span>
+                            <% } %>
+                            <div class="rating-stars mr-2">
+                                <% for (let i = 1; i <= 5; i++) { %>
+                                    <span class="star <%= i <= rating.rating ? 'filled' : '' %>">★</span>
+                                <% } %>
+                            </div>
+                            <span class="text-gray-500 text-sm">
+                                <%= new Date(rating.createdAt).toLocaleDateString('ar-EG') %>
+                            </span>
+                        </div>
+                        <% if (rating.comment) { %>
+                            <p class="text-gray-700 text-sm mt-1"><%= rating.comment %></p>
+                        <% } %>
+                    </div>
+                <% }); %>
+            </div>
+        </div>
         <% } %>
     </div>
 
@@ -277,6 +378,35 @@
         </div>
     </div>
 
+    <!-- نموذج تأكيد الإلغاء -->
+    <div id="cancelModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">شروط إلغاء الموعد</h3>
+            <div class="space-y-4">
+                <div class="bg-red-50 p-4 rounded-lg">
+                    <ul class="list-disc list-inside text-red-800 space-y-2">
+                        <li>سيتم استرداد 50% فقط من قيمة الحجز إلى محفظتك</li>
+                        <li>لن تتمكن من حجز موعد مع نفس الطبيب لمدة 24 ساعة</li>
+                        <li>سيتم إلغاء الموعد الحالي ولن يظهر في سجلك</li>
+                    </ul>
+                </div>
+                <div class="flex items-center">
+                    <input type="checkbox" id="agreeTerms" class="mr-2">
+                    <label for="agreeTerms" class="text-gray-700">أوافق على الشروط والأحكام</label>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 rtl:space-x-reverse mt-6">
+                <button id="cancelCancelBtn" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+                    رجوع
+                </button>
+                <button id="confirmCancelBtn" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center" disabled>
+                    <span id="confirmCancelText">تأكيد الإلغاء</span>
+                    <span id="confirmCancelSpinner" class="loading-spinner ml-2 hidden"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- المكتبات الخارجية -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
@@ -292,9 +422,60 @@
             const submitText = document.getElementById('submitText');
             const submitSpinner = document.getElementById('submitSpinner');
             const confirmationModal = document.getElementById('confirmationModal');
+            const cancelModal = document.getElementById('cancelModal');
             const confirmBookingBtn = document.getElementById('confirmBookingBtn');
             const cancelBookingBtn = document.getElementById('cancelBookingBtn');
-            
+
+            // إضافة الأكواد الجديدة
+            document.getElementById('cancelAppointmentBtn').addEventListener('click', function() {
+                confirmationModal.classList.add('hidden');
+                cancelModal.classList.remove('hidden');
+            });
+
+            document.getElementById('agreeTerms').addEventListener('change', function() {
+                document.getElementById('confirmCancelBtn').disabled = !this.checked;
+            });
+
+            document.getElementById('cancelCancelBtn').addEventListener('click', function() {
+                cancelModal.classList.add('hidden');
+            });
+
+            document.getElementById('confirmCancelBtn').addEventListener('click', async function() {
+                try {
+                    this.disabled = true;
+                    document.getElementById('confirmCancelText').classList.add('hidden');
+                    document.getElementById('confirmCancelSpinner').classList.remove('hidden');
+
+                    <% if (existingAppointment && existingAppointment._id) { %>
+                        const response = await axios.post('/cancel-appointment', {
+                            appointmentId: '<%= existingAppointment._id %>',
+                            _csrf: '<%= csrfToken %>'
+                        });
+
+                        if (response.data.success) {
+                            showSuccess('تم إلغاء الموعد بنجاح واسترداد 50% من المبلغ');
+                            
+                            // إخفاء زر إلغاء الموعد
+                            const cancelAppointmentBtn = document.getElementById('cancelAppointmentBtn');
+                            if (cancelAppointmentBtn) {
+                                cancelAppointmentBtn.style.display = 'none';
+                            }
+
+                            setTimeout(() => window.location.reload(), 1500);
+                        } else {
+                            throw new Error(response.data.message || 'حدث خطأ أثناء الإلغاء');
+                        }
+                    <% } else { %>
+                        throw new Error('لا يوجد موعد لإلغائه');
+                    <% } %>
+                } catch (error) {
+                    showError(error.response?.data?.message || error.message);
+                    document.getElementById('confirmCancelText').classList.remove('hidden');
+                    document.getElementById('confirmCancelSpinner').classList.add('hidden');
+                    document.getElementById('confirmCancelBtn').disabled = false;
+                }
+            });
+
             // تهيئة منتقي التاريخ
             const datePicker = flatpickr(dateInput, {
                 locale: 'ar',
@@ -499,4 +680,3 @@
     </script>
 </body>
 </html>
-<%- include('footerpatient') %>
