@@ -1,4 +1,3 @@
-
 <%- include('headerdoc') %>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -50,7 +49,10 @@
           </div>
         </div>
         <a href="/doctor/reports" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
-          <i class="fas fa-file-medical mr-2"></i> التقارير
+         
+        </a>
+        <a href="/doctor/medical-record" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+          <i class="fas fa-notes-medical mr-2"></i> السجلات الطبية
         </a>
       </div>
     </div>
@@ -71,36 +73,79 @@
             const now = new Date();
             const timeDiff = (sessionDateTime - now) / (1000 * 60); // Difference in minutes
             const canPatientJoin = timeDiff <= 30 && timeDiff >= -60; // المريض يمكنه الانضمام قبل 30 دقيقة
+
+            // Skip session if patient data is missing
+            if (!session.patient) return;
           %>
-            <div class="session-card bg-white rounded-lg p-4 shadow-lg flex items-center justify-between">
-              <div class="flex items-center">
-                <img src="<%= session.patient.profileImage || '/images/default-patient.jpg' %>" alt="صورة المريض" class="w-16 h-16 rounded-full mr-4">
-                <div>
-                  <p class="font-bold text-gray-800"><%= session.patient.name %></p>
-                  <p class="text-gray-600">
-                    <i class="far fa-calendar-alt"></i> <%= new Date(session.date).toLocaleDateString('ar-EG') %> |
-                    <i class="far fa-clock"></i> <%= session.time %>
-                  </p>
-                  <% if (session.notes) { %>
-                    <p class="text-gray-600 mt-1"><i class="fas fa-file-medical"></i> <%= session.notes %></p>
-                  <% } %>
-                  <% if (canPatientJoin) { %>
-                    <span class="badge-ready mt-2">المريض يمكنه الانضمام الآن</span>
-                  <% } else { %>
-                    <span class="badge-upcoming mt-2">
-                      <% if (timeDiff > 30) { %>
-                        متاح للمريض بعد <%= Math.ceil(timeDiff - 30) %> دقيقة
-                      <% } else { %>
-                        انتهى وقت الجلسة
-                      <% } %>
-                    </span>
-                  <% } %>
+            <% if (session.status === 'ملغي') { %>
+              <div class="session-card bg-gray-100 rounded-lg p-4 shadow-lg flex items-center justify-between opacity-75">
+                <div class="flex items-center">
+                  <img src="<%= session.patient.profileImage || '/images/default-patient.jpg' %>" 
+                       alt="صورة المريض" 
+                       class="w-16 h-16 rounded-full mr-4">
+                  <div>
+                    <p class="font-bold text-gray-500"><%= session.patient.name %></p>
+                    <p class="text-gray-400">
+                      <i class="far fa-calendar-alt"></i> <%= new Date(session.date).toLocaleDateString('ar-EG') %> |
+                      <i class="far fa-clock"></i> <%= session.time %>
+                    </p>
+                    <span class="badge bg-gray-500 text-white mt-1">ملغي من قبل المريض</span>
+                  </div>
                 </div>
               </div>
-              <button class="start-session-btn bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600" data-session-id="<%= session._id %>">
-                بدء الجلسة
-              </button>
-            </div>
+            <% } else { %>
+              <div class="session-card bg-white rounded-lg p-4 shadow-lg flex items-center justify-between">
+                <div class="flex items-center">
+                  <a href="/doctor/patient-profile/<%= session.patient._id %>">
+                    <img src="<%= session.patient.profileImage || '/images/default-patient.jpg' %>" 
+                         alt="صورة المريض" 
+                         class="w-16 h-16 rounded-full mr-4 hover:ring-4 hover:ring-blue-300 transition">
+                  </a>
+                  <div>
+                    <a href="/doctor/patient-profile/<%= session.patient._id %>" class="font-bold text-blue-700 hover:underline">
+                      <%= session.patient.name %>
+                    </a>
+                    <p class="text-gray-600">
+                      <i class="far fa-calendar-alt"></i> <%= new Date(session.date).toLocaleDateString('ar-EG') %> |
+                      <i class="far fa-clock"></i> <%= session.time %>
+                    </p>
+                    <% if (session.notes) { %>
+                      <p class="text-gray-600 mt-1"><i class="fas fa-file-medical"></i> <%= session.notes %></p>
+                    <% } %>
+                    <% if (session.diagnosis) { %>
+                      <p class="text-blue-700 mt-1"><i class="fas fa-notes-medical"></i> آخر تشخيص: <%= session.diagnosis.length > 40 ? session.diagnosis.substring(0, 40) + '...' : session.diagnosis %></p>
+                    <% } %>
+                    <% if (session.prescription) { %>
+                      <p class="text-green-700 mt-1"><i class="fas fa-prescription-bottle-alt"></i> آخر وصفة: <%= session.prescription.length > 40 ? session.prescription.substring(0, 40) + '...' : session.prescription %></p>
+                    <% } %>
+                    <% if (canPatientJoin) { %>
+                      <span class="badge-ready mt-2">المريض يمكنه الانضمام الآن</span>
+                    <% } else { %>
+                      <span class="badge-upcoming mt-2">
+                        <% if (timeDiff > 30) { 
+                            const totalMinutes = Math.ceil(timeDiff - 30);
+                            const hours = Math.floor(totalMinutes / 60);
+                            const minutes = totalMinutes % 60;
+                        %>
+                          متاح للمريض بعد 
+                          <% if (hours > 0) { %>
+                            <%= hours %> ساعة
+                          <% } %>
+                          <% if (minutes > 0) { %>
+                            <%= minutes %> دقيقة
+                          <% } %>
+                        <% } else { %>
+                          انتهى وقت الجلسة
+                        <% } %>
+                      </span>
+                    <% } %>
+                  </div>
+                </div>
+                <button class="start-session-btn bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600" data-session-id="<%= session._id %>">
+                  بدء الجلسة
+                </button>
+              </div>
+            <% } %>
           <% }); %>
         </div>
       <% } else { %>
@@ -119,7 +164,6 @@
       const errorMessage = document.getElementById('errorMessage');
       const errorText = document.getElementById('errorText');
 
-     
       document.querySelectorAll('.start-session-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const sessionId = btn.getAttribute('data-session-id');
@@ -151,7 +195,34 @@
         });
       });
 
-     
+      document.querySelectorAll('.delete-session-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const sessionId = btn.getAttribute('data-session-id');
+          if (confirm('هل أنت متأكد أنك تريد حذف هذا الموعد؟')) {
+            try {
+              const response = await fetch(`/api/sessions/delete/${sessionId}`, {
+                method: 'DELETE',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'CSRF-Token': '<%= csrfToken %>'
+                }
+              });
+
+              const data = await response.json();
+              if (data.success) {
+                alert('تم حذف الموعد بنجاح');
+                window.location.reload();
+              } else {
+                alert(data.message || 'حدث خطأ أثناء حذف الموعد');
+              }
+            } catch (error) {
+              console.error('Error deleting session:', error);
+              alert('حدث خطأ أثناء حذف الموعد');
+            }
+          }
+        });
+      });
+
       socket.on('sessionStarted', (data) => {
         const notification = document.getElementById('notification');
         notification.textContent = `الجلسة مع المريض بدأت الآن!`;
@@ -160,17 +231,16 @@
         window.location.reload();
       });
 
-      
       setInterval(() => {
-  fetch('/api/sessions/check-completed')
-    .then(response => response.json())
-    .then(data => {
-      if (data.updated) {
-        window.location.reload();
-      }
-    })
-    .catch(error => console.error('Error checking sessions:', error));
-}, 60000);
+        fetch('/api/sessions/check-completed')
+          .then(response => response.json())
+          .then(data => {
+            if (data.updated) {
+              window.location.reload();
+            }
+          })
+          .catch(error => console.error('Error checking sessions:', error));
+      }, 60000);
     });
   </script>
 </body>
