@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الملف الشخصي - عيادتي</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <%- include('headerpatient') %>
+    
+    <div class="profile-container">
+        <h1>الملف الشخصي</h1>
+        <div class="profile-info">
+            <h2>اسم المريض: <%= patient.name %></h2>
+            <p>البريد الإلكتروني: <%= patient.email %></p>
+            <p>رقم الهاتف: <%= patient.phone %></p>
+            <p>تاريخ الميلاد: <%= patient.birthdate %></p>
+            <p>العنوان: <%= patient.address %></p>
+        </div>
+    </div>
+
+    <script>
+        // Any necessary JavaScript can go here
+    </script>
+</body>
+</html>
