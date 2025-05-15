@@ -1,8 +1,12 @@
-
 <!-- node-project\views\doctor-login.ejs file-->
 <%- include('header', { title: 'تسجيل دخول الطبيب' }) %>
 <div class="content" style="width: 500px; margin: 50px auto; background-color: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); text-align: center;">
     <h2 style="margin-bottom: 20px;">تسجيل دخول الطبيب</h2>
+    <% if (error) { %>
+        <div style="background: #ffeaea; color: #d8000c; border: 1px solid #d8000c; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+            <%= error %>
+        </div>
+    <% } %>
     <form action="/doctor/login" method="post" onsubmit="return validateLoginForm()">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <input type="text" name="username" placeholder="اسم المستخدم" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px;" required>
@@ -11,13 +15,9 @@
             <input type="checkbox" name="rememberMe" id="rememberMe">
             <label for="rememberMe">تذكرني</label>
         </div>
-      
         <button type="submit" id="submitButton" style="width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">تسجيل الدخول</button>
         <div id="loadingSpinner" style="display: none; margin-top: 10px;">جاري التحميل...</div>
     </form>
-    <% if (error) { %>
-        <p style="color: red; margin-top: 10px;"><%= error %></p>
-    <% } %>
 </div>
 
 <script>
