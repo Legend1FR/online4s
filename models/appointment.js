@@ -30,10 +30,30 @@ const appointmentSchema = new mongoose.Schema({
         required: [true, 'وقت الموعد مطلوب'],
         match: [/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/, 'تنسيق الوقت غير صحيح']
     },
+    diagnosis: { 
+        type: String, 
+        trim: true,
+        maxlength: [1000, 'التشخيص يجب ألا يتجاوز 1000 حرف']
+    },
+    prescription: { 
+        type: String, 
+        trim: true,
+        maxlength: [1000, 'الوصفة يجب ألا تتجاوز 1000 حرف']
+    },
+    nutrition: { 
+        type: String, 
+        trim: true,
+        maxlength: [1000, 'التوصيات الغذائية يجب ألا تتجاوز 1000 حرف']
+    },
     notes: { 
         type: String, 
         trim: true,
         maxlength: [500, 'الملاحظات يجب ألا تتجاوز 500 حرف']
+    },
+    followUp: {
+        active: { type: Boolean, default: false },
+        start: { type: Date },
+        days: { type: Number, default: 7 }
     },
     status: {
         type: String,
@@ -50,23 +70,21 @@ const appointmentSchema = new mongoose.Schema({
         enum: ['محفظة', null],
         default: null
     },
-   // في ملف models/appointment.js
-// تحديث مخطط paymentDetails لجعله غير مطلوب عند الإنشاء
-paymentDetails: {
-    amount: {
-      type: Number,
-      required: function() { return this.paymentMethod === 'محفظة'; }
+    paymentDetails: {
+        amount: {
+            type: Number,
+            required: function() { return this.paymentMethod === 'محفظة'; }
+        },
+        method: {
+            type: String,
+            enum: ['wallet'],
+            default: 'wallet'
+        },
+        transactionId: {
+            type: String,
+            required: function() { return this.paymentMethod === 'محفظة'; }
+        }
     },
-    method: {
-      type: String,
-      enum: ['wallet'],
-      default: 'wallet'
-    },
-    transactionId: {
-      type: String,
-      required: function() { return this.paymentMethod === 'محفظة'; }
-    }
-  },
     amountPaid: {
         type: Number,
         default: 0
@@ -75,6 +93,20 @@ paymentDetails: {
         type: String,
         trim: true,
         maxlength: [200, 'سبب الإلغاء يجب ألا يتجاوز 200 حرف']
+    },
+    cancelledAt: {
+        type: Date
+    },
+    refundAmount: {
+        type: Number
+    },
+    restrictionApplied: {
+        type: Boolean,
+        default: false
+    },
+    remainingTime: { // الحقل الجديد لتخزين الوقت المتبقي
+        type: Number,
+        default: 0
     },
     chatHistory: [{
         sender: String,
@@ -119,16 +151,7 @@ appointmentSchema.index(
     { doctor: 1, date: 1, time: 1 }, 
     { unique: true, partialFilterExpression: { status: { $ne: 'ملغي' } } }
 );
-appointmentSchema.pre('save', async function(next) {
-    if (this.isNew) {
-        this.paymentDetails = {
-            amount: this.amountPaid,
-            method: 'wallet',
-            transactionId: `APPT-${Date.now()}`
-        };
-    }
-    next();
-});
+
 // Pre-save validation
 appointmentSchema.pre('save', async function(next) {
     const doctor = await Doctor.findById(this.doctor);
@@ -145,36 +168,42 @@ appointmentSchema.pre('save', async function(next) {
     }
     
     // Handle payment status
-    if (this.paymentMethod === 'إلكتروني' && this.isNew) {
+    if (this.paymentMethod === 'محفظة' && this.isNew) {
         this.status = 'قيد الانتظار'; // سيتم التأكيد بعد اكتمال الدفع
         this.paymentStatus = 'معلق';
-    } else if (this.paymentMethod === 'محفظة' && this.isNew) {
-        this.status = 'قيد الانتظار';
-        this.paymentStatus = 'معلق';
+  
     }
     
     this.updatedAt = Date.now();
     next();
 });
+
+// Virtuals
 appointmentSchema.virtual('payment', {
     ref: 'Payment',
     localField: '_id',
     foreignField: 'appointment',
     justOne: true
 });
-// Virtual for formatted date
+
+appointmentSchema.virtual('rating', {
+    ref: 'Rating',
+    localField: '_id',
+    foreignField: 'appointment',
+    justOne: true
+});
+
 appointmentSchema.virtual('formattedDate').get(function() {
     return this.date.toLocaleDateString('ar-EG');
 });
 
-// Method to start session
+// Methods
 appointmentSchema.methods.startSession = async function() {
     this.sessionStartedAt = new Date();
     this.status = 'قيد الانتظار';
     await this.save();
 };
 
-// Method to request session end
 appointmentSchema.methods.requestEndSession = async function(userType) {
     if (this.status === 'مكتمل') {
         return { success: false, error: 'الجلسة منتهية بالفعل' };
@@ -194,15 +223,7 @@ appointmentSchema.methods.requestEndSession = async function(userType) {
         requestedBy: userType
     };
 };
-// إضافة هذا بعد تعريف السكيما
-appointmentSchema.virtual('rating', {
-    ref: 'Rating',
-    localField: '_id',
-    foreignField: 'appointment',
-    justOne: true
-});
-// Method to approve session end
-// Method to approve session end
+
 appointmentSchema.methods.approveEndSession = async function() {
     this.sessionEndedAt = new Date();
     this.status = 'مكتمل';
