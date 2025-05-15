@@ -496,7 +496,7 @@
         let peerConnection;
         let localStream;
         let connectionTimeout;
-        let isVideoEnabled = true;
+        let isVideoEnabled = false; // اجعل الفيديو مغلقًا افتراضيًا
         let isAudioEnabled = true;
         let isFullscreen = false;
         let isResizing = false;
@@ -729,7 +729,7 @@
             
           
             localStream = await navigator.mediaDevices.getUserMedia({
-              video: true,
+              video: true, // تعطيل الفيديو افتراضيًا
               audio: {
                 echoCancellation: true,
                 noiseSuppression: true,
@@ -962,6 +962,17 @@
               isVideoEnabled = videoTrack.enabled;
               toggleVideoBtn.innerHTML = `<i class="fas ${isVideoEnabled ? 'fa-video' : 'fa-video-slash'}"></i>`;
               toggleVideoBtn.title = isVideoEnabled ? 'إيقاف الفيديو' : 'تشغيل الفيديو';
+            } else if (!isVideoEnabled) {
+              // إذا لم يكن هناك مسار فيديو، قم بتمكين الفيديو
+              navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
+                const videoTrack = stream.getVideoTracks()[0];
+                localStream.addTrack(videoTrack);
+                localVideo.srcObject = localStream;
+                videoTrack.enabled = true;
+                isVideoEnabled = true;
+                toggleVideoBtn.innerHTML = `<i class="fas fa-video"></i>`;
+                toggleVideoBtn.title = 'إيقاف الفيديو';
+              });
             }
           }
         });
