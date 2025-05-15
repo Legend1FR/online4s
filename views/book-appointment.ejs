@@ -80,6 +80,14 @@
             margin-bottom: 1.5rem;
             border: 1px solid #e2e8f0;
         }
+        .badge-cancelled {
+            background-color: #fef3c7;
+            color: #92400e;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -172,13 +180,24 @@
 
             <% if (locals.existingAppointment && existingAppointment.status !== 'مكتمل') { %>
             <div class="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 mb-6 rounded-r">
-                <h3 class="font-bold mb-2">لديك موعد محجز مسبقاً مع هذا الطبيب</h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <p><i class="far fa-calendar-alt ml-2"></i> <%= new Date(existingAppointment.date).toLocaleDateString('ar-EG') %></p>
-                    <p><i class="far fa-clock ml-2"></i> <%= existingAppointment.time %></p>
-                    <p><i class="fas fa-info-circle ml-2"></i> الحالة: <%= existingAppointment.status %></p>
-                    <% if (existingAppointment.paymentStatus) { %>
-                        <p><i class="fas fa-money-bill-wave ml-2"></i> حالة الدفع: <%= existingAppointment.paymentStatus %></p>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="font-bold mb-2">لديك موعد محجز مسبقاً مع هذا الطبيب</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <p><i class="far fa-calendar-alt ml-2"></i> <%= new Date(existingAppointment.date).toLocaleDateString('ar-EG') %></p>
+                            <p><i class="far fa-clock ml-2"></i> <%= existingAppointment.time %></p>
+                            <p><i class="fas fa-info-circle ml-2"></i> الحالة: <%= existingAppointment.status %></p>
+                            <% if (existingAppointment.paymentStatus) { %>
+                                <p><i class="fas fa-money-bill-wave ml-2"></i> حالة الدفع: <%= existingAppointment.paymentStatus %></p>
+                            <% } %>
+                        </div>
+                    </div>
+                    <% if (existingAppointment.status !== 'ملغي') { %>
+                        <button id="cancelAppointmentBtn" 
+                                class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+                                data-appointment-id="<%= existingAppointment._id %>">
+                            إلغاء الموعد
+                        </button>
                     <% } %>
                 </div>
             </div>
@@ -236,7 +255,7 @@
                         <textarea id="notes" name="notes" rows="3"
                             class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
                             placeholder="أي ملاحظات تريد إضافتها..."
-                            <%= locals.existingAppointment && existingAppointment.status !== 'مكتمل' || !doctor.acceptingAppointments || patient.wallet.balance < APPOINTMENT_PRICE ? 'disabled' : '' %>></textarea>
+                            <%= locals.existingAppointment && existingAppointment.status !== 'مكتمل' || !doctor.acceptingAppointments || patient.wallet.balance < APPOINTMENT_PRICE ? 'disabled' : %>></textarea>
                     </div>
                     
                     <!-- زر الحجز -->
@@ -378,6 +397,7 @@
         </div>
     </div>
 
+<<<<<<< HEAD
     <!-- نموذج تأكيد الإلغاء -->
     <div id="cancelModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
         <div class="bg-white rounded-xl p-6 w-full max-w-md">
@@ -397,6 +417,36 @@
             </div>
             <div class="flex justify-end space-x-3 rtl:space-x-reverse mt-6">
                 <button id="cancelCancelBtn" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+=======
+    <!-- نموذج إلغاء الموعد -->
+    <div id="cancelModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">إلغاء الموعد</h3>
+            
+            <div class="space-y-4">
+                <div class="bg-red-50 p-4 rounded-lg">
+                    <h4 class="font-bold text-red-700 mb-2">شروط الإلغاء:</h4>
+                    <ul class="list-disc list-inside text-red-700 space-y-1">
+                        <li>سيتم إرجاع 50% فقط من قيمة الحجز إلى محفظتك</li>
+                        <li>لن تتمكن من حجز موعد جديد مع هذا الطبيب قبل 24 ساعة</li>
+                        <li>سيتم إخطار الطبيب بإلغاء الموعد</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <label for="cancelReason" class="block text-gray-700 font-medium mb-2">سبب الإلغاء:</label>
+                    <textarea id="cancelReason" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-200 focus:border-red-500" placeholder="الرجاء ذكر سبب الإلغاء..."></textarea>
+                </div>
+                
+                <div class="flex items-center">
+                    <input type="checkbox" id="agreeTerms" class="mr-2">
+                    <label for="agreeTerms" class="text-gray-700">أوافق على شروط الإلغاء</label>
+                </div>
+            </div>
+            
+            <div class="flex justify-end space-x-3 rtl:space-x-reverse mt-6">
+                <button id="closeCancelModal" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+>>>>>>> a7a5b16802c9127625fa8133dee330a4d940ef88
                     رجوع
                 </button>
                 <button id="confirmCancelBtn" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center" disabled>
@@ -425,6 +475,7 @@
             const cancelModal = document.getElementById('cancelModal');
             const confirmBookingBtn = document.getElementById('confirmBookingBtn');
             const cancelBookingBtn = document.getElementById('cancelBookingBtn');
+<<<<<<< HEAD
 
             // إضافة الأكواد الجديدة
             document.getElementById('cancelAppointmentBtn').addEventListener('click', function() {
@@ -476,6 +527,15 @@
                 }
             });
 
+=======
+            const cancelAppointmentBtn = document.getElementById('cancelAppointmentBtn');
+            const cancelModal = document.getElementById('cancelModal');
+            const closeCancelModal = document.getElementById('closeCancelModal');
+            const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+            const agreeTerms = document.getElementById('agreeTerms');
+            const cancelReason = document.getElementById('cancelReason');
+            
+>>>>>>> a7a5b16802c9127625fa8133dee330a4d940ef88
             // تهيئة منتقي التاريخ
             const datePicker = flatpickr(dateInput, {
                 locale: 'ar',
@@ -568,6 +628,65 @@
                 confirmationModal.classList.add('hidden');
             });
 
+            // إلغاء الموعد الموجود
+            if (cancelAppointmentBtn) {
+                cancelAppointmentBtn.addEventListener('click', function() {
+                    cancelModal.classList.remove('hidden');
+                });
+            }
+
+            closeCancelModal.addEventListener('click', function() {
+                cancelModal.classList.add('hidden');
+            });
+
+            agreeTerms.addEventListener('change', function() {
+                confirmCancelBtn.disabled = !this.checked || cancelReason.value.trim() === '';
+            });
+
+            cancelReason.addEventListener('input', function() {
+                confirmCancelBtn.disabled = !agreeTerms.checked || this.value.trim() === '';
+            });
+
+            confirmCancelBtn.addEventListener('click', async function() {
+                const appointmentId = cancelAppointmentBtn.getAttribute('data-appointment-id');
+                const reason = cancelReason.value.trim();
+                
+                if (!reason) {
+                    showError('الرجاء إدخال سبب الإلغاء');
+                    return;
+                }
+                
+                try {
+                    confirmCancelBtn.disabled = true;
+                    document.getElementById('confirmCancelText').classList.add('hidden');
+                    document.getElementById('confirmCancelSpinner').classList.remove('hidden');
+                    
+                    const response = await axios.post('/cancel-appointment', {
+                        appointmentId,
+                        reason,
+                        _csrf: '<%= csrfToken %>'
+                    });
+                    
+                    if (response.data.success) {
+                        showSuccess('تم إلغاء الموعد بنجاح');
+                        cancelModal.classList.add('hidden');
+                        
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        throw new Error(response.data.message || 'حدث خطأ أثناء الإلغاء');
+                    }
+                } catch (error) {
+                    console.error('Error cancelling appointment:', error);
+                    showError(error.response?.data?.message || error.message);
+                    
+                    confirmCancelBtn.disabled = false;
+                    document.getElementById('confirmCancelText').classList.remove('hidden');
+                    document.getElementById('confirmCancelSpinner').classList.add('hidden');
+                }
+            });
+
             // تحميل الأوقات المتاحة
             async function loadAvailableSlots(doctorId, date, patientId) {
                 try {
@@ -634,7 +753,7 @@
                         this.classList.add('bg-blue-500', 'text-white');
                         document.getElementById('selectedTime').value = this.dataset.time24;
                     });
-                    
+                
                     timeSlotsContainer.appendChild(slotElement);
                 });
             }
@@ -674,8 +793,6 @@
                     setTimeout(() => successToast.classList.add('hidden'), 300);
                 }, 5000);
             }
-
-            
         });
     </script>
 </body>
