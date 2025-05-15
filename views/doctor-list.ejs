@@ -5,70 +5,180 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>قائمة الأطباء</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
-        body { background-color: #f5f5f5; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .header { margin-bottom: 20px; }
-        .header h1 { font-size: 24px; color: #333; }
-        .search-section { display: flex; gap: 15px; margin-bottom: 30px; }
-        select, input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; outline: none; }
-        .search-box { flex: 1; position: relative; }
-        .search-box input { width: 100%; padding-right: 35px; }
-        .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #666; }
-        .doctors-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
-        .doctor-card { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: transform 0.2s; }
-        .doctor-card:hover { transform: translateY(-5px); }
-        .doctor-image { width: 100%; height: 200px; border-radius: 8px; object-fit: cover; margin-bottom: 15px; }
-        .doctor-name { font-size: 16px; font-weight: bold; color: #333; margin-bottom: 5px; }
-        .doctor-specialty { font-size: 14px; color: #666; }
-        .doctor-rating { display: flex; align-items: center; margin: 5px 0; }
-        .stars { color: #ffc107; direction: ltr; unicode-bidi: bidi-override; }
-        .rating-count { font-size: 12px; color: #888; margin-right: 5px; }
-        .book-btn { 
-            display: inline-block; 
-            margin-top: 10px; 
-            padding: 8px 15px; 
-            background-color: #4CAF50; 
-            color: white; 
-            text-decoration: none; 
-            border-radius: 5px; 
-            text-align: center; 
-            transition: background-color 0.3s; 
+        /* Reset & Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Tajawal', sans-serif;
         }
-        .book-btn:hover { background-color: #45a049; }
-        .breadcrumb { display: flex; gap: 8px; margin-bottom: 20px; color: #666; }
-        .breadcrumb a { color: #4a90e2; text-decoration: none; }
-        .no-doctors { text-align: center; padding: 20px; color: #666; }
+
+        body {
+            background-color: #f8fafc;
+            color: #1e293b;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .search-section {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        select, input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            outline: none;
+        }
+
+        .search-box {
+            flex: 1;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding-right: 35px;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+        }
+
+        .doctors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .doctor-card {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+
+        .doctor-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .doctor-image {
+            width: 100%;
+            height: 200px;
+            border-radius: 8px;
+            object-fit: cover;
+            margin-bottom: 15px;
+        }
+
+        .doctor-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .doctor-specialty {
+            font-size: 14px;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .doctor-rating {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+
+        .stars {
+            color: #ffc107;
+            direction: ltr;
+            unicode-bidi: bidi-override;
+        }
+
+        .rating-count {
+            font-size: 12px;
+            color: #888;
+            margin-right: 5px;
+        }
+
+        .book-btn {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 8px 15px;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            text-align: center;
+            transition: background-color 0.3s;
+        }
+
+        .book-btn:hover {
+            background-color: #45a049;
+        }
+
+        .no-doctors {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .error-message {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            margin: 1rem auto;
+            max-width: 800px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .error-icon {
+            font-size: 1.5rem;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <div class="breadcrumb">
-                <a href="#">القسم</a>
-                <span>></span>
-                <span>قائمة الأطباء</span>
-            </div>
-        </div>
-
         <div class="search-section">
             <select id="specialization-filter">
                 <option value="all">الكل</option>
-                <option value="Cardiology">Cardiology</option>
-                <option value="Orthopedics">Orthopedics</option>
-                <option value="Dermatology">Dermatology</option>
-                <option value="Pediatrics">Pediatrics</option>
-                <option value="Internal Medicine">Internal Medicine</option>
-                <option value="Psychiatry">Psychiatry</option>
-                <option value="Obstetrics and Gynecology">Obstetrics and Gynecology</option>
-                <option value="Neurology">Neurology</option>
-                <option value="General Practice">General Practice</option>
-                <option value="Dentistry">Dentistry</option>
+                <option value="Cardiology">القلب <i class="fas fa-heartbeat"></i></option>
+                <option value="Orthopedics">العظام <i class="fas fa-bone"></i></option>
+                <option value="Dermatology">الجلدية <i class="fas fa-sun"></i></option>
+                <option value="Pediatrics">الأطفال <i class="fas fa-child"></i></option>
+                <option value="Internal Medicine">الباطنية <i class="fas fa-stethoscope"></i></option>
+                <option value="Psychiatry">الطب النفسي <i class="fas fa-brain"></i></option>
+                <option value="Obstetrics and Gynecology">النساء والتوليد <i class="fas fa-baby"></i></option>
+                <option value="Neurology">الأعصاب <i class="fas fa-brain"></i></option>
+                <option value="General Practice">الطب العام <i class="fas fa-user-md"></i></option>
+                <option value="Dentistry">الأسنان <i class="fas fa-tooth"></i></option>
             </select>
             <div class="search-box">
                 <input type="text" id="search-input" placeholder="ابحث عن اسم الطبيب">
-                <span class="search-icon">🔍</span>
+                <span class="search-icon"><i class="fas fa-search"></i></span>
             </div>
         </div>
 
@@ -80,8 +190,14 @@
                 %>
                     <div class="doctor-card" data-specialization="<%= doctor.specialization %>">
                         <img src="<%= doctor.profileImage || '/images/default-doctor.jpg' %>" alt="<%= doctor.username %>" class="doctor-image">
-                        <div class="doctor-name"><%= doctor.username %></div>
-                        <div class="doctor-specialty"><%= doctor.specialization || 'غير محدد' %></div>
+                        <div class="doctor-name">
+                            <i class="fas fa-user-md"></i>
+                            <%= doctor.username %>
+                        </div>
+                        <div class="doctor-specialty">
+                            <i class="fas fa-stethoscope"></i>
+                            <%= doctor.specialization || 'غير محدد' %>
+                        </div>
                         <div class="doctor-rating">
                             <div class="stars" title="<%= avgRating.toFixed(1) %> من 5">
                                 <% for (let i = 1; i <= 5; i++) { %>
@@ -94,46 +210,41 @@
                             </div>
                             <span class="rating-count">(<%= doctor.ratings ? doctor.ratings.length : 0 %>)</span>
                         </div>
-                        <a href="/book-appointment/<%= doctor._id %>" class="book-btn">حجز موعد</a>
+                        <a href="/book-appointment/<%= doctor._id %>" class="book-btn">
+                            <i class="fas fa-calendar-check"></i> حجز موعد
+                        </a>
                     </div>
                 <% }); %>
             <% } else { %>
                 <div class="no-doctors">
-                    <p>لا يوجد أطباء متاحين حالياً</p>
+                    <p><i class="fas fa-exclamation-circle"></i> لا يوجد أطباء متاحين حالياً</p>
                 </div>
             <% } %>
         </div>
     </div>
 
     <script>
-        document.getElementById('specialization-filter').addEventListener('change', function() {
-            const selectedSpecialization = this.value;
+        document.addEventListener('DOMContentLoaded', () => {
+            const specializationFilter = document.getElementById('specialization-filter');
+            const searchInput = document.getElementById('search-input');
             const doctorCards = document.querySelectorAll('.doctor-card');
 
-            doctorCards.forEach(card => {
-                const cardSpecialization = card.getAttribute('data-specialization');
-                if (selectedSpecialization === 'all' || cardSpecialization === selectedSpecialization) {
-                    card.style.display = 'block';
-                } else {
-                    card.style.display = 'none';
-                }
+            specializationFilter.addEventListener('change', () => {
+                const selectedSpecialization = specializationFilter.value;
+                doctorCards.forEach(card => {
+                    const cardSpecialization = card.getAttribute('data-specialization');
+                    card.style.display = (selectedSpecialization === 'all' || cardSpecialization === selectedSpecialization) ? 'block' : 'none';
+                });
             });
-        });
 
-        document.getElementById('search-input').addEventListener('input', function() {
-            const searchQuery = this.value.toLowerCase();
-            const doctorCards = document.querySelectorAll('.doctor-card');
-
-            doctorCards.forEach(card => {
-                const doctorName = card.querySelector('.doctor-name').textContent.toLowerCase();
-                if (doctorName.includes(searchQuery)) {
-                    card.style.display = 'block';
-                } else {
-                    card.style.display = 'none';
-                }
+            searchInput.addEventListener('input', () => {
+                const searchQuery = searchInput.value.toLowerCase();
+                doctorCards.forEach(card => {
+                    const doctorName = card.querySelector('.doctor-name').textContent.toLowerCase();
+                    card.style.display = doctorName.includes(searchQuery) ? 'block' : 'none';
+                });
             });
         });
     </script>
 </body>
 </html>
-<%- include('footerpatient') %>
