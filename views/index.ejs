@@ -1,10 +1,10 @@
-
 <%- include('headerpatient') %>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
     <style>
         /* Reset & Base Styles */
         * {
@@ -170,7 +170,7 @@
         
         .doctor-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 15px -1px rgba(0, 0, 0, 0.1);
         }
         
         .doctor-img-container {
@@ -373,6 +373,23 @@
             padding: 2rem;
             color: #64748b;
         }
+
+        /* Swiper custom styles */
+        .swiper {
+            padding-bottom: 3rem;
+            direction: rtl;
+        }
+        .swiper-slide {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .swiper-button-next, .swiper-button-prev {
+            color: #3b82f6;
+        }
+        .swiper-pagination-bullet-active {
+            background: #3b82f6;
+        }
     </style>
 
 
@@ -403,41 +420,59 @@
                 <i class="fas fa-exclamation-circle error-icon"></i>
                 <div>
                     <h3><%= error.title || 'حدث خطأ' %></h3>
-                    <p><%= error.message || 'حدث خطأ أثناء جلب بيانات الأطباء' %></p>
+                    <p><%= error.message || 'حدث خطأ أثناء جلب التقييمات' %></p>
                 </div>
             </div>
         <% } %>
 
-        <!-- Doctors Section -->
-        <section class="doctors-section">
+        <!-- Ratings Slider Section -->
+        <section class="ratings-section" style="padding: 4rem 1rem; max-width: 900px; margin: 0 auto;">
             <div class="section-title">
-                <h2>أطباؤنا المتخصصون</h2>
+                <h2>آراء العملاء في أطبائنا</h2>
             </div>
-
-            <% if (doctors && doctors.length > 0) { %>
-                <div class="doctors-grid">
-                    <% doctors.forEach(doctor => { %>
-                        <div class="doctor-card">
-                            <div class="doctor-img-container">
-                                <img src="<%= doctor.profileImage || '/images/default-doctor.jpg' %>" alt="<%= doctor.username %>" class="doctor-img">
+            <% if (recentRatings && recentRatings.length > 0) { %>
+                <!-- Swiper -->
+                <div class="swiper mySwiper">
+                    <div class="swiper-wrapper">
+                        <% recentRatings.forEach(rating => { %>
+                            <div class="swiper-slide">
+                                <div class="rating-card" style="background:#fff;border-radius:1rem;box-shadow:0 4px 16px rgba(59,130,246,0.08);padding:2rem;text-align:center;min-height:270px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                                    <img src="<%= rating.doctor.profileImage || '/images/default-doctor.jpg' %>" alt="د. <%= rating.doctor.username %>" style="width:70px;height:70px;border-radius:50%;border:3px solid #3b82f6;margin-bottom:1rem;">
+                                    <div style="font-weight:bold;color:#2563eb;font-size:1.1rem;margin-bottom:0.3rem;">
+                                        د. <%= rating.doctor.username %>
+                                    </div>
+                                    <div style="color:#64748b;font-size:0.97rem;margin-bottom:0.5rem;">
+                                        بواسطة 
+                                        <span style="font-weight:500;">
+                                            <%= rating.patient && rating.patient.name ? rating.patient.name : 'مريض مجهول' %>
+                                        </span>
+                                    </div>
+                                    <div class="stars" style="color:#ffc107;font-size:1.3rem;margin-bottom:0.5rem;">
+                                        <% for(let i=1; i<=5; i++) { %>
+                                            <i class="fa-star <%= i <= rating.rating ? 'fas' : 'far' %>"></i>
+                                        <% } %>
+                                    </div>
+                                    <% if (rating.comment) { %>
+                                        <div style="color:#334155;font-size:1rem;margin-top:0.5rem;">
+                                            <i class="fas fa-quote-right" style="color:#3b82f6;margin-left:5px;"></i>
+                                            <%= rating.comment %>
+                                        </div>
+                                    <% } %>
+                                </div>
                             </div>
-                            <div class="doctor-info">
-                                <h3 class="doctor-name"><%= doctor.username %></h3>
-                                <p class="doctor-specialty"><%= doctor.specialization %></p>
-                                <% if (patient) { %>
-                                    <a href="/request-session?doctor=<%= doctor._id %>" class="btn-book">حجز موعد</a>
-                                <% } else { %>
-                                    <a href="/signUp" class="btn-book">سجل للبدء</a>
-                                <% } %>
-                            </div>
-                        </div>
-                    <% }); %>
+                        <% }); %>
+                    </div>
+                    <!-- Add Pagination -->
+                    <div class="swiper-pagination"></div>
+                    <!-- Add Navigation -->
+                    <div class="swiper-button-next"></div>
+                    <div class="swiper-button-prev"></div>
                 </div>
             <% } else if (!error) { %>
                 <div class="empty-state">
-                    <i class="fas fa-user-md" style="font-size: 3rem; color: #94a3b8; margin-bottom: 1rem;"></i>
-                    <h3>لا يوجد أطباء متاحين حالياً</h3>
-                    <p>سنقوم بإضافة أطباء جدد قريباً</p>
+                    <i class="fas fa-star" style="font-size: 3rem; color: #94a3b8; margin-bottom: 1rem;"></i>
+                    <h3>لا توجد تقييمات بعد</h3>
+                    <p>سيتم عرض تقييمات المرضى قريباً</p>
                 </div>
             <% } %>
         </section>
@@ -470,12 +505,49 @@
                         <h3 class="feature-title">دعم فني</h3>
                         <p>متاح على مدار الساعة لمساعدتك</p>
                     </div>
+                    <!-- New Features -->
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                        <h3 class="feature-title">أمان البيانات</h3>
+                        <p>يتم استخدام تقنيات حديثة مثل التشفير (JWT) لحماية بيانات المرضى وضمان الخصوصية.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-mobile-alt"></i>
+                        </div>
+                        <h3 class="feature-title">سهولة الاستخدام</h3>
+                        <p>واجهة مستخدم بسيطة وسهلة الاستخدام تتيح للمرضى حجز المواعيد وإدارة حساباتهم بسهولة.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-bell"></i>
+                        </div>
+                        <h3 class="feature-title">تنبيهات فورية</h3>
+                        <p>يتم إرسال إشعارات فورية عبر البريد الإلكتروني أو النظام عند تأكيد المواعيد أو تحديثها.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <h3 class="feature-title">إدارة المواعيد بكفاءة</h3>
+                        <p>إمكانية إلغاء المواعيد أو تعديلها بسهولة مع استرداد جزئي للرسوم عند الإلغاء.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <h3 class="feature-title">تقييم الأطباء</h3>
+                        <p>يمكن للمرضى الاطلاع على تقييمات الأطباء من مرضى آخرين لاتخاذ قرارات مستنيرة.</p>
+                    </div>
                 </div>
             </div>
         </section>
     </main>
 
 
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
     <script>
         // Hide loading indicator when page is fully loaded
         window.addEventListener('load', function() {
@@ -510,6 +582,33 @@
                 } catch (error) {
                     console.error('Socket initialization error:', error);
                 }
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (document.querySelector('.mySwiper')) {
+                new Swiper('.mySwiper', {
+                    slidesPerView: 1,
+                    spaceBetween: 30,
+                    loop: true,
+                    autoplay: {
+                        delay: 3500,
+                        disableOnInteraction: false
+                    },
+                    pagination: {
+                        el: '.swiper-pagination',
+                        clickable: true,
+                    },
+                    navigation: {
+                        nextEl: '.swiper-button-next',
+                        prevEl: '.swiper-button-prev',
+                    },
+                    breakpoints: {
+                        640: { slidesPerView: 1 },
+                        768: { slidesPerView: 2 },
+                        1024: { slidesPerView: 3 }
+                    }
+                });
             }
         });
     </script>
