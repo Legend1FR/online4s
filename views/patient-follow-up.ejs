@@ -1,0 +1,153 @@
+<%- include('headerpatient') %>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>مراجعاتي النشطة</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .chat-container { max-width: 600px; margin: 0 auto; }
+    .messages { height: 300px; overflow-y: auto; background: #f9f9f9; border-radius: 8px; padding: 10px; }
+    .input-area { display: flex; gap: 8px; margin-top: 10px; }
+    .message-bubble { margin-bottom: 8px; padding: 8px 12px; border-radius: 12px; background: #e0e7ff; }
+    .message-bubble.doctor { background: #c7f0d8; text-align: left; }
+    .message-bubble.patient { background: #f0d8c7; text-align: right; }
+  </style>
+</head>
+<body class="bg-gray-100 font-sans">
+  <div class="container mx-auto p-6">
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+      <h2 class="text-2xl font-bold text-blue-700 mb-4"><i class="fas fa-user-clock ml-2"></i> مراجعاتي النشطة</h2>
+      <% if (followUps && followUps.length > 0) { %>
+        <% followUps.forEach(fu => { %>
+          <% 
+            let remaining = '';
+            if (fu.expiresAt && fu.createdAt) {
+              const end = new Date(fu.expiresAt);
+              const now = new Date();
+              const diff = end - now;
+              if (diff > 0) {
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+                const mins = Math.floor((diff / (1000 * 60)) % 60);
+                remaining = `${days > 0 ? days + ' يوم ' : ''}${hours > 0 ? hours + ' ساعة ' : ''}${mins > 0 ? mins + ' دقيقة ' : ''}متبقية`;
+              } else {
+                remaining = 'انتهت المراجعة';
+              }
+            }
+          %>
+          <div class="bg-gray-50 rounded-lg p-4 shadow mb-8">
+            <div class="flex items-center mb-2">
+              <img src="<%= fu.doctor && fu.doctor.profileImage ? fu.doctor.profileImage : '/images/default-doctor.jpg' %>" class="w-12 h-12 rounded-full ml-3">
+              <div>
+                <div class="font-bold text-blue-800">
+                  <%= fu.doctor && fu.doctor.username ? fu.doctor.username : 'طبيب غير معروف' %>
+                </div>
+                <div class="text-gray-600 text-sm">
+                  بداية المراجعة: <%= fu.createdAt ? new Date(fu.createdAt).toLocaleDateString('ar-EG') : '--' %>
+                </div>
+                <div class="text-gray-600 text-sm">
+                  نهاية المراجعة: <%= fu.expiresAt ? new Date(fu.expiresAt).toLocaleDateString('ar-EG') : '--' %>
+                </div>
+                <div class="text-indigo-700 text-sm mt-1">
+                  <i class="fas fa-hourglass-half"></i>
+                  <span><%= remaining %></span>
+                </div>
+                <% if (fu.diagnosis) { %>
+                  <div class="text-gray-700 text-sm mt-1">
+                    <i class="fas fa-notes-medical"></i>
+                    التشخيص: <%= fu.diagnosis.length > 40 ? fu.diagnosis.substring(0, 40) + '...' : fu.diagnosis %>
+                  </div>
+                <% } %>
+                <% if (fu.prescription) { %>
+                  <div class="text-gray-700 text-sm mt-1">
+                    <i class="fas fa-prescription-bottle-alt"></i>
+                    الوصفة: <%= fu.prescription.length > 40 ? fu.prescription.substring(0, 40) + '...' : fu.prescription %>
+                  </div>
+                <% } %>
+              </div>
+            </div>
+            <!-- واجهة الدردشة -->
+            <div class="chat-container" id="chat-<%= fu._id %>">
+              <div class="messages" id="messages-<%= fu._id %>"></div>
+              <div class="input-area">
+                <input type="text" id="input-<%= fu._id %>" class="flex-1 border rounded px-2" placeholder="اكتب رسالة...">
+                <input type="file" id="file-<%= fu._id %>" style="display:none;">
+                <button onclick="document.getElementById('file-<%= fu._id %>').click()" class="bg-blue-500 text-white px-3 rounded"><i class="fas fa-paperclip"></i></button>
+                <button onclick="sendMessage('<%= fu._id %>')" class="bg-blue-600 text-white px-4 rounded">إرسال</button>
+              </div>
+            </div>
+          </div>
+        <% }); %>
+      <% } else { %>
+        <p class="text-gray-500 text-center">لا توجد مراجعات نشطة حالياً.</p>
+      <% } %>
+    </div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const patientId = "<%= patient._id %>";
+    <% if (followUps && followUps.length > 0) { followUps.forEach(fu => { %>
+      const followUpId = "<%= fu._id %>";
+      const socket<%= fu._id %> = io({ query: { followUpId, userType: 'patient', userId: patientId } });
+
+      // تحميل الرسائل القديمة
+      fetch(`/api/followup/<%= fu._id %>/messages`)
+        .then(res => res.json())
+        .then(data => {
+          const messagesDiv = document.getElementById('messages-<%= fu._id %>');
+          data.forEach(msg => {
+            const div = document.createElement('div');
+            div.className = 'message-bubble ' + msg.sender;
+            div.innerHTML = msg.type === 'file'
+              ? `<a href="${msg.fileData.fileUrl}" target="_blank">${msg.fileData.fileName}</a>`
+              : msg.message;
+            messagesDiv.appendChild(div);
+          });
+          messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        });
+
+      // استقبال رسالة جديدة
+      socket<%= fu._id %>.on('newMessage', msg => {
+        const messagesDiv = document.getElementById('messages-<%= fu._id %>');
+        const div = document.createElement('div');
+        div.className = 'message-bubble ' + msg.sender;
+        div.innerHTML = msg.type === 'file'
+          ? `<a href="${msg.fileData.fileUrl}" target="_blank">${msg.fileData.fileName}</a>`
+          : msg.message;
+        messagesDiv.appendChild(div);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      });
+
+      // إرسال رسالة نصية
+      window.sendMessage = function(followUpId) {
+        const input = document.getElementById('input-' + followUpId);
+        const msg = input.value.trim();
+        if (msg) {
+          socket<%= fu._id %>.emit('sendMessage', { followUpId, message: msg, type: 'text' });
+          input.value = '';
+        }
+      };
+
+      // إرسال ملف
+      document.getElementById('file-<%= fu._id %>').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('followUpId', followUpId);
+        formData.append('sender', 'patient');
+        fetch('/api/followup/upload-file', {
+          method: 'POST',
+          body: formData
+        }).then(res => res.json()).then(data => {
+          if (data.success) {
+            socket<%= fu._id %>.emit('sendMessage', { followUpId, type: 'file', fileData: data.fileData });
+          }
+        });
+      });
+    <% }); } %>
+  </script>
+</body>
+</html>
