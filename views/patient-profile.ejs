@@ -1,0 +1,89 @@
+<%- include('headerpatient') %>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>ملفي الشخصي</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 font-sans">
+  <div class="container mx-auto p-6">
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+      <div class="flex items-center">
+        <div class="profile-avatar" style="width:100px;height:100px;border-radius:50%;background:#3b82f6;color:#fff;display:flex;align-items:center;justify-content:center;font-size:3rem;font-weight:bold;">
+          <%= patient.name ? patient.name.charAt(0).toUpperCase() : '?' %>
+        </div>
+        <div>
+          <h2 class="text-2xl font-bold text-gray-800 mb-2"><%= patient.name %></h2>
+          <p class="text-gray-600 mb-1"><i class="fas fa-envelope ml-2"></i> <%= patient.email %></p>
+          <% if (patient.age) { %>
+            <p class="text-gray-600 mb-1"><i class="fas fa-birthday-cake ml-2"></i> العمر: <%= patient.age %></p>
+          <% } %>
+          <% if (patient.gender) { %>
+            <p class="text-gray-600 mb-1"><i class="fas fa-venus-mars ml-2"></i> الجنس: <%= patient.gender === 'male' ? 'ذكر' : patient.gender === 'female' ? 'أنثى' : patient.gender %></p>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-lg p-6">
+      <h3 class="text-xl font-bold text-blue-700 mb-4"><i class="fas fa-notes-medical ml-2"></i> آخر تشخيص ووصفة</h3>
+      <% var lastDiagnosis = typeof lastDiagnosis !== 'undefined' ? lastDiagnosis : null; %>
+      <!-- ...existing code... -->
+<% if (lastDiagnosis) { %>
+  <div class="mb-2">
+    <span class="font-semibold text-gray-700">تاريخ الجلسة:</span>
+    <span class="text-gray-600"><%= new Date(lastDiagnosis.date).toLocaleDateString('ar-EG') %></span>
+  </div>
+  <% if (lastDiagnosis.diagnosis) { %>
+    <div class="mb-2">
+      <span class="font-semibold text-gray-700">التشخيص:</span>
+      <span class="text-gray-600"><%= lastDiagnosis.diagnosis %></span>
+    </div>
+  <% } %>
+  <% if (lastDiagnosis.prescription) { %>
+    <div class="mb-2">
+      <span class="font-semibold text-gray-700">الوصفة الطبية:</span>
+      <span class="text-gray-600"><%= lastDiagnosis.prescription %></span>
+    </div>
+  <% } %>
+  <% if (lastDiagnosis.nutrition) { %>
+    <div class="mb-2">
+      <span class="font-semibold text-gray-700">التوصيات الغذائية:</span>
+      <span class="text-gray-600"><%= lastDiagnosis.nutrition %></span>
+    </div>
+  <% } %>
+  <% if (lastDiagnosis.notes) { %>
+    <div class="mb-2">
+      <span class="font-semibold text-gray-700">ملاحظات:</span>
+      <span class="text-gray-600"><%= lastDiagnosis.notes %></span>
+    </div>
+  <% } %>
+  <% if (lastDiagnosis.followUp && lastDiagnosis.followUp.days) { %>
+    <div class="mb-2">
+      <span class="font-semibold text-gray-700">مدة المراجعة:</span>
+      <span class="text-gray-600">
+        <%= lastDiagnosis.followUp.days %> يوم
+      </span>
+    </div>
+  <% } %>
+  <div class="mb-2">
+    <span class="font-semibold text-gray-700">الدكتور:</span>
+    <span class="text-gray-600"><%= lastDiagnosis.doctor ? lastDiagnosis.doctor.username : '' %></span>
+  </div>
+  <form method="POST" action="/patient/medical-record/<%= lastDiagnosis._id %>/pdf" class="mt-4">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded">
+      تحميل ملف PDF للسجل الطبي
+    </button>
+  </form>
+<% } else { %>
+  <p class="text-gray-500">لا يوجد تشخيص أو وصفة طبية مسجلة بعد.</p>
+<% } %>
+<!-- ...existing code... -->
+     
+  </div>
+</body>
+</html>
+<%- include('footerdoc') %>
