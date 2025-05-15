@@ -62,7 +62,7 @@ const appointmentSchema = new mongoose.Schema({
     },
     paymentStatus: {
         type: String,
-        enum: ['مدفوع', 'غير مدفوع', 'معلق'],
+        enum: ['مدفوع', 'غير مدفوع', 'معلق', 'مسترد جزئياً', 'مسترد بالكامل'],
         default: 'غير مدفوع'
     },
     paymentMethod: {
@@ -139,12 +139,21 @@ const appointmentSchema = new mongoose.Schema({
     updatedAt: { 
         type: Date, 
         default: Date.now 
+    },
+    refundAmount: {
+        type: Number,
+        default: 0
+    },
+    lastCancellationDate: {
+        type: Date
     }
 }, {
     timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true }
 });
+
+
 
 // Indexes
 appointmentSchema.index(
@@ -169,9 +178,14 @@ appointmentSchema.pre('save', async function(next) {
     
     // Handle payment status
     if (this.paymentMethod === 'محفظة' && this.isNew) {
+<<<<<<< HEAD
         this.status = 'قيد الانتظار'; // سيتم التأكيد بعد اكتمال الدفع
         this.paymentStatus = 'معلق';
   
+=======
+        this.status = 'قيد الانتظار';
+        this.paymentStatus = 'معلق';
+>>>>>>> a7a5b16802c9127625fa8133dee330a4d940ef88
     }
     
     this.updatedAt = Date.now();
@@ -186,6 +200,7 @@ appointmentSchema.virtual('payment', {
     justOne: true
 });
 
+<<<<<<< HEAD
 appointmentSchema.virtual('rating', {
     ref: 'Rating',
     localField: '_id',
@@ -193,10 +208,22 @@ appointmentSchema.virtual('rating', {
     justOne: true
 });
 
+=======
+>>>>>>> a7a5b16802c9127625fa8133dee330a4d940ef88
 appointmentSchema.virtual('formattedDate').get(function() {
     return this.date.toLocaleDateString('ar-EG');
 });
 
+<<<<<<< HEAD
+=======
+appointmentSchema.virtual('rating', {
+    ref: 'Rating',
+    localField: '_id',
+    foreignField: 'appointment',
+    justOne: true
+});
+
+>>>>>>> a7a5b16802c9127625fa8133dee330a4d940ef88
 // Methods
 appointmentSchema.methods.startSession = async function() {
     this.sessionStartedAt = new Date();
@@ -238,6 +265,51 @@ appointmentSchema.methods.approveEndSession = async function() {
         message: 'تم إنهاء الجلسة بنجاح',
         sessionId: this._id
     };
+};
+
+appointmentSchema.methods.cancelAppointment = async function(reason, refundPercentage = 0.5) {
+    if (this.status === 'ملغي') {
+        throw new Error('الموعد ملغي بالفعل');
+    }
+
+    if (this.status === 'مكتمل') {
+        throw new Error('لا يمكن إلغاء موعد مكتمل');
+    }
+
+    this.status = 'ملغي';
+    this.cancellationReason = reason;
+    this.updatedAt = new Date();
+
+    // Process refund if paid via wallet
+    if (this.paymentStatus === 'مدفوع' && this.paymentMethod === 'محفظة') {
+        const refundAmount = Math.floor(this.amountPaid * refundPercentage);
+        const patient = await Patient.findById(this.patient);
+        
+        if (patient) {
+            await patient.addFunds(
+                refundAmount,
+                `إرجاع جزئي لإلغاء موعد مع د. ${this.doctor.username}`,
+                false
+            );
+
+            // Record refund payment
+            const refundPayment = new Payment({
+                patient: this.patient,
+                doctor: this.doctor,
+                amount: refundAmount,
+                type: 'refund',
+                description: `إرجاع جزئي لإلغاء موعد - ${reason}`,
+                status: 'completed',
+                transactionId: `REF-${Date.now()}`,
+                relatedAppointment: this._id
+            });
+
+            await refundPayment.save();
+        }
+    }
+
+    await this.save();
+    return this;
 };
 
 const Appointment = mongoose.model('Appointment', appointmentSchema);
