@@ -1,100 +1,395 @@
-<!-- node-project\views\headerdoc.ejs -->
-<div class="header">
-    <div class="header-left">
-        <span class="menu-icon" onclick="toggleSidebar()">☰</span>
-        <span class="doctor-info"><%= doctor.username %> - <%= doctor.specialization %></span>
-    </div>
-    <a class="logout" href="/doctor/logout">تسجيل خروج</a>
-</div>
-
-<!-- Sidebar -->
-<div class="sidebar" id="sidebar">
-    <a href="/doctor">الرئيسية</a>
-    <a href="/doctor/sessions">الجلسات</a>
-    <a href="/doctor/appointments">المواعيد</a>
-    <a href="#">المرضى</a>
-    <a href="#">التقارير</a>
-    <a href="#">الإعدادات</a>
-    <a href="/doctor/logout">تسجيل خروج</a>
-</div>
-
-<style>
-    /* Header */
-    .header {
-        background-color: #fff;
-        padding: 15px 20px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.1);
-        position: fixed;
-        width: 100%;
-        top: 0;
-        left: 0;
-        z-index: 1000;
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة الطبيب - عيادتي</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Tajawal', sans-serif;
+        }
+        body {
+            background-color: #f8fafc;
+            color: #1e293b;
+            line-height: 1.6;
+            font-family: 'Tajawal', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            padding: 1.2rem 0;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+        }
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-direction: row-reverse;
+        }
+        .logo {
+            font-size: 1.6rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .logo i {
+            color: #93c5fd;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        .menu-icon {
+            font-size: 24px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        .doctor-info {
+            font-size: 1rem;
+            font-weight: bold;
+        }
+        .logout {
+            text-decoration: none;
+            color: #f59e0b;
+            font-weight: bold;
+            background: white;
+            padding: 0.5rem 1.2rem;
+            border-radius: 0.375rem;
+            transition: background 0.3s, color 0.3s;
+        }
+        .logout:hover {
+            background: #fbbf24;
+            color: #1e293b;
+        }
+      /* Sidebar */
+.sidebar {
+    width: 250px;
+    background: #2c3e50;
+    position: fixed;
+    top: 0;
+    left: -250px;
+    height: 100%;
+    transition: 0.3s;
+    padding-top: 80px;
+    z-index: 1100;
+    box-shadow: 2px 0 16px rgba(60, 60, 100, 0.12);
+    border-top-left-radius: 18px;
+    border-bottom-left-radius: 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    overflow-y: auto;
+}
+.sidebar-header {
+    width: 100%;
+    text-align: center;
+    padding: 1.5rem 0 1rem 0;
+    border-bottom: 1px solid #3b82f6;
+    margin-bottom: 1rem;
+}
+.sidebar-header i {
+    font-size: 2.2rem;
+    color: #3b82f6;
+    margin-bottom: 0.5rem;
+}
+.sidebar-header span {
+    display: block;
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+.sidebar a {
+    padding: 14px 30px 14px 18px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    color: #e2e8f0;
+    font-size: 1.08rem;
+    border-radius: 0 20px 20px 0;
+    margin: 0.2rem 0.5rem;
+    transition: background 0.2s, color 0.2s, transform 0.2s;
+    position: relative;
+}
+.sidebar a i {
+    margin-left: 10px;
+    font-size: 1.2rem;
+    color: #60a5fa;
+    min-width: 22px;
+    text-align: center;
+}
+.sidebar a:hover, .sidebar a.active {
+    background: linear-gradient(90deg, #3b82f6 60%, #1d4ed8 100%);
+    color: #fff;
+    transform: translateX(-4px) scale(1.03);
+    box-shadow: 0 2px 8px rgba(59,130,246,0.08);
+}
+@media (max-width: 900px) {
+    .header-container {
+        flex-direction: column-reverse;
+        align-items: flex-start;
+        gap: 1rem;
     }
-
-    /* Left Side (Menu + Doctor Info) */
-    .header-left {
-        display: flex;
-        align-items: center;
-    }
-
-    .menu-icon {
-        font-size: 24px;
-        cursor: pointer;
-        margin-right: 20px;
-    }
-
-    /* Doctor Info */
-    .doctor-info {
-        font-size: 16px;
-        font-weight: bold;
-    }
-
-    /* Right Side (Logout) */
-    .logout {
-        text-decoration: none;
-        color: #ff4d4d;
-        font-weight: bold;
-    }
-
-    /* Sidebar (Hidden by Default) */
     .sidebar {
-        width: 250px;
-        background: #2c3e50;
-        position: fixed;
-        top: 0;
-        left: -250px;
-        height: 100%;
-        transition: 0.3s;
-        padding-top: 60px;
+        width: 200px;
+        padding-top: 70px;
+        border-radius: 0 18px 18px 0;
     }
-
-    .sidebar a {
-        padding: 15px;
-        text-decoration: none;
-        display: block;
-        color: white;
-        font-size: 18px;
+}
+@media (max-width: 600px) {
+    .header-container {
+        padding: 0 0.5rem;
     }
-
-    .sidebar a:hover {
-        background: #34495e;
+    .logo {
+        font-size: 1.1rem;
     }
-
+    .sidebar {
+        width: 100vw;
+        left: -100vw;
+        border-radius: 0 0 18px 18px;
+        align-items: flex-end;
+    }
     .show-sidebar {
         left: 0 !important;
     }
-</style>
-
-<script>
-    function toggleSidebar() {
-        var sidebar = document.getElementById("sidebar");
-        if (sidebar.style.left === "-250px") {
-            sidebar.style.left = "0";
-        } else {
-            sidebar.style.left = "-250px";
-        }
+}
+        /* Sidebar */
+.sidebar {
+    width: 250px;
+    background: #2c3e50;
+    position: fixed;
+    top: 0;
+    left: -250px;
+    height: 100%;
+    transition: 0.3s;
+    padding-top: 80px;
+    z-index: 1100;
+    box-shadow: 2px 0 16px rgba(60, 60, 100, 0.12);
+    border-top-left-radius: 18px;
+    border-bottom-left-radius: 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    overflow-y: auto;
+}
+.sidebar-header {
+    width: 100%;
+    text-align: center;
+    padding: 1.5rem 0 1rem 0;
+    border-bottom: 1px solid #3b82f6;
+    margin-bottom: 1rem;
+}
+.sidebar-header i {
+    font-size: 2.2rem;
+    color: #3b82f6;
+    margin-bottom: 0.5rem;
+}
+.sidebar-header span {
+    display: block;
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+.sidebar a {
+    padding: 14px 30px 14px 18px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    color: #e2e8f0;
+    font-size: 1.08rem;
+    border-radius: 0 20px 20px 0;
+    margin: 0.2rem 0.5rem;
+    transition: background 0.2s, color 0.2s, transform 0.2s;
+    position: relative;
+}
+.sidebar a i {
+    margin-left: 10px;
+    font-size: 1.2rem;
+    color: #60a5fa;
+    min-width: 22px;
+    text-align: center;
+}
+.sidebar a:hover, .sidebar a.active {
+    background: linear-gradient(90deg, #3b82f6 60%, #1d4ed8 100%);
+    color: #fff;
+    transform: translateX(-4px) scale(1.03);
+    box-shadow: 0 2px 8px rgba(59,130,246,0.08);
+}
+@media (max-width: 900px) {
+    .header-container {
+        flex-direction: column-reverse;
+        align-items: flex-start;
+        gap: 1rem;
     }
-</script>
+    .sidebar {
+        width: 200px;
+        padding-top: 70px;
+        border-radius: 0 18px 18px 0;
+    }
+}
+@media (max-width: 600px) {
+    .header-container {
+        padding: 0 0.5rem;
+    }
+    .logo {
+        font-size: 1.1rem;
+    }
+    .sidebar {
+        width: 100vw;
+        left: -100vw;
+        border-radius: 0 0 18px 18px;
+        align-items: flex-end;
+    }
+    .show-sidebar {
+        left: 0 !important;
+    }
+}
+        .sidebar-header i {
+            font-size: 2.2rem;
+            color: #3b82f6;
+            margin-bottom: 0.5rem;
+        }
+        .sidebar-header span {
+            display: block;
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        .sidebar a {
+            padding: 14px 30px 14px 18px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            color: #e2e8f0;
+            font-size: 1.08rem;
+            border-radius: 0 20px 20px 0;
+            margin: 0.2rem 0.5rem;
+            transition: background 0.2s, color 0.2s, transform 0.2s;
+            position: relative;
+        }
+        .sidebar a i {
+            margin-left: 10px;
+            font-size: 1.2rem;
+            color: #60a5fa;
+            min-width: 22px;
+            text-align: center;
+        }
+        .sidebar a:hover, .sidebar a.active {
+            background: linear-gradient(90deg, #3b82f6 60%, #1d4ed8 100%);
+            color: #fff;
+            transform: translateX(-4px) scale(1.03);
+            box-shadow: 0 2px 8px rgba(59,130,246,0.08);
+        }
+        .show-sidebar {
+            left: 0 !important;
+        }
+        /* Responsive */
+        @media (max-width: 900px) {
+            .header-container {
+                flex-direction: column-reverse;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            .sidebar {
+                width: 200px;
+                padding-top: 70px;
+                border-radius: 0 18px 18px 0;
+            }
+        }
+        @media (max-width: 600px) {
+            .header-container {
+                padding: 0 0.5rem;
+            }
+            .logo {
+                font-size: 1.1rem;
+            }
+            .sidebar {
+                width: 100vw;
+                left: -100vw;
+                border-radius: 0 0 18px 18px;
+                align-items: flex-end;
+            }
+            .show-sidebar {
+                left: 0 !important;
+            }
+        }
+        /* Push page content down below header */
+        .page-content {
+            padding-top: 80px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-container">
+            <div class="logo">
+               
+                <span class="menu-icon" onclick="toggleSidebar()">&#9776;</span>
+            </div>
+            <div class="header-left">
+                
+                
+            </div>
+            <div class="logo">
+                <i class="fas fa-heartbeat"></i>
+                <span>عيادتي</span>
+            </div>
+        </div>
+    </div>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-user-md"></i>
+            <span><%= doctor.username %> - <%= doctor.specialization %></span>
+        </div>
+        <a href="/doctor/sessions"><i class="fas fa-calendar-alt" style="margin-left:8px"></i>الجلسات</a>
+        <a href="/doctor/appointments"><i class="fas fa-clock" style="margin-left:8px"></i>المواعيد</a>
+        <a href="/doctor/medical-record"><i class="fas fa-notes-medical" style="margin-left:8px"></i>السجل الطبي</a>
+        <a href="/doctor/follow-up"><i class="fas fa-history" style="margin-left:8px"></i>مراجعات المرضى</a>
+        <a href="/doctor/logout"><i class="fas fa-sign-out-alt" style="margin-left:8px"></i>تسجيل خروج</a>
+    </div>
+    <div class="page-content">
+        <!-- ... محتوى الصفحة هنا ... -->
+    </div>
+    <script>
+        function toggleSidebar() {
+            var sidebar = document.getElementById("sidebar");
+            if (sidebar.style.left === "-250px" || sidebar.style.left === "" || sidebar.style.left === "-100vw") {
+                sidebar.style.left = "0";
+            } else {
+                sidebar.style.left = window.innerWidth <= 600 ? "-100vw" : "-250px";
+            }
+        }
+        // إغلاق القائمة الجانبية عند الضغط خارجها على الشاشات الصغيرة
+        document.addEventListener('click', function(event) {
+            var sidebar = document.getElementById("sidebar");
+            var menuIcon = document.querySelector('.menu-icon');
+            if (window.innerWidth <= 900 && sidebar.style.left === "0") {
+                if (!sidebar.contains(event.target) && !menuIcon.contains(event.target)) {
+                    sidebar.style.left = window.innerWidth <= 600 ? "-100vw" : "-250px";
+                }
+            }
+        });
+    </script>
+</body>
+</html>
