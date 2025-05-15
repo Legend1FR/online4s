@@ -1,0 +1,114 @@
+<%- include('headerpatient') %>
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>إرسال شكوى</title>
+    <style>
+        .header, #header, .headerpatient {
+            display: none !important;
+        }
+        body {
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: #f7f7f7;
+            font-family: 'Cairo', Arial, sans-serif;
+        }
+        .complaint-bg {
+            min-height: 80vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #f7f7f7;
+        }
+        .complaint-container {
+            background: #fff;
+            padding: 32px 28px;
+            border-radius: 12px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+            min-width: 340px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+        .complaint-container h2 {
+            margin-bottom: 18px;
+            color: #2d3e50;
+        }
+        .complaint-container label {
+            display: block;
+            margin-bottom: 6px;
+            text-align: right;
+            color: #444;
+        }
+        .complaint-container input[type="text"],
+        .complaint-container textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 14px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1em;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+        .complaint-container button {
+            background: #1abc9c;
+            color: #fff;
+            border: none;
+            padding: 10px 28px;
+            border-radius: 6px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .complaint-container button:hover {
+            background: #159c85;
+        }
+        .complaint-container .msg {
+            margin-bottom: 12px;
+            font-weight: bold;
+        }
+        .complaint-container .msg.error {
+            color: #e74c3c;
+        }
+        .complaint-container .msg.success {
+            color: #27ae60;
+        }
+    </style>
+</head>
+<body>
+    <div class="complaint-bg">
+        <div class="complaint-container">
+            <h2>إرسال شكوى للإدارة</h2>
+            <% if (error) { %>
+                <div class="msg error"><%= error %></div>
+            <% } %>
+            <% if (success) { %>
+                <div class="msg success"><%= success %></div>
+                <script>
+                    setTimeout(function() {
+                        window.history.go(-2);
+                    }, 2000); // يرجع صفحتين للخلف بعد ثانيتين
+                </script>
+            <% } %>
+            <form method="POST" action="/complaint">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <div>
+                    <label>موضوع الشكوى:</label>
+                    <input type="text" name="subject" required>
+                </div>
+                <div>
+                    <label>نص الشكوى:</label>
+                    <textarea name="message" rows="5" required></textarea>
+                </div>
+                <button type="submit">إرسال</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
