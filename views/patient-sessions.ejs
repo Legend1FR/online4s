@@ -40,6 +40,10 @@
       background-color: #10B981;
       color: white;
     }
+    .badge-cancelled {
+      background-color: #6B7280;
+      color: white;
+    }
     .rating-stars {
       direction: ltr;
       unicode-bidi: bidi-override;
@@ -98,23 +102,50 @@
         <% if (sessions && sessions.length > 0) { %>
           <div class="space-y-4 max-w-lg mx-auto">
             <% sessions.forEach(session => { %>
-              <div class="session-card bg-white rounded-lg p-4 shadow-lg flex items-center justify-between">
-                <div class="flex items-center">
-                  <img src="<%= session.doctor.profileImage || '/images/default-doctor.jpg' %>" alt="<%= session.doctor.username %>" class="w-16 h-16 rounded-full mr-4">
-                  <div>
-                    <p class="font-bold text-gray-800"><%= session.doctor.username %></p>
-                    <p class="text-gray-600"><%= session.doctor.specialization %></p>
-                    <p class="text-gray-600">
-                      <i class="far fa-calendar-alt"></i> <%= new Date(session.date).toLocaleDateString('ar-EG') %> |
-                      <i class="far fa-clock"></i> <%= session.time %>
-                    </p>
-                    <span class="badge badge-upcoming mt-1">محجوزة</span>
+              <% if (session.status === 'ملغي') { %>
+                <div class="session-card bg-gray-100 rounded-lg p-4 shadow-lg flex items-center justify-between">
+                  <div class="flex items-center">
+                    <img src="<%= session.doctor.profileImage || '/images/default-doctor.jpg' %>" 
+                         alt="<%= session.doctor.username %>" 
+                         class="w-16 h-16 rounded-full mr-4 opacity-50">
+                    <div>
+                      <p class="font-bold text-gray-500"><%= session.doctor.username %></p>
+                      <p class="text-gray-400"><%= session.doctor.specialization %></p>
+                      <p class="text-gray-400">
+                        <i class="far fa-calendar-alt"></i> <%= new Date(session.date).toLocaleDateString('ar-EG') %> |
+                        <i class="far fa-clock"></i> <%= session.time %>
+                      </p>
+                      <span class="badge badge-cancelled mt-1">ملغي</span>
+                      <% if (session.cancelledAt) { %>
+                        <p class="text-xs text-gray-500 mt-1">
+                          ألغيت في: <%= new Date(session.cancelledAt).toLocaleString('ar-EG') %>
+                        </p>
+                      <% } %>
+                    </div>
+                  </div>
+                  <div class="text-green-600 font-bold">
+                    +<%= (session.amountPaid * 0.5).toLocaleString('ar-YE') %> ر.ي مستردة
                   </div>
                 </div>
-                <button class="join-session-btn bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600" data-session-id="<%= session._id %>">
-                  انضم إلى الجلسة
-                </button>
-              </div>
+              <% } else { %>
+                <div class="session-card bg-white rounded-lg p-4 shadow-lg flex items-center justify-between">
+                  <div class="flex items-center">
+                    <img src="<%= session.doctor.profileImage || '/images/default-doctor.jpg' %>" alt="<%= session.doctor.username %>" class="w-16 h-16 rounded-full mr-4">
+                    <div>
+                      <p class="font-bold text-gray-800"><%= session.doctor.username %></p>
+                      <p class="text-gray-600"><%= session.doctor.specialization %></p>
+                      <p class="text-gray-600">
+                        <i class="far fa-calendar-alt"></i> <%= new Date(session.date).toLocaleDateString('ar-EG') %> |
+                        <i class="far fa-clock"></i> <%= session.time %>
+                      </p>
+                      <span class="badge badge-upcoming mt-1">محجوزة</span>
+                    </div>
+                  </div>
+                  <button class="join-session-btn bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600" data-session-id="<%= session._id %>">
+                    انضم إلى الجلسة
+                  </button>
+                </div>
+              <% } %>
             <% }); %>
           </div>
         <% } else { %>
@@ -319,4 +350,3 @@
   </script>
 </body>
 </html>
-<%- include('footerpatient') %>
