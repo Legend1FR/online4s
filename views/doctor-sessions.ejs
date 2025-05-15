@@ -31,9 +31,17 @@
       background-color: #10B981;
       color: white;
     }
+    .badge-cancelled {
+      background-color: #EF4444;
+      color: white;
+    }
     @keyframes spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
+    }
+    .cancelled-session {
+      opacity: 0.7;
+      border-left: 4px solid #EF4444;
     }
   </style>
 </head>
@@ -48,12 +56,23 @@
             <p class="text-lg text-gray-600"><%= doctor.specialization %></p>
           </div>
         </div>
+<<<<<<< HEAD
         <a href="/doctor/reports" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
          
         </a>
         <a href="/doctor/medical-record" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
           <i class="fas fa-notes-medical mr-2"></i> السجلات الطبية
         </a>
+=======
+        <div class="flex space-x-2">
+          <a href="/doctor/reports" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+            <i class="fas fa-file-medical mr-2"></i> التقارير
+          </a>
+          <a href="/doctor/cancelled-appointments" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+            <i class="fas fa-ban mr-2"></i> الملغية
+          </a>
+        </div>
+>>>>>>> a7a5b16802c9127625fa8133dee330a4d940ef88
       </div>
     </div>
 
@@ -72,6 +91,7 @@
             const sessionDateTime = new Date(`${session.date.toISOString().split('T')[0]}T${session.time}`);
             const now = new Date();
             const timeDiff = (sessionDateTime - now) / (1000 * 60); // Difference in minutes
+<<<<<<< HEAD
             const canPatientJoin = timeDiff <= 30 && timeDiff >= -60; // المريض يمكنه الانضمام قبل 30 دقيقة
 
             // Skip session if patient data is missing
@@ -146,6 +166,43 @@
                 </button>
               </div>
             <% } %>
+=======
+            const canPatientJoin = timeDiff <= 30 && timeDiff >= -60;
+          %>
+            <div class="session-card <%= session.status === 'ملغي' ? 'cancelled-session bg-gray-100' : 'bg-white' %> rounded-lg p-4 shadow-lg flex items-center justify-between">
+              <div class="flex items-center">
+                <img src="<%= session.patient.profileImage || '/images/default-patient.jpg' %>" alt="صورة المريض" class="w-16 h-16 rounded-full mr-4">
+                <div>
+                  <p class="font-bold text-gray-800"><%= session.patient.name %></p>
+                  <p class="text-gray-600">
+                    <i class="far fa-calendar-alt"></i> <%= new Date(session.date).toLocaleDateString('ar-EG') %> |
+                    <i class="far fa-clock"></i> <%= session.time %>
+                  </p>
+                  <% if (session.notes) { %>
+                    <p class="text-gray-600 mt-1"><i class="fas fa-file-medical"></i> <%= session.notes %></p>
+                  <% } %>
+                  <% if (session.status === 'ملغي') { %>
+                    <span class="badge-cancelled mt-2">ملغية</span>
+                  <% } else if (canPatientJoin) { %>
+                    <span class="badge-ready mt-2">المريض يمكنه الانضمام الآن</span>
+                  <% } else { %>
+                    <span class="badge-upcoming mt-2">
+                      <% if (timeDiff > 30) { %>
+                        متاح للمريض بعد <%= Math.ceil(timeDiff - 30) %> دقيقة
+                      <% } else { %>
+                        انتهى وقت الجلسة
+                      <% } %>
+                    </span>
+                  <% } %>
+                </div>
+              </div>
+              <% if (session.status !== 'ملغي') { %>
+                <button class="start-session-btn bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600" data-session-id="<%= session._id %>">
+                  بدء الجلسة
+                </button>
+              <% } %>
+            </div>
+>>>>>>> a7a5b16802c9127625fa8133dee330a4d940ef88
           <% }); %>
         </div>
       <% } else { %>
@@ -163,7 +220,12 @@
       const loadingIndicator = document.getElementById('loadingIndicator');
       const errorMessage = document.getElementById('errorMessage');
       const errorText = document.getElementById('errorText');
+      const notification = document.getElementById('notification');
 
+<<<<<<< HEAD
+=======
+      // بدء الجلسة
+>>>>>>> a7a5b16802c9127625fa8133dee330a4d940ef88
       document.querySelectorAll('.start-session-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const sessionId = btn.getAttribute('data-session-id');
@@ -195,6 +257,7 @@
         });
       });
 
+<<<<<<< HEAD
       document.querySelectorAll('.delete-session-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const sessionId = btn.getAttribute('data-session-id');
@@ -223,14 +286,20 @@
         });
       });
 
+=======
+      // إشعار بدء الجلسة
+>>>>>>> a7a5b16802c9127625fa8133dee330a4d940ef88
       socket.on('sessionStarted', (data) => {
-        const notification = document.getElementById('notification');
         notification.textContent = `الجلسة مع المريض بدأت الآن!`;
         notification.classList.remove('hidden');
         setTimeout(() => notification.classList.add('hidden'), 5000);
         window.location.reload();
       });
 
+<<<<<<< HEAD
+=======
+      // التحقق من الجلسات المكتملة كل دقيقة
+>>>>>>> a7a5b16802c9127625fa8133dee330a4d940ef88
       setInterval(() => {
         fetch('/api/sessions/check-completed')
           .then(response => response.json())
