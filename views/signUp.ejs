@@ -1,139 +1,240 @@
 <%- include('header', { title: 'تسجيل جديد' }) %>
-<div class="content" style="width: 500px; margin: 50px auto; background-color: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); text-align: center;">
-    <h2 style="margin-bottom: 20px; color: #333;">
-        <i class="fas fa-user-plus" style="margin-left: 10px;"></i>
-        إنشاء حساب جديد
-    </h2>
-    
-    <form action="/signUp" method="post" class="auth-form">
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+<div class="signup-container">
+    <div class="signup-card">
+        <h2>
+            <i class="fas fa-user-plus"></i>
+            إنشاء حساب جديد
+        </h2>
         
-        <div class="form-group">
-            <i class="fas fa-user input-icon"></i>
-            <input type="text" name="name" placeholder="اسم المستخدم" dir="rtl" required>
-        </div>
-        
-        <div class="form-group">
-            <i class="fas fa-envelope input-icon"></i>
-            <input type="email" name="email" placeholder="البريد الإلكتروني" dir="rtl" required>
-        </div>
-        
-        <div class="form-group">
-            <i class="fas fa-lock input-icon"></i>
-            <input type="password" name="password" placeholder="كلمة المرور" dir="rtl" required>
-            <small style="display: block; text-align: right; color: #666; margin-top: 5px;">
-                يجب أن تحتوي كلمة المرور على 8 أحرف على الأقل، حرف كبير، حرف صغير، رقم وحرف خاص
-            </small>
-        </div>
-        
-        <button type="submit" class="submit-btn">
-            <span id="submitText">إنشاء حساب</span>
-            <div id="loadingSpinner" class="spinner" style="display: none;">
-                <i class="fas fa-spinner fa-spin"></i>
+        <form action="/signUp" method="post" class="auth-form">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            
+            <div class="form-group">
+                <i class="fas fa-user input-icon"></i>
+                <input type="text" name="name" placeholder="اسم المستخدم" dir="rtl" required>
             </div>
-        </button>
+            
+            <div class="form-group">
+                <i class="fas fa-envelope input-icon"></i>
+                <input type="email" name="email" placeholder="البريد الإلكتروني" dir="rtl" required>
+            </div>
+            
+            <div class="form-group">
+                <i class="fas fa-lock input-icon"></i>
+                <input type="password" name="password" placeholder="كلمة المرور" dir="rtl" required>
+                <small>
+                    يجب أن تحتوي كلمة المرور على 8 أحرف على الأقل، حرف كبير، حرف صغير، رقم وحرف خاص
+                </small>
+            </div>
+            
+            <button type="submit" class="submit-btn">
+                <div id="loadingSpinner" class="spinner" style="display: none;">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+                <span id="submitText">إنشاء حساب</span>
+            </button>
+            
+            <div class="form-footer">
+                لديك حساب بالفعل؟ <a href="/login">سجل الدخول</a>
+            </div>
+        </form>
         
-        <div class="form-footer">
-            لديك حساب بالفعل؟ <a href="/login" style="color: #007bff; text-decoration: none;">سجل الدخول</a>
-        </div>
-    </form>
-    
-    <% if (error) { %>
-        <div class="alert alert-error">
-            <i class="fas fa-exclamation-circle"></i>
-            <%= error %>
-        </div>
-    <% } %>
-    
-    <% if (success) { %>
-        <div class="alert alert-success">
-            <i class="fas fa-check-circle"></i>
-            <%= success %>
-            يمكنك الآن <a href="/login" style="color: #28a745; text-decoration: none;">تسجيل الدخول</a>
-        </div>
-    <% } %>
+        <% if (error) { %>
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-circle"></i>
+                <%= error %>
+            </div>
+        <% } %>
+        
+        <% if (success) { %>
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle"></i>
+                <%= success %>
+                يمكنك الآن <a href="/login">تسجيل الدخول</a>
+            </div>
+        <% } %>
+    </div>
 </div>
 
 <style>
-    .content {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Tajawal', sans-serif;
     }
-    
-    .form-group {
-        position: relative;
-        margin: 20px 40px;
+    body {
+        background-color: #f8fafc;
+        color: #1e293b;
+        line-height: 1.6;
     }
-    
-    .form-group input {
+    .signup-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: calc(100vh - 120px);
+        padding: 20px;
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    }
+    .signup-card {
         width: 100%;
-        padding: 12px 40px 12px 15px;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        font-size: 16px;
-        transition: border 0.3s;
+        max-width: 420px;
+        background-color: #fff;
+        padding: 2.5rem 2rem 2rem 2rem;
+        border-radius: 1rem;
+        box-shadow: 0 4px 16px rgba(59,130,246,0.08);
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
-    
-    .form-group input:focus {
-        border-color: #007bff;
-        outline: none;
+    .signup-card h2 {
+        margin-bottom: 1.5rem;
+        color: #1e293b;
+        font-weight: 700;
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
     }
-    
+    .signup-card h2 i {
+        color: #3b82f6;
+        font-size: 2rem;
+    }
+    .auth-form {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 1.2rem;
+    }
+    .form-group {
+        width: 100%;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-end;
+    }
     .input-icon {
         position: absolute;
-        left: 15px;
+        right: 1rem;
         top: 50%;
         transform: translateY(-50%);
-        color: #777;
+        color: #3b82f6;
+        font-size: 1.1rem;
+        pointer-events: none;
     }
-    
-    .submit-btn {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"] {
         width: 100%;
-        padding: 12px;
-        background-color: #28a745;
-        color: white;
+        border: 1px solid #cbd5e1;
+        border-radius: 0.5rem;
+        padding: 0.8rem 2.5rem 0.8rem 1rem;
+        font-size: 1.1rem;
+        background: #f1f5f9;
+        color: #1e293b;
+        outline: none;
+        transition: border-color 0.2s;
+        direction: rtl;
+        text-align: right;
+    }
+    input[type="text"]:focus,
+    input[type="email"]:focus,
+    input[type="password"]:focus {
+        border-color: #3b82f6;
+        background: #fff;
+    }
+    .submit-btn {
+        background: linear-gradient(90deg, #3b82f6 60%, #1d4ed8 100%);
+        color: #fff;
         border: none;
-        border-radius: 5px;
-        font-size: 16px;
+        border-radius: 0.5rem;
+        padding: 0.9rem 0;
+        font-size: 1.1rem;
+        font-weight: 700;
         cursor: pointer;
-        transition: background-color 0.3s;
+        transition: background 0.2s, box-shadow 0.2s;
+        box-shadow: 0 2px 8px rgba(59,130,246,0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.7rem;
         position: relative;
-        height: 45px;
     }
-    
+    .submit-btn:focus,
     .submit-btn:hover {
-        background-color: #218838;
+        background: linear-gradient(90deg, #2563eb 60%, #1d4ed8 100%);
     }
-    
     .spinner {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
+        font-size: 1.3rem;
+        color: #fff;
+        margin-right: 0.5rem;
+        display: inline-flex;
+        align-items: center;
     }
-    
+    .alert {
+        width: 100%;
+        margin: 1rem 0 0 0;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        font-size: 1rem;
+        justify-content: flex-start;
+    }
     .alert-error {
-        margin-top: 20px;
-        padding: 10px 15px;
-        background-color: #f8d7da;
-        color: #721c24;
-        border: 1px solid #f5c6cb;
-        border-radius: 5px;
-        text-align: right;
+        background: #fee2e2;
+        color: #b91c1c;
+        border: 1px solid #fecaca;
     }
-    
     .alert-success {
-        margin-top: 20px;
-        padding: 10px 15px;
-        background-color: #d4edda;
-        color: #155724;
-        border: 1px solid #c3e6cb;
-        border-radius: 5px;
-        text-align: right;
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #bbf7d0;
     }
-    
+    .alert i {
+        font-size: 1.3rem;
+    }
     .form-footer {
         margin-top: 15px;
         color: #666;
+        font-size: 1rem;
+    }
+    .form-footer a {
+        color: #3b82f6;
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.2s;
+    }
+    .form-footer a:hover {
+        color: #1d4ed8;
+    }
+    .auth-form small {
+        display: block;
+        text-align: right;
+        color: #64748b;
+        margin-top: 5px;
+        font-size: 0.95rem;
+    }
+    @media (max-width: 600px) {
+        .signup-container {
+            padding: 1.5rem 0.7rem 1.2rem 0.7rem;
+        }
+        .signup-card {
+            max-width: 98vw;
+            padding: 1.5rem 0.7rem 1.2rem 0.7rem;
+        }
+        .signup-card h2 {
+            font-size: 1.1rem;
+        }
+        .signup-card h2 i {
+            font-size: 1.5rem;
+        }
+        .submit-btn {
+            font-size: 1rem;
+        }
     }
 </style>
 
