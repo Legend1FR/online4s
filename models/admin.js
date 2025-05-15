@@ -1,7 +1,9 @@
 
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
-
+mongoose.connect("mongodb+srv://malhdar039:462039Mh@cluster0.kddsb.mongodb.net/all-data?retryWrites=true&w=majority&appName=Cluster0")
+    .then(() => console.log("Connected to MongoDB"))
+    .catch(() => console.log("Error connecting to MongoDB"));
 const adminSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
